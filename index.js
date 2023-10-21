@@ -5,8 +5,12 @@ const UserModel = require("./modules/Users");
 const Transaction = require("./modules/Transactions");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const app = express();
 const authenticateUser = require("./authenticateUser"); // Import your authenticateUser middleware function
+require("dotenv").config(); // Load environment variables from .env file
+
+console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
 app.use(cors());
@@ -26,137 +30,173 @@ mongoose
     console.error("Error connecting to MongoDB: ", error);
   });
 
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-  UserModel.findOne({ email: email }).then((user) => {
-    if (user) {
-      if (user.password === password) {
-        res.json("Success");
-      } else {
-        res.json("Password is incorrect");
-      }
+// =================== Login
+
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("Request Body:", req.body);
+    console.log("Received login request for email:", email);
+    const user = await UserModel.findOne({ email: email });
+
+    console.log("Email:", email);
+    console.log("User:", user);
+
+    if (user && bcrypt.compareSync(password, user.password)) {
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      res
+        .header("auth-token", token)
+        .json({ message: "Login successful!", token });
     } else {
-      res.json("No record of user");
+      res.status(401).json({ error: "Invalid Credentials" });
     }
-  });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
-// Register
-// app.post("/register", (req, res) => {
-//   UserModel.create(req.body)
-//     .then((user) => res.json(user))
-//     .catch((err) => res.json(err));
-// });
+// ================== Register
+app.post("/register", async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
 
-app.post("/register", (req, res) => {
-  UserModel.create(req.body)
-    .then((user) => res.json(user))
-    .catch((err) => {
-      console.error("Error registering user:", err);
-      res
-        .status(500)
-        .json({ error: "Internal Server Error: Unable to register user" });
+    // Check if the email is already registered
+    const existingUser = await UserModel.findOne({ email: email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already exists" });
+    }
+
+    // Hash the password before saving it to the database
+    const hashedPassword = bcrypt.hashSync(password, 10);
+
+    // Create a new user record in MongoDB
+    const newUser = new UserModel({
+      firstName,
+      lastName,
+      email,
+      password: hashedPassword,
     });
+
+    // Save the user to the database
+    await newUser.save();
+
+    res.status(200).json({ message: "User registered successfully!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 // Endpoint to handle form submission
-app.post("/create-transaction", async (req, res) => {
+app.post("/create-transaction", authenticateUser, async (req, res) => {
   try {
-    const { paymentName, email, paymentAmount, paymentDscription,selectedUserType, willUseCourier } = req.body;
-
-      // Validate that selectedUserType is provided
-      if (!selectedUserType) {
-        return res.status(400).json({ error: "selectedUserType is required" });
-      }
-
-      
-      
-    // const userId = req.user.id;
-    // Generate a unique transaction ID
-    const transactionId = uuidv4();
-
-    // Create a new transaction record in MongoDB
-    const newTransaction = new Transaction({
-      // userId,
-      transactionId,
+    const { id: userId } = req.user;
+    const {
       paymentName,
-      email,
+      email: email, // Get the user's email from the request body
       paymentAmount,
       paymentDscription,
       selectedUserType,
-      willUseCourier
+      willUseCourier,
+    } = req.body;
+
+    // Validate that selectedUserType is provided
+    // if (!selectedUserType) {
+    //   return res.status(400).json({ error: "selectedUserType is required" });
+    // }
+
+    // Create a new transaction record in MongoDB
+    const newTransaction = new Transaction({
+      userId: userId, // Use the authenticated user's ID
+      transactionId: uuidv4(),
+      paymentName,
+      email, // Associate the transaction with the provided email
+      paymentAmount,
+      paymentDscription,
+      selectedUserType,
+      willUseCourier,
     });
 
     // Save the transaction to the database
     await newTransaction.save();
 
-    // Generate a unique transaction link (for example, using transaction ID and a random string)
-    //   const transactionLink = `http://localhost:3001/transactions/${newTransaction._id}-uniquestring`;
-
-    // Store this transaction link in your database, associating it with the newly created transaction record
-
-    // Return the transaction ID   to the client
-    res.status(200).json({ transactionId });
+    // Return the transaction ID to the client
+    res.status(200).json({ transactionId: newTransaction.transactionId });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-// app.get("/create-transaction/:transactionId", async (req, res) => {
-//     try {
-//       const transactionId = req.params.transactionId;
-//       const transaction = await Transaction.findOne({ transactionId });
-//       if (!transaction) {
-//         return res.status(404).json({ error: "Transaction not found" });
-//       }
-//       res.status(200).json(transaction);
-//     } catch (error) {
-//       console.error(error);
-//       res.status(500).json({ error: "Internal Server Error" });
-//     }
-//   });
 
 // Fetch User-Specific Transactions:
-app.get("/create-transaction", async (req, res) => {
+app.get("/create-transaction", authenticateUser, async (req, res) => {
   try {
-    // Fetch transaction details from the database
-    const transactions = await Transaction.find();
+    // const userEmail = req.email;
 
+    const { id: userId } = req.user;
+
+    // Fetch transaction details from the database
+    const transactions = await Transaction.find({ userId: userId });
+
+    
+    // Fetch transactions where the user has joined
+    const joinedTransactions = await Transaction.find({
+      "participants.userId": userId,
+    });
+
+    // Combine and return both created and joined transactions to the client
+    const allTransactions = [...transactions, ...joinedTransactions];
+    res.status(200).json(allTransactions);
     // Return the transaction details to the client
-    res.status(200).json(transactions);
+    // res.status(200).json(transactions);
+    
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-//   ======================== Linking Transaction
-// Endpoint to handle joining a transactions
-app.post("/join-transaction/:transactionId", async (req, res) => {
+// Endpoint to handle joining a transaction
+// Backend: Modify join-transaction endpoint
+app.post("/join-transaction", authenticateUser, async (req, res) => {
   try {
-    const { transactionId } = req.params;
-    const { email } = req.body; // Assuming the user's email is sent in the request body
+    const { transactionId } = req.body;
+    const { id: userId } = req.user;
 
-    // Find the transaction by transaction ID in the database
+    // Find the transaction by ID
     const transaction = await Transaction.findOne({ transactionId });
+   
 
+    // If the transaction does not exist, return an error
     if (!transaction) {
-      // If the transaction is not found, return an error response
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    // Update the transaction record to associate it with the user who joined
-    transaction.email = email; // Update with the user's email
+    // Check if the user is already a participant in the transaction
+    const isParticipant = transaction.participants.some(
+      (participant) => participant.userId.toString() === userId.toString()
+    );
+
+    if (isParticipant) {
+      return res
+        .status(400)
+        .json({ error: "User is already a participant in this transaction" });
+    }
+
+    // Add the user as a participant in the transaction
+    transaction.participants.push({ userId });
     await transaction.save();
 
-    // Return a success response
-    res.status(200).json({ message: "Successfully joined the transaction" });
+    // Return success message or the updated transaction object
+    res.status(200).json({ message: "Successfully joined the transaction", transaction });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
