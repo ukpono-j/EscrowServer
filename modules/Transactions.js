@@ -35,7 +35,16 @@ const transactionSchema = new mongoose.Schema({
     required: true,
   },
   // participants: [{ type: String }], // Array to store participants' emails
-  participants: []
+  participants: [],
+  createdAt: {
+    type: Date, // Store the creation timestamp as a Date object
+    default: Date.now, // Set the default value to the current date and time
+  },
+  status: {
+    type: String,
+    enum: ["active", "cancelled", "completed"],
+    default: "active",
+  },
   // Additional fields for your transaction model can be added here
   // ...
 });

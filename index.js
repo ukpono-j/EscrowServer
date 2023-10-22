@@ -128,6 +128,7 @@ app.post("/create-transaction", authenticateUser, async (req, res) => {
     // if (!selectedUserType) {
     //   return res.status(400).json({ error: "selectedUserType is required" });
     // }
+    const createdAt = new Date();
 
     // Create a new transaction record in MongoDB
     const newTransaction = new Transaction({
@@ -139,13 +140,14 @@ app.post("/create-transaction", authenticateUser, async (req, res) => {
       paymentDscription,
       selectedUserType,
       willUseCourier,
+      createdAt: createdAt, 
     });
 
     // Save the transaction to the database
     await newTransaction.save();
 
     // Return the transaction ID to the client
-    res.status(200).json({ transactionId: newTransaction.transactionId });
+    res.status(200).json({ transactionId: newTransaction.transactionId,   createdAt: createdAt, });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -219,6 +221,75 @@ app.post("/join-transaction", authenticateUser, async (req, res) => {
   }
 });
 
+
+// Endpoint to handle canceling a transaction
+app.post("/cancel-transaction", authenticateUser,  async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+
+    // Find the transaction by ID and update its status to "cancelled"
+    const cancelledTransaction = await Transaction.findOneAndUpdate(
+      { transactionId: transactionId },
+      { status: "cancelled" },
+      { new: true }
+    );
+
+    if (!cancelledTransaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+
+    res.status(200).json(cancelledTransaction);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Endpoint to fetch canceled transactions
+app.get("/cancel-transactions", authenticateUser, async (req, res) => {
+  try {
+    // const userEmail = req.email;
+
+    const { id: userId } = req.user;
+
+    // Fetch canceled transactions from the database
+    const cancelledTransactions = await Transaction.find({
+      userId: userId,
+      status: "cancelled",
+    });
+
+    res.status(200).json(cancelledTransactions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+// Endpoint to handle marking a transaction as completed
+app.post("/complete-transaction", authenticateUser, async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+
+    // Find the transaction by ID and update its status to "completed"
+    const completedTransaction = await Transaction.findOneAndUpdate(
+      { transactionId: transactionId },
+      { status: "completed" },
+      { new: true }
+    );
+
+    if (!completedTransaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    res.status(200).json(completedTransaction);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 
 
 const PORT = process.env.PORT || 3001;
