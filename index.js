@@ -88,6 +88,29 @@ app.post("/register", async (req, res) => {
   }
 });
 
+
+// Endpoint to get user details
+app.get("/user-details", authenticateUser, async (req, res) => {
+  try {
+    // Get the user ID from the authenticated user's request object
+    const { id: userId } = req.user;
+
+    // Fetch user details from the database based on the user ID
+    const user = await UserModel.findById(userId);
+
+    // If the user does not exist, return an error
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Return the user details to the client
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Endpoint to handle form submission
 app.post("/create-transaction", authenticateUser, async (req, res) => {
   try {
