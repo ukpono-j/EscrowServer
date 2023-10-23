@@ -291,6 +291,27 @@ app.post("/complete-transaction", authenticateUser, async (req, res) => {
   }
 });
 
+//Endpoint to  fetch completed transaction
+
+app.get("/complete-transaction", authenticateUser, async (req, res) => {
+  try {
+    // const userEmail = req.email;
+
+    const { id: userId } = req.user;
+
+    // Fetch canceled transactions from the database
+    const cancelledTransactions = await Transaction.find({
+      userId: userId,
+      status: "completed",
+    });
+
+    res.status(200).json(cancelledTransactions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
