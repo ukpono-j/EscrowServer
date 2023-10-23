@@ -13,7 +13,13 @@ require("dotenv").config(); // Load environment variables from .env file
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-app.use(cors());
+app.use(cors(
+  {
+    origin: ["https://escrow-beta.vercel.app"],
+    methods: ["POST", "GET"],
+    credentials: true
+  }
+));
 
 mongoose
   .connect(
@@ -183,7 +189,6 @@ app.get("/create-transaction", authenticateUser, async (req, res) => {
 });
 
 // Endpoint to handle joining a transaction
-// Backend: Modify join-transaction endpoint
 app.post("/join-transaction", authenticateUser, async (req, res) => {
   try {
     const { transactionId } = req.body;
