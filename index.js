@@ -13,13 +13,7 @@ require("dotenv").config(); // Load environment variables from .env file
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-app.use(cors(
-  {
-    origin: ["https://escrow-beta.vercel.app"],
-    methods: ["POST", "GET"],
-    credentials: true
-  }
-));
+app.use(cors());
 
 mongoose
   .connect(
