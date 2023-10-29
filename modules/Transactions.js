@@ -14,6 +14,14 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  paymentBank: {
+    type: String,
+    required: true,
+  },
+  paymentAccountNumber: {
+    type: Number,
+    required: true,
+  },
   email: {
     type: String,
     required: true,

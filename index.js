@@ -61,7 +61,7 @@ app.post("/login", async (req, res) => {
 // ================== Register
 app.post("/register", async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, bank, dateOfBirth,  accountNumber } = req.body;
 
     // Check if the email is already registered
     const existingUser = await UserModel.findOne({ email: email });
@@ -78,6 +78,9 @@ app.post("/register", async (req, res) => {
       lastName,
       email,
       password: hashedPassword,
+      bank,
+      accountNumber,
+      dateOfBirth
     });
 
     // Save the user to the database
@@ -123,6 +126,8 @@ app.post("/create-transaction", authenticateUser, async (req, res) => {
       paymentDscription,
       selectedUserType,
       willUseCourier,
+      paymentBank,
+      paymentAccountNumber,
     } = req.body;
 
     // Validate that selectedUserType is provided
@@ -141,6 +146,8 @@ app.post("/create-transaction", authenticateUser, async (req, res) => {
       paymentDscription,
       selectedUserType,
       willUseCourier,
+      paymentBank,
+      paymentAccountNumber,
       createdAt: createdAt,
     });
 
@@ -311,17 +318,57 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
 });
 
 // Get notifications for a specific user
+// app.get("/notifications", authenticateUser, async (req, res) => {
+//   try {
+//     const { id: userId } = req.user;
+    
+//     const notifications = await Notification.find({ userId: userId });
+//     res.status(200).json(notifications);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+// Get notifications for a specific user
+// Endpoint to get notifications for a specific user (creator and participants)
 app.get("/notifications", authenticateUser, async (req, res) => {
   try {
     const { id: userId } = req.user;
     
-    const notifications = await Notification.find({ userId: userId });
-    res.status(200).json(notifications);
+    // Fetch notifications where the user is the creator
+    const creatorNotifications = await Notification.find({ userId: userId });
+
+    // Fetch notifications where the user is a participant
+    const participantNotifications = await Notification.find({
+      "participants.userId": userId,
+    });
+
+    // Fetch transactions where the user is a participant
+    const joinedTransactions = await Transaction.find({
+      "participants.userId": userId,
+    });
+
+    // Get notifications for joined transactions by transactionId
+    const joinedTransactionNotifications = await Notification.find({
+      transactionId: { $in: joinedTransactions.map(transaction => transaction.transactionId) }
+    });
+
+    // Combine and return both creator and participant notifications to the client
+    const allNotifications = [
+      ...creatorNotifications,
+      ...participantNotifications,
+      ...joinedTransactionNotifications
+    ];
+
+    res.status(200).json(allNotifications);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
 
 // Endpoint to handle creating notifications
 app.post("/notifications", authenticateUser, async (req, res) => {
@@ -400,31 +447,31 @@ app.post("/decline-transaction", authenticateUser, async (req, res) => {
 // });
 
 // Get notifications for a specific user (creator and participants)
-app.get("/verify-notifications", authenticateUser, async (req, res) => {
-  try {
-    const { id: userId } = req.user;
+// app.get("/verify-notifications", authenticateUser, async (req, res) => {
+//   try {
+//     const { id: userId } = req.user;
 
-    // Fetch notifications where the user is the creator
-    const creatorNotifications = await NotificationVerification.find({
-      userId: userId,
-    });
+//     // Fetch notifications where the user is the creator
+//     const creatorNotifications = await NotificationVerification.find({
+//       userId: userId,
+//     });
 
-    // Fetch notifications where the user is a participant
-    const participantNotifications = await NotificationVerification.find({
-      "participants.userId": userId,
-    });
+//     // Fetch notifications where the user is a participant
+//     const participantNotifications = await NotificationVerification.find({
+//       "participants.userId": userId,
+//     });
 
-    // Combine and return both creator and participant notifications to the client
-    const allNotifications = [
-      ...creatorNotifications,
-      ...participantNotifications,
-    ];
-    res.status(200).json(allNotifications);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//     // Combine and return both creator and participant notifications to the client
+//     const allNotifications = [
+//       ...creatorNotifications,
+//       ...participantNotifications,
+//     ];
+//     res.status(200).json(allNotifications);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 // Define the getParticipantsForTransaction function
 const getParticipantsForTransaction = async (transactionId) => {
@@ -441,39 +488,39 @@ const getParticipantsForTransaction = async (transactionId) => {
 };
 
 // Endpoint to handle creating notifications with participants
-app.post("/verify-notifications", authenticateUser, async (req, res) => {
-  try {
-    const { title, message, transactionId } = req.body;
-    const { id: userId } = req.user;
+// app.post("/verify-notifications", authenticateUser, async (req, res) => {
+//   try {
+//     const { title, message, transactionId } = req.body;
+//     const { id: userId } = req.user;
 
-    if (!title || !message || !transactionId) {
-      return res
-        .status(400)
-        .json({ error: "Title, message, and transactionId are required" });
-    }
+//     if (!title || !message || !transactionId) {
+//       return res
+//         .status(400)
+//         .json({ error: "Title, message, and transactionId are required" });
+//     }
 
-    // Get participants for the given transactionId
-    const participants = await getParticipantsForTransaction(userId);
+//     // Get participants for the given transactionId
+//     const participants = await getParticipantsForTransaction(userId);
 
-    // Create a new notification object with participants
-    const newNotificationVerification = new NotificationVerification({
-      userId: userId,
-      title: title,
-      message: message,
-      transactionId: transactionId,
-      participants: participants.map((participant) => participant.userId),
-    });
+//     // Create a new notification object with participants
+//     const newNotificationVerification = new NotificationVerification({
+//       userId: userId,
+//       title: title,
+//       message: message,
+//       transactionId: transactionId,
+//       participants: participants.map((participant) => participant.userId),
+//     });
 
-    // Save the notification to the database
-    await newNotificationVerification.save();
+//     // Save the notification to the database
+//     await newNotificationVerification.save();
 
-    // Return success response to the client
-    res.status(200).json(newNotificationVerification);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//     // Return success response to the client
+//     res.status(200).json(newNotificationVerification);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
