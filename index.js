@@ -15,29 +15,7 @@ require("dotenv").config(); // Load environment variables from .env file
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-// app.use(cors());
-
-const whitelist = [
-  'http://localhost:5173', // Your local development server
-  'https://escrow-app.onrender.com', // Your Render app URL
-  // Add other origins if needed
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (whitelist.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  credentials: true,  // Enable credentials if you're sending cookies or authentication tokens
-  optionsSuccessStatus: 204,
-};
-
-app.use(cors(corsOptions));
-
+app.use(cors());
 
 mongoose
 .connect(process.env.MONGODB_URI,
