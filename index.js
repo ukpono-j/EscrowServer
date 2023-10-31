@@ -15,13 +15,29 @@ require("dotenv").config(); // Load environment variables from .env file
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
+
+// Define a list of allowed origins
+const allowedOrigins = ['http://localhost:3001', 'https://escrow-app.onrender.com'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Enable specific HTTP methods
+}));
 
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+.connect(process.env.MONGODB_URI,
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
   .then(() => {
     console.log("Successfully connected to MongoDB");
   })
@@ -58,15 +74,7 @@ app.post("/login", async (req, res) => {
 // ================== Register
 app.post("/register", async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      email,
-      password,
-      bank,
-      dateOfBirth,
-      accountNumber,
-    } = req.body;
+    const { firstName, lastName, email, password, bank, dateOfBirth,  accountNumber } = req.body;
 
     // Check if the email is already registered
     const existingUser = await UserModel.findOne({ email: email });
@@ -85,7 +93,7 @@ app.post("/register", async (req, res) => {
       password: hashedPassword,
       bank,
       accountNumber,
-      dateOfBirth,
+      dateOfBirth
     });
 
     // Save the user to the database
@@ -326,7 +334,7 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
 // app.get("/notifications", authenticateUser, async (req, res) => {
 //   try {
 //     const { id: userId } = req.user;
-
+    
 //     const notifications = await Notification.find({ userId: userId });
 //     res.status(200).json(notifications);
 //   } catch (error) {
@@ -340,7 +348,7 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
 app.get("/notifications", authenticateUser, async (req, res) => {
   try {
     const { id: userId } = req.user;
-
+    
     // Fetch notifications where the user is the creator
     const creatorNotifications = await Notification.find({ userId: userId });
 
@@ -356,16 +364,14 @@ app.get("/notifications", authenticateUser, async (req, res) => {
 
     // Get notifications for joined transactions by transactionId
     const joinedTransactionNotifications = await Notification.find({
-      transactionId: {
-        $in: joinedTransactions.map((transaction) => transaction.transactionId),
-      },
+      transactionId: { $in: joinedTransactions.map(transaction => transaction.transactionId) }
     });
 
     // Combine and return both creator and participant notifications to the client
     const allNotifications = [
       ...creatorNotifications,
       ...participantNotifications,
-      ...joinedTransactionNotifications,
+      ...joinedTransactionNotifications
     ];
 
     res.status(200).json(allNotifications);
@@ -374,6 +380,8 @@ app.get("/notifications", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
 
 // Endpoint to handle creating notifications
 app.post("/notifications", authenticateUser, async (req, res) => {
