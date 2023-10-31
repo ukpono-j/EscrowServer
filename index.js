@@ -17,24 +17,27 @@ console.log(process.env.JWT_SECRET);
 app.use(express.json());
 // app.use(cors());
 
-
-const allowedOrigins = [
-  'http://localhost:5173',          // Add your local development origin
-  'https://escrow-app.onrender.com' // Add your live site origin
+const whitelist = [
+  'http://localhost:5173', // Your local development server
+  'https://escrow-app.onrender.com', // Your Render app URL
+  // Add other origins if needed
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (allowedOrigins.includes(origin) || !origin) {
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true,  // Enable credentials if you're sending cookies or authentication tokens
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
+
 
 mongoose
 .connect(process.env.MONGODB_URI,
