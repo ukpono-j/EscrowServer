@@ -19,7 +19,7 @@ app.use(express.json());
 
 const corsOptions = {
   origin: ["http://localhost:5173", "https://escrow-app.onrender.com"],
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
+  methods: "GET,POST", 
   credentials: true, 
   optionsSuccessStatus: 204, 
   allowedHeaders: "Content-Type, Authorization", 

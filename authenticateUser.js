@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 
 function authenticateUser(req, res, next) {
   const token = req.header("auth-token");
+  console.log("Received Token:", token); // Add this line for logging
   if (!token) return res.status(401).json({ error: "Access Denied" });
 
   try {
@@ -9,6 +10,7 @@ function authenticateUser(req, res, next) {
     req.user = verified;
     next(); // Move to the next middleware
   } catch (error) {
+    console.error(error); // Log the error for debugging
     res.status(401).json({ error: "Invalid Token" });
   }
 }
