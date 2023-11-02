@@ -15,7 +15,17 @@ require("dotenv").config();
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
+
+const corsOptions = {
+  origin: ["http://localhost:5173", "https://escrow-app.onrender.com"],
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
+  credentials: true, 
+  optionsSuccessStatus: 204, 
+  allowedHeaders: "Content-Type, Authorization", 
+};
+
+app.use(cors(corsOptions)); 
 
 mongoose
 .connect(process.env.MONGODB_URI,
