@@ -9,8 +9,8 @@ const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const app = express();
-const authenticateUser = require("./authenticateUser"); // Import your authenticateUser middleware function
-require("dotenv").config(); // Load environment variables from .env file
+const authenticateUser = require("./authenticateUser"); 
+require("dotenv").config(); 
 
 console.log(process.env.JWT_SECRET);
 
