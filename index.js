@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require('path');
 const UserModel = require("./modules/Users");
 const Transaction = require("./modules/Transactions");
 const Notification = require("./modules/Notification");
@@ -11,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const app = express();
 const authenticateUser = require("./authenticateUser"); 
 require("dotenv").config(); 
+
 
 console.log(process.env.JWT_SECRET);
 
@@ -44,6 +46,13 @@ mongoose
   });
 
 
+
+  app.use(express.static(path.join(__dirname, 'dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+  
 
 // =================== Login
 
