@@ -19,12 +19,13 @@ app.use(express.urlencoded({extended: false}));
 // app.use(cors());
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "https://escrow-app.onrender.com", " https://escrowserver.onrender.com"],
+  origin: ["http://localhost:5173", "https://escrow-app.onrender.com", "https://escrow-app-delta.vercel.app"],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
   credentials: true, 
   optionsSuccessStatus: 204, 
   allowedHeaders: "Content-Type, Authorization, auth-token",
 };
+
 
 app.use(cors(corsOptions)); 
 
