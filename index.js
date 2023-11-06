@@ -17,7 +17,7 @@ require("dotenv").config();
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
-app.use(express.urlencoded({extended: false}));
+app.use(express.urlencoded({ extended: false }));
 // app.use(cors());
 
 const corsOptions = {
@@ -46,13 +46,6 @@ mongoose
   });
 
 
-
-  // app.use(express.static(path.join(__dirname, 'dist')));
-
-  // app.get('*', (req, res) => {
-  //   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-  // });
-  
 
 // =================== Login
 
