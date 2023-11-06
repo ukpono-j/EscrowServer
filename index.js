@@ -15,10 +15,11 @@ require("dotenv").config();
 console.log(process.env.JWT_SECRET);
 
 app.use(express.json());
+app.use(express.urlencoded({extended: false}));
 // app.use(cors());
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "https://escrow-app.onrender.com", "http://localhost:3001" , "https://escrowserver.onrender.com"],
+  origin: ["http://localhost:5173", "https://escrow-app.onrender.com"],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE", 
   credentials: true, 
   optionsSuccessStatus: 204, 
