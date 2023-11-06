@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const path = require('path');
+// const path = require('path');
 const UserModel = require("./modules/Users");
 const Transaction = require("./modules/Transactions");
 const Notification = require("./modules/Notification");
@@ -47,11 +47,11 @@ mongoose
 
 
 
-  app.use(express.static(path.join(__dirname, 'dist')));
+  // app.use(express.static(path.join(__dirname, 'dist')));
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-  });
+  // app.get('*', (req, res) => {
+  //   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  // });
   
 
 // =================== Login
