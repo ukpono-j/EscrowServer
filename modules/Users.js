@@ -1,18 +1,39 @@
-const mongoose = require("mongoose")
+const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
-    firstName: String,
-    lastName: String,
-    password: String,
-    email:String,
-    bank:String,
-    accountNumber:String,
-    dateOfBirth:String,
-})
+  firstName: {
+    type: String,
+    required: true,
+  },
+  lastName: {
+    type: String,
+    required: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+  },
+  bank: {
+    type: String,
+  },
+  accountNumber: {
+    type: String,
+  },
+  dateOfBirth: {
+    type: String,
+  },
+  isAvatarImageSet: {
+    type: Boolean,
+    default: false, // Default value is set to false
+  },
+  avatarImage: {
+    type: String,
+  },
+});
 
-
-const UserModel = mongoose.model("users", UserSchema)
-module.exports = UserModel
-
-
-
+const UserModel = mongoose.model("User", UserSchema);
+module.exports = UserModel;
