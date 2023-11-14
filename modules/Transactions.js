@@ -42,6 +42,11 @@ const transactionSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
   },
+  proofOfWaybill: {
+    type: String,
+    enum: ["pending", "confirmed", ],
+    default: "pending",
+  },
   // participants: [{ type: String }], // Array to store participants' emails
   participants: [],
   createdAt: {
@@ -50,8 +55,17 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["active", "cancelled", "completed"],
+    enum: ["active", "cancelled", "completed", ],
     default: "active",
+  },
+  paymentStatus: {
+    type: String,
+    enum: ["active", "paid", ],
+    default: "active",
+  },
+  buyerConfirmedReceipt: {
+    type: Boolean,
+    default: false,
   },
   // Additional fields for your transaction model can be added here
   // ...

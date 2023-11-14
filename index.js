@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+// const compression = require("compression");
 // const path = require('path');
 const UserModel = require("./modules/Users");
 const Transaction = require("./modules/Transactions");
@@ -12,14 +13,15 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const app = express();
 const authenticateUser = require("./authenticateUser");
+
 require("dotenv").config();
 
 console.log(process.env.JWT_SECRET);
+// app.use(compression());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 // app.use(cors());
-
 
 const corsOptions = {
   origin: [
@@ -141,6 +143,36 @@ app.get("/user-details", authenticateUser, async (req, res) => {
   }
 });
 
+// Add this route to handle updating user details
+app.put("/update-user-details", authenticateUser, async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+    const { firstName, lastName, dateOfBirth, bank, accountNumber } = req.body;
+
+    // Fetch the user from the database
+    const user = await UserModel.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update user details
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
+    user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+    user.bank = bank || user.bank;
+    user.accountNumber = accountNumber || user.accountNumber;
+
+    // Save the updated user details
+    await user.save();
+
+    res.status(200).json({ message: "User details updated successfully!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Endpoint to handle form submission
 app.post("/create-transaction", authenticateUser, async (req, res) => {
   try {
@@ -216,6 +248,63 @@ app.get("/create-transaction", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+// Assuming you have a route like this in your Express app
+app.post("/confirm-receipt", authenticateUser, async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+    
+    // Find the transaction for the authenticated user and where proofOfWaybill is false
+    const transaction = await Transaction.findOne({
+      userId: userId,
+      proofOfWaybill: "pending", 
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: "No pending transactions to confirm" });
+    }
+
+   // Update the proofOfWaybill field to 'confirmed'
+   transaction.proofOfWaybill = "confirmed";
+   await transaction.save();
+
+    // Return a success response
+    res.status(200).json({ message: "Receipt confirmed successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Assuming you have a route like this in your Express app
+app.post("/update-payment-status", authenticateUser, async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+    
+    // Find the transaction for the authenticated user and where proofOfWaybill is false
+    const transaction = await Transaction.findOne({
+      userId: userId,
+      paymentStatus: "active", 
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ error: "No active  transactions to confirm" });
+    }
+
+   // Update the proofOfWaybill field to 'confirmed'
+   transaction.paymentStatus = "paid";
+   await transaction.save();
+
+    // Return a success response
+    res.status(200).json({ message: "Payment  successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 
 // Endpoint to handle joining a transaction
 app.post("/join-transaction", authenticateUser, async (req, res) => {
@@ -343,18 +432,6 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
   }
 });
 
-// Get notifications for a specific user
-// app.get("/notifications", authenticateUser, async (req, res) => {
-//   try {
-//     const { id: userId } = req.user;
-
-//     const notifications = await Notification.find({ userId: userId });
-//     res.status(200).json(notifications);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
 
 // Get notifications for a specific user
 // Endpoint to get notifications for a specific user (creator and participants)
@@ -442,6 +519,7 @@ app.post("/accept-transaction", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 // Endpoint to handle declining a transaction
 app.post("/decline-transaction", authenticateUser, async (req, res) => {

@@ -7,6 +7,13 @@ function authenticateUser(req, res, next) {
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Check if the token has expired
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (verified.exp && currentTimestamp > verified.exp) {
+      return res.status(401).json({ error: "Token has expired" });
+    }
+
     console.log("Verified User:", verified);
     req.user = verified;
     next(); // Move to the next middleware
