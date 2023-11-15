@@ -7,6 +7,7 @@ const UserModel = require("./modules/Users");
 const Transaction = require("./modules/Transactions");
 const Notification = require("./modules/Notification");
 const NotificationVerification = require("./modules/NotificationVerification");
+const MessageModel = require("./modules/Message");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const bcrypt = require("bcrypt");
@@ -142,6 +143,34 @@ app.get("/user-details", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+// Endpoint to get All user details except the current user
+app.get("/all-user-details", authenticateUser, async (req, res) => {
+  try {
+    // Get the current user ID from the authenticated user's request object
+    const { id: userId } = req.user;
+
+    // Fetch all user IDs from the database except the current user ID
+    const users = await UserModel.find({ _id: { $ne: userId } }).select ([
+      "email",
+      "firstName",
+      "avatarImage",
+      "_id"
+    ]);
+
+    // If there are no other users, return an appropriate response
+    if (!users || users.length === 0) {
+      return res.status(404).json({ error: "No other users found" });
+    }
+
+    // Return the user details to the client
+    res.status(200).json(users);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 // Add this route to handle updating user details
 app.put("/update-user-details", authenticateUser, async (req, res) => {
@@ -576,6 +605,68 @@ app.post("/setAvatar", authenticateUser,  upload.single("image"), async (req, re
     res.status(500).json({ success: false, error: "Internal Server Error" });
   }
 });
+
+
+// Endpoint for sending messages with media
+app.post("/send-message", authenticateUser, async (req, res) => {
+  try {
+    const { message, from, to } = req.body;
+    const { id: userId } = req.user;
+
+    // Create a new message
+    const newMessage = new MessageModel({
+      message: {
+        text: message,
+        media: null, // You can adjust this based on how media is handled in your app
+        users: [from, to],
+        sender: from,
+      },
+    });
+
+    // Save the message to the database
+    await newMessage.save();
+
+    res.status(201).json({ message: "Message sent successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+// Endpoint for fetching messages
+app.get("/get-messages", authenticateUser, async (req, res) => {
+  try {
+    // Get the user ID from the authenticated user's request object
+    const { id: userId } = req.user;
+
+    // Get the sender and recipient IDs from the query parameters
+    const fromUserId = req.query.from;
+    const toUserId = req.query.to;
+
+    // Fetch messages for the user from the database
+    const messages = await MessageModel.find({
+      $or: [
+        {
+          "message.users": { $all: [userId, fromUserId, toUserId] }, // Messages between the authenticated user, sender, and recipient
+        },
+        {
+          "message.users": { $all: [userId, toUserId, fromUserId] }, // Messages between the authenticated user, recipient, and sender
+        },
+      ],
+    })
+      .sort({ "message.createdAt": -1 }) // Sort messages by creation date, newest first
+      .limit(10); // Limit the number of messages returned
+
+    // Return the messages to the client
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
 
 
 const PORT = process.env.PORT || 3001;
