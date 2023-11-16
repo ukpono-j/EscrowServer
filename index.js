@@ -14,6 +14,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const app = express();
 const authenticateUser = require("./authenticateUser");
+const socket = require("socket.io");
 
 require("dotenv").config();
 
@@ -51,9 +52,57 @@ mongoose
     console.error("Error connecting to MongoDB: ", error);
   });
 
-  const storage = multer.memoryStorage();
-  const upload = multer({ storage: storage });
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 // =================== Login
+
+// Set up socket.io with cors options
+const io = socket({
+  cors: {
+    origin: [
+      "http://localhost:5173",
+      "https://escrow-app.onrender.com",
+      "https://escrow-app-delta.vercel.app",
+      "https://api.multiavatar.com",
+    ],
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+app.set("onlineUsers", new Map());
+app.set("chatSocket", null);
+
+io.on("connection", (socket) => {
+  app.set("chatSocket", socket);
+
+  socket.on("add-user", (userId) => {
+    app.get("onlineUsers").set(userId, socket.id);
+  });
+
+  socket.on("send-msg", (data) => {
+    console.log("sendmsg", {data})
+
+    const sendUserSocketId = app.get("onlineUsers").get(data.to);
+    
+    if (sendUserSocketId) {
+      // Emit the 'msg-receive' event to the recipient user's socket
+      io.to(sendUserSocketId).emit("msg-receive", data.message);
+    }
+    
+    // Emit the 'msg-receive' event back to the sender user's socket
+    socket.emit("msg-receive", data.message);
+  });
+
+  socket.on("disconnect", () => {
+    const userIdToRemove = Array.from(app.get("onlineUsers").entries()).find(
+      ([key, value]) => value === socket.id
+    );
+
+    if (userIdToRemove) {
+      app.get("onlineUsers").delete(userIdToRemove[0]);
+    }
+  });
+});
 
 app.post("/login", async (req, res) => {
   try {
@@ -151,11 +200,11 @@ app.get("/all-user-details", authenticateUser, async (req, res) => {
     const { id: userId } = req.user;
 
     // Fetch all user IDs from the database except the current user ID
-    const users = await UserModel.find({ _id: { $ne: userId } }).select ([
+    const users = await UserModel.find({ _id: { $ne: userId } }).select([
       "email",
       "firstName",
       "avatarImage",
-      "_id"
+      "_id",
     ]);
 
     // If there are no other users, return an appropriate response
@@ -170,7 +219,6 @@ app.get("/all-user-details", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // Add this route to handle updating user details
 app.put("/update-user-details", authenticateUser, async (req, res) => {
@@ -278,25 +326,26 @@ app.get("/create-transaction", authenticateUser, async (req, res) => {
   }
 });
 
-
 // Assuming you have a route like this in your Express app
 app.post("/confirm-receipt", authenticateUser, async (req, res) => {
   try {
     const { id: userId } = req.user;
-    
+
     // Find the transaction for the authenticated user and where proofOfWaybill is false
     const transaction = await Transaction.findOne({
       userId: userId,
-      proofOfWaybill: "pending", 
+      proofOfWaybill: "pending",
     });
 
     if (!transaction) {
-      return res.status(404).json({ error: "No pending transactions to confirm" });
+      return res
+        .status(404)
+        .json({ error: "No pending transactions to confirm" });
     }
 
-   // Update the proofOfWaybill field to 'confirmed'
-   transaction.proofOfWaybill = "confirmed";
-   await transaction.save();
+    // Update the proofOfWaybill field to 'confirmed'
+    transaction.proofOfWaybill = "confirmed";
+    await transaction.save();
 
     // Return a success response
     res.status(200).json({ message: "Receipt confirmed successfully" });
@@ -310,20 +359,22 @@ app.post("/confirm-receipt", authenticateUser, async (req, res) => {
 app.post("/update-payment-status", authenticateUser, async (req, res) => {
   try {
     const { id: userId } = req.user;
-    
+
     // Find the transaction for the authenticated user and where proofOfWaybill is false
     const transaction = await Transaction.findOne({
       userId: userId,
-      paymentStatus: "active", 
+      paymentStatus: "active",
     });
 
     if (!transaction) {
-      return res.status(404).json({ error: "No active  transactions to confirm" });
+      return res
+        .status(404)
+        .json({ error: "No active  transactions to confirm" });
     }
 
-   // Update the proofOfWaybill field to 'confirmed'
-   transaction.paymentStatus = "paid";
-   await transaction.save();
+    // Update the proofOfWaybill field to 'confirmed'
+    transaction.paymentStatus = "paid";
+    await transaction.save();
 
     // Return a success response
     res.status(200).json({ message: "Payment  successfully" });
@@ -332,8 +383,6 @@ app.post("/update-payment-status", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
 
 // Endpoint to handle joining a transaction
 app.post("/join-transaction", authenticateUser, async (req, res) => {
@@ -461,7 +510,6 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
   }
 });
 
-
 // Get notifications for a specific user
 // Endpoint to get notifications for a specific user (creator and participants)
 app.get("/notifications", authenticateUser, async (req, res) => {
@@ -549,7 +597,6 @@ app.post("/accept-transaction", authenticateUser, async (req, res) => {
   }
 });
 
-
 // Endpoint to handle declining a transaction
 app.post("/decline-transaction", authenticateUser, async (req, res) => {
   try {
@@ -580,32 +627,36 @@ const getParticipantsForTransaction = async (transactionId) => {
   }
 };
 
-app.post("/setAvatar", authenticateUser,  upload.single("image"), async (req, res) => {
-  try {
-    const userId = req.user.id; // Assuming you have user information stored in req.user after authentication
-    // const avatarImage = req.file.buffer.toString("base64");
-    const avatarImage = req.file.path;
+app.post(
+  "/setAvatar",
+  authenticateUser,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const userId = req.user.id; // Assuming you have user information stored in req.user after authentication
+      // const avatarImage = req.file.buffer.toString("base64");
+      const avatarImage = req.file.path;
 
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      {
-        isAvatarImageSet: true,
-        avatarImage: avatarImage,
-      },
-      { new: true }
-    );
+      const updatedUser = await UserModel.findByIdAndUpdate(
+        userId,
+        {
+          isAvatarImageSet: true,
+          avatarImage: avatarImage,
+        },
+        { new: true }
+      );
 
-    if (updatedUser) {
-      res.status(200).json({ success: true, user: updatedUser });
-    } else {
-      res.status(404).json({ success: false, error: "User not found" });
+      if (updatedUser) {
+        res.status(200).json({ success: true, user: updatedUser });
+      } else {
+        res.status(404).json({ success: false, error: "User not found" });
+      }
+    } catch (error) {
+      console.error("Error setting avatar:", error);
+      res.status(500).json({ success: false, error: "Internal Server Error" });
     }
-  } catch (error) {
-    console.error("Error setting avatar:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
   }
-});
-
+);
 
 // Endpoint for sending messages with media
 app.post("/send-message", authenticateUser, async (req, res) => {
@@ -633,7 +684,6 @@ app.post("/send-message", authenticateUser, async (req, res) => {
   }
 });
 
-
 // Endpoint for fetching messages
 app.get("/get-messages", authenticateUser, async (req, res) => {
   try {
@@ -658,18 +708,28 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
       .sort({ "message.createdAt": -1 }) // Sort messages by creation date, newest first
       .limit(10); // Limit the number of messages returned
 
-    // Return the messages to the client
-    res.status(200).json(messages);
+    // Map the messages to ensure a consistent structure
+    const formattedMessages = messages.map((message) => ({
+      _id: message._id,
+      sender: message.message.sender, // Access sender property within the message object
+      message: {
+        text: message.message.text,
+      },
+      createdAt: message.createdAt,
+    }));
+
+    // Return the formatted messages to the client
+    res.status(200).json(formattedMessages);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-
-
-
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+// Attach socket.io to the server
+io.attach(server);
