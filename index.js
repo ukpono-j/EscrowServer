@@ -52,8 +52,8 @@ mongoose
     console.error("Error connecting to MongoDB: ", error);
   });
 
-// const storage = multer.memoryStorage();
-const upload = multer();
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 // =================== Login
 
 // Set up socket.io with cors options
@@ -658,64 +658,6 @@ app.post(
   }
 );
 
-// Endpoint for uploading media for chat/messages
-app.post("/chat-uploads", authenticateUser, upload.single("media"), async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const mediaData = req.file ? req.file.buffer : null;
-
-    const newMessage = new MessageModel({
-      message: {
-        media: mediaData,
-        users: [userId],
-        sender: userId,
-      },
-    });
-
-    await newMessage.save();
-
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error("Error uploading media:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
-  }
-});
-
-
-// Endpoint for fetching media uploads
-app.get("/chat-uploads", authenticateUser, async (req, res) => {
-  try {
-    const { id: userId } = req.user;
-    const fromUserId = req.query.from;
-    const toUserId = req.query.to;
-
-    const mediaMessages = await MessageModel.find({
-      $or: [
-        { "message.users": { $all: [userId, fromUserId, toUserId] } },
-        { "message.users": { $all: [userId, toUserId, fromUserId] } },
-        {   "message.media": { $exists: true, $ne: null }},
-      ],
-    }).sort({ "message.createdAt": -1 });
-    
-    console.log("Media Messages:", mediaMessages);
-
-    const mediaArray = mediaMessages.map((message) => ({
-      _id: message._id,
-      sender: message.message.sender,
-      senderName: message.message.senderName || "Unknown Sender",
-      media: message.message.media,
-      createdAt: message.createdAt,
-    }));
-
-
-    res.status(200).json(mediaArray);
-  } catch (error) {
-    console.error("Error fetching media:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-
 
 // Endpoint for sending messages without media
 app.post("/send-message", authenticateUser, async (req, res) => {
@@ -783,6 +725,69 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+
+
+// Endpoint for handling file uploads
+app.post("/chat-message-uploads", authenticateUser, upload.single("media"), async (req, res) => {
+  try {
+    console.log("Received a file upload request");
+
+    // Get the user ID from the authenticated user's request object
+    const { id: userId } = req.user;
+    console.log("User ID:", userId);
+
+    // Retrieve the uploaded file information
+    const file = req.file;
+    console.log("Uploaded file:", file);
+
+    // Convert the buffer to base64 string
+    const base64File = file.buffer.toString('base64');
+
+    const newMessage = new MessageModel({
+      message: {
+        media: base64File, // Save the file as a base64 string
+        users: [userId],
+        sender: userId,
+      },
+    });
+
+    // Save the message to the database
+    await newMessage.save();
+
+    res.status(201).json({ message: "File uploaded successfully", media: base64File, mimeType: file.mimetype  });
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Endpoint for retrieving uploaded chat messages
+app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
+  try {
+    console.log("Received a request to retrieve chat messages");
+
+    // Get the user ID from the authenticated user's request object
+    const { id: userId } = req.user;
+    console.log("User ID:", userId);
+
+    // Retrieve messages from the database for the authenticated user
+    const messages = await MessageModel.find({ "message.users": userId });
+
+    // Extract relevant information from messages (e.g., media, sender, timestamp, etc.)
+    const formattedMessages = messages.map(({ message }) => ({
+      media: message.media,
+      sender: message.sender,
+      timestamp: message.timestamp, // Assuming your MessageModel has a timestamp field
+    }));
+
+    res.status(200).json({ messages: formattedMessages });
+  } catch (error) {
+    console.error("Error retrieving messages:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {
