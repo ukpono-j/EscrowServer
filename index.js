@@ -52,8 +52,8 @@ mongoose
     console.error("Error connecting to MongoDB: ", error);
   });
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
+// const storage = multer.memoryStorage();
+const upload = multer();
 // =================== Login
 
 // Set up socket.io with cors options
@@ -80,15 +80,15 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send-msg", (data) => {
-    console.log("sendmsg", {data})
+    console.log("sendmsg", { data });
 
     const sendUserSocketId = app.get("onlineUsers").get(data.to);
-    
+
     if (sendUserSocketId) {
       // Emit the 'msg-receive' event to the recipient user's socket
       io.to(sendUserSocketId).emit("msg-receive", data.message);
     }
-    
+
     // Emit the 'msg-receive' event back to the sender user's socket
     socket.emit("msg-receive", data.message);
   });
@@ -658,7 +658,66 @@ app.post(
   }
 );
 
-// Endpoint for sending messages with media
+// Endpoint for uploading media for chat/messages
+app.post("/chat-uploads", authenticateUser, upload.single("media"), async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const mediaData = req.file ? req.file.buffer : null;
+
+    const newMessage = new MessageModel({
+      message: {
+        media: mediaData,
+        users: [userId],
+        sender: userId,
+      },
+    });
+
+    await newMessage.save();
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Error uploading media:", error);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+});
+
+
+// Endpoint for fetching media uploads
+app.get("/chat-uploads", authenticateUser, async (req, res) => {
+  try {
+    const { id: userId } = req.user;
+    const fromUserId = req.query.from;
+    const toUserId = req.query.to;
+
+    const mediaMessages = await MessageModel.find({
+      $or: [
+        { "message.users": { $all: [userId, fromUserId, toUserId] } },
+        { "message.users": { $all: [userId, toUserId, fromUserId] } },
+        {   "message.media": { $exists: true, $ne: null }},
+      ],
+    }).sort({ "message.createdAt": -1 });
+    
+    console.log("Media Messages:", mediaMessages);
+
+    const mediaArray = mediaMessages.map((message) => ({
+      _id: message._id,
+      sender: message.message.sender,
+      senderName: message.message.senderName || "Unknown Sender",
+      media: message.message.media,
+      createdAt: message.createdAt,
+    }));
+
+
+    res.status(200).json(mediaArray);
+  } catch (error) {
+    console.error("Error fetching media:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+// Endpoint for sending messages without media
 app.post("/send-message", authenticateUser, async (req, res) => {
   try {
     const { message, from, to } = req.body;
@@ -667,8 +726,7 @@ app.post("/send-message", authenticateUser, async (req, res) => {
     // Create a new message
     const newMessage = new MessageModel({
       message: {
-        text: message,
-        media: null, // You can adjust this based on how media is handled in your app
+        text: message.text,
         users: [from, to],
         sender: from,
       },
@@ -676,13 +734,15 @@ app.post("/send-message", authenticateUser, async (req, res) => {
 
     // Save the message to the database
     await newMessage.save();
+    console.log("New message sent:", newMessage);
 
     res.status(201).json({ message: "Message sent successfully" });
   } catch (error) {
-    console.error(error);
+    console.error("Error sending message:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 // Endpoint for fetching messages
 app.get("/get-messages", authenticateUser, async (req, res) => {
@@ -704,9 +764,7 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
           "message.users": { $all: [userId, toUserId, fromUserId] }, // Messages between the authenticated user, recipient, and sender
         },
       ],
-    })
-      .sort({ "message.createdAt": -1 }) // Sort messages by creation date, newest first
-      .limit(10); // Limit the number of messages returned
+    }).sort({ "message.createdAt": -1 }); // Sort messages by creation date, newest first
 
     // Map the messages to ensure a consistent structure
     const formattedMessages = messages.map((message) => ({
