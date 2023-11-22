@@ -27,8 +27,8 @@ app.use(express.urlencoded({ extended: false }));
 // app.use(cors());
 // app.use(express.static("uploads/images/"));
 // app.use("/images", express.static("uploads/images"));
-app.use("/images", express.static("./uploads/images"));
 
+app.use("/images", express.static("./uploads/images"));
 
 const corsOptions = {
   origin: [
