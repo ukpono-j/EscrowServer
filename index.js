@@ -17,6 +17,7 @@ const authenticateUser = require("./authenticateUser");
 const socket = require("socket.io");
 const fs = require("fs");
 require("dotenv").config();
+const path = require("path");
 
 console.log(process.env.JWT_SECRET);
 // app.use(compression());
@@ -24,6 +25,8 @@ console.log(process.env.JWT_SECRET);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 // app.use(cors());
+// app.use(express.static("uploads/images/"));
+app.use("/images", express.static("uploads/images"));
 
 const corsOptions = {
   origin: [
@@ -52,23 +55,35 @@ mongoose
     console.error("Error connecting to MongoDB: ", error);
   });
 
-// Set up multer storage and file filter
-const storage = multer.memoryStorage(); // Use memory storage for buffer access
-const fileFilter = (req, file, cb) => {
-  // Check file type, you can customize this based on your requirements
-  const allowedTypes = ["image/jpeg", "image/png", "video/mp4"];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Invalid file type"), false);
-  }
-};
+// // Set up multer storage and file filter
+// const storage = multer.memoryStorage(); // Use memory storage for buffer access
+// const fileFilter = (req, file, cb) => {
+//   // Check file type, you can customize this based on your requirements
+//   const allowedTypes = ["image/jpeg", "image/png", "video/mp4"];
+//   if (allowedTypes.includes(file.mimetype)) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error("Invalid file type"), false);
+//   }
+// };
 
-// Set up multer middleware
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
+// // Set up multer middleware
+// const upload = multer({
+//   storage: storage,
+//   fileFilter: fileFilter,
+// });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/images");
+  },
+  filename: (req, file, cb) => {
+    // cb(null, file.originalname)
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
 });
+
+const upload = multer({ storage: storage });
 
 // =================== Login
 
@@ -103,6 +118,11 @@ io.on("connection", (socket) => {
     if (sendUserSocketId) {
       // Emit the 'msg-receive' event to the recipient user's socket
       io.to(sendUserSocketId).emit("msg-receive", data.message);
+
+      // If the message contains media, also send it to the recipient
+      if (data.message.media) {
+        io.to(sendUserSocketId).emit("media-receive", data.message.media);
+      }
     }
 
     // Emit the 'msg-receive' event back to the sender user's socket
@@ -674,7 +694,6 @@ app.post(
   }
 );
 
-
 // Endpoint for sending messages without media
 app.post("/send-message", authenticateUser, async (req, res) => {
   try {
@@ -700,7 +719,6 @@ app.post("/send-message", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 // Endpoint for fetching messages
 app.get("/get-messages", authenticateUser, async (req, res) => {
@@ -730,7 +748,7 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
       sender: message.message.sender, // Access sender property within the message object
       message: {
         text: message.message.text,
-        createdAt: message.createdAt,
+        createdAt: message.message.createdAt,
       },
     }));
 
@@ -741,8 +759,6 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
 
 // // Endpoint for handling file uploads
 // app.post("/chat-message-uploads", authenticateUser, upload.single("media"), async (req, res) => {
@@ -791,44 +807,123 @@ app.get("/get-messages", authenticateUser, async (req, res) => {
 //   }
 // });
 
+// // Endpoint for handling file uploads
+// app.post("/chat-message-uploads", authenticateUser, upload.single("media"), async (req, res) => {
+//   try {
+//     console.log("Received a file upload request");
+
+//     // Get the user ID from the authenticated user's request object
+//     const { id: userId } = req.user;
+//     console.log("User ID:", userId);
+
+//     // Retrieve the uploaded file information
+//     const file = req.file;
+//     console.log("Uploaded file:", file);
+
+//     // Convert the buffer to base64 string
+//     const base64File = file.buffer.toString('base64');
+
+//     // Extract "to" user ID from the request body
+//     const { to, from } = req.body;
+
+//     const newMessage = new MessageModel({
+//       message: {
+//         media: base64File,
+//         users: [from, to], // Include both sender and receiver
+//         sender: userId,
+//         to: to,
+//       },
+//     });
+
+//     // Save the message to the database
+//     await newMessage.save();
+
+//     res.status(201).json({ message: "File uploaded successfully", media: base64File,  from: userId, to });
+//   } catch (error) {
+//     console.error("Error uploading file:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+// // Endpoint for retrieving messages with media
+// app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
+//   try {
+//     // Get the user ID from the authenticated user's request object
+//     const { id: userId } = req.user;
+
+//     const fromUserId = req.query.from;
+//     const toUserId = req.query.to;
+//     // Retrieve messages with media for the authenticated user
+//     const messages = await MessageModel.find({
+//       // "message.media": { $exists: true },
+//       // "message.users": fromUserId, // Include only messages where the authenticated user is a participant
+//       $or: [
+//         {
+//           "message.users": { $all: [userId, fromUserId, toUserId] }, // Messages between the authenticated user, sender, and recipient
+//         },
+//         {
+//           "message.users": { $all: [userId, toUserId, fromUserId] }, // Messages between the authenticated user, recipient, and sender
+//         },
+//         { "message.media": { $exists: true },},
+//       ],
+//     });
+//     // Map the messages to ensure a consistent structure
+//     const formattedMessages = messages.map((message) => ({
+//       _id: message._id,
+//       sender: message.message.sender, // Access sender property within the message object
+//       message: {
+//         // media: message.message.media,
+//         media: message.message.media,
+//         users:message.message.users,
+//         createdAt: message.createdAt,
+//       },
+//     }));
+
+//     res.status(200).json(formattedMessages);
+//   } catch (error) {
+//     console.error("Error retrieving messages with media:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
 // Endpoint for handling file uploads
-app.post("/chat-message-uploads", authenticateUser, upload.single("media"), async (req, res) => {
-  try {
-    console.log("Received a file upload request");
+app.post(
+  "/chat-message-uploads",
+  authenticateUser,
+  upload.single("media"),
+  async (req, res) => {
+    try {
+      console.log("Received a file upload request");
 
-    // Get the user ID from the authenticated user's request object
-    const { id: userId } = req.user;
-    console.log("User ID:", userId);
+      // Get the user ID from the authenticated user's request object
+      const { id: userId } = req.user;
+      console.log("User ID:", userId);
 
-    // Retrieve the uploaded file information
-    const file = req.file;
-    console.log("Uploaded file:", file);
+      const { to, from } = req.body;
 
-    // Convert the buffer to base64 string
-    const base64File = file.buffer.toString('base64');
+      const newMessage = new MessageModel({
+        message: {
+          // media: {
+          //   data: fs.readFileSync('uploads/images/' +   req.file.filename),
+          //   contentType: "image/png",
+          // },
+          media: req.file.filename,
+          users: [from, to], // Include both sender and receiver
+          sender: userId,
+          to: to,
+        },
+      });
 
-    // Extract "to" user ID from the request body
-    const { to, from } = req.body;
+      // Save the message to the database
+      await newMessage.save();
 
-    const newMessage = new MessageModel({
-      message: {
-        media: base64File,
-        users: [from, to], // Include both sender and receiver
-        sender: userId,
-        to: to,
-      },
-    });
-
-    // Save the message to the database
-    await newMessage.save();
-
-    res.status(201).json({ message: "File uploaded successfully", media: base64File,  from: userId, to });
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+      res.status(201).json("File uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   }
-});
+);
 
 // Endpoint for retrieving messages with media
 app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
@@ -849,7 +944,7 @@ app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
         {
           "message.users": { $all: [userId, toUserId, fromUserId] }, // Messages between the authenticated user, recipient, and sender
         },
-        { "message.media": { $exists: true },},
+        { "message.media": { $exists: true } },
       ],
     });
     // Map the messages to ensure a consistent structure
@@ -857,13 +952,15 @@ app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
       _id: message._id,
       sender: message.message.sender, // Access sender property within the message object
       message: {
-        // media: message.message.media,
-        media: message.message.media,
-        users:message.message.users,
-        createdAt: message.createdAt,
+        media: {
+          filename: message.message.media,
+        },
+        users: message.message.users,
+        createdAt: message.message.createdAt,
       },
     }));
 
+    console.log("formated Message", formattedMessages);
 
     res.status(200).json(formattedMessages);
   } catch (error) {
@@ -871,9 +968,6 @@ app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-
-
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {

@@ -13,12 +13,18 @@ const MessageSchema = new mongoose.Schema(
         ref: "User",
         required: true,
       },
-      media: {
-        type: String,
+      // media: {
+      //   data: Buffer,
+      //   contentType: String,
+      // }
+      media: String,
+      createdAt: {
+        type: Date,
+        default: Date.now,
       },
     },
   },
-  { timestamps: true } // Move timestamps option here
+  // { timestamps: true } // Move timestamps option here
 );
 
 const MessageModel = mongoose.model("Messages", MessageSchema);
