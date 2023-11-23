@@ -675,17 +675,17 @@ app.post(
     try {
       const userId = req.user.id; // Assuming you have user information stored in req.user after authentication
       // const avatarImage = req.file.buffer.toString("base64");
-      const avatarImage = req.file.path;
+      // const avatarImage = req.file.path;
 
       const updatedUser = await UserModel.findByIdAndUpdate(
         userId,
         {
           isAvatarImageSet: true,
-          avatarImage: avatarImage,
+          avatarImage: req.file.filename,
         },
         { new: true }
       );
-
+console.log(updatedUser)
       if (updatedUser) {
         res.status(200).json({ success: true, user: updatedUser });
       } else {
