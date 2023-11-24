@@ -8,6 +8,7 @@ const Transaction = require("./modules/Transactions");
 const Notification = require("./modules/Notification");
 const NotificationVerification = require("./modules/NotificationVerification");
 const MessageModel = require("./modules/Message");
+const KYC = require("./modules/Kyc");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer");
 const bcrypt = require("bcrypt");
@@ -685,7 +686,7 @@ app.post(
         },
         { new: true }
       );
-console.log(updatedUser)
+      console.log(updatedUser);
       if (updatedUser) {
         res.status(200).json({ success: true, user: updatedUser });
       } else {
@@ -929,10 +930,6 @@ app.post(
   }
 );
 
-
-
-
-
 // Endpoint for retrieving messages with media
 app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
   try {
@@ -976,6 +973,79 @@ app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+app.post(
+  "/submit-kyc",
+  authenticateUser,
+  upload.fields([
+    { name: 'documentPhoto', maxCount: 1 },
+    { name: 'personalPhoto', maxCount: 1 },
+    { name: 'documentType', maxCount: 1 },
+    { name: 'firstName', maxCount: 1 },
+    { name: 'lastName', maxCount: 1 },
+    { name: 'dateOfBirth', maxCount: 1 },
+    // Add more fields as needed
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.user.id; // Assuming you have user information stored in req.user after authentication
+      // const avatarImage = req.file.buffer.toString("base64");
+      // const avatarImage = req.file.path;
+      // Extracting relevant information from the request
+      const documentType = req.body.documentType;
+      const documentPhoto = req.files['documentPhoto'][0].filename;
+      const personalPhoto = req.files['personalPhoto'][0].filename;
+      const firstName = req.body.firstName;
+      const lastName = req.body.lastName;
+      const dateOfBirth = req.body.dateOfBirth;
+
+      // Creating a new KYC document
+      const kyc = new KYC({
+        user: userId,
+        documentType: documentType,
+        documentPhoto: documentPhoto,
+        personalPhoto: personalPhoto,
+        firstName: firstName,
+        lastName: lastName,
+        dateOfBirth: dateOfBirth,
+        isSubmitted: true,
+      });
+
+      // Save the KYC document
+      await kyc.save();
+      console.log(kyc);
+      res
+        .status(201)
+        .json({ success: true, message: "KYC submitted successfully" });
+    } catch (error) {
+      console.error("Error setting avatar:", error);
+      res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+  }
+);
+
+// Route to get KYC details
+app.get('/kyc-details', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Fetch KYC details for the user from the database
+    const kycDetails = await KYC.findOne({ user: userId });
+
+    if (!kycDetails) {
+      return res.status(404).json({ success: false, error: 'KYC details not found', isKycSubmitted: false });
+    }
+
+    // Send KYC details and submission status to the client
+    res.status(200).json({ success: true, kycDetails, isKycSubmitted: true });
+  } catch (error) {
+    console.error('Error fetching KYC details:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error', isKycSubmitted: false });
+  }
+});
+
+
+
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {
