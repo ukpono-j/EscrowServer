@@ -17,6 +17,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+
   bank: {
     type: String,
   },
@@ -33,6 +34,10 @@ const UserSchema = new mongoose.Schema({
   avatarImage: {
     type: String,
   },
+  // isSuperAdmin: {
+  //   type: Boolean,
+  //   default: false,
+  // },
 });
 
 const UserModel = mongoose.model("User", UserSchema);
