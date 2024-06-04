@@ -3,17 +3,36 @@ const mongoose = require("mongoose");
 const transactionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId, // Assuming you're using MongoDB ObjectId for user IDs
+    ref: "User",
     required: true,
   },
   
   transactionId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
+    default: mongoose.Types.ObjectId, // Default to a new ObjectId
   },
   paymentName: {
     type: String,
     required: true,
   },
+  messages: [
+    {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      message: {
+        type: String,
+        required: true,
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
   paymentBank: {
     type: String,
     required: true,
@@ -30,7 +49,7 @@ const transactionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  paymentDscription: {
+  paymentDescription: {
     type: String,
     required: true,
   },
@@ -48,7 +67,14 @@ const transactionSchema = new mongoose.Schema({
     default: "pending",
   },
   // participants: [{ type: String }], // Array to store participants' emails
-  participants: [],
+  participants:[{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+  chatroomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Chatroom",
+  },
   createdAt: {
     type: Date, // Store the creation timestamp as a Date object
     default: Date.now, // Set the default value to the current date and time
