@@ -35,10 +35,6 @@ const UserSchema = new mongoose.Schema({
   avatarImage: {
     type: String,
   },
-  // isSuperAdmin: {
-  //   type: Boolean,
-  //   default: false,
-  // },
 });
 
 const UserModel = mongoose.model("User", UserSchema);

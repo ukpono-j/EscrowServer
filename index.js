@@ -9,6 +9,7 @@ const userRoutes = require('./routes/userRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const kycRoutes = require('./routes/kycRoutes');
+const messageRoutes = require('./routes/messages');
 const socket = require("socket.io");
 
 require("dotenv").config();
@@ -99,7 +100,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/kyc', kycRoutes);
-
+app.use('/api/messages', messageRoutes);
 
 
 
