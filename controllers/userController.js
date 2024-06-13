@@ -62,11 +62,11 @@ exports.updateUserDetails = async (req, res) => {
 exports.setAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
+     const imageUrl = req.file.path; 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       {
-        isAvatarImageSet: true,
-        avatarImage: req.file.filename,
+        avatar: imageUrl 
       },
       { new: true }
     );

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const authenticateUser = require('../middlewares/authenticateUser');
-const upload = require('../middlewares/upload');
+const upload = require('./upload');
 const { setAvatar } = require('../controllers/userController');
 
 

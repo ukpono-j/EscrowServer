@@ -6,7 +6,7 @@ const transactionSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  
+
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
@@ -63,11 +63,11 @@ const transactionSchema = new mongoose.Schema({
   },
   proofOfWaybill: {
     type: String,
-    enum: ["pending", "confirmed", ],
+    enum: ["pending", "confirmed",],
     default: "pending",
   },
   // participants: [{ type: String }], // Array to store participants' emails
-  participants:[{
+  participants: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   }],
@@ -81,18 +81,27 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["active", "cancelled", "completed", ],
+    enum: ["active", "cancelled", "completed",],
     default: "active",
   },
   paymentStatus: {
     type: String,
-    enum: ["active", "paid", ],
+    enum: ["active", "paid",],
     default: "active",
   },
   buyerConfirmedReceipt: {
     type: Boolean,
     default: false,
   },
+  // Add waybill details
+  waybillDetails: {
+    item: String,
+    image: String,
+    price: Number,
+    shippingAddress: String,
+    trackingNumber: String,
+    deliveryDate: Date,
+  }
   // Additional fields for your transaction model can be added here
   // ...
 });

@@ -19,6 +19,7 @@ router.post('/update-payment-status', authenticateUser, transactionController.up
 
 router.post('/create-chatroom', authenticateUser, transactionController.createChatRoom);
 router.get("/:id", authenticateUser, transactionController.getTransactionById);
+router.post("/submit-waybill", authenticateUser, transactionController.submitWaybillDetails);
 
 // Add this route
 router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getTransactionByChatroomId);

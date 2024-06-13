@@ -11,7 +11,6 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const kycRoutes = require('./routes/kycRoutes');
 const messageRoutes = require('./routes/messages');
 const socket = require("socket.io");
-
 require("dotenv").config();
 
 

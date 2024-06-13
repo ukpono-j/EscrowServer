@@ -203,6 +203,23 @@ exports.getTransactionById = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+exports.submitWaybillDetails = async (req, res) => {
+  const { transactionId, waybillDetails } = req.body;
+  try {
+    const transaction = await Transaction.findByIdAndUpdate(
+      transactionId,
+      { waybillDetails, proofOfWaybill: "confirmed" },
+      { new: true }
+    );
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+    res.status(200).json(transaction);
+  } catch (error) {
+    console.error("Error submitting waybill details:", error); // Log the error for debugging
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
 
 exports.getTransactionByChatroomId = async (req, res) => {
   try {
