@@ -59,18 +59,68 @@ exports.updateUserDetails = async (req, res) => {
 
 
 
+// exports.setAvatar = async (req, res) => {
+//   // const { filename } = req.file; // Assuming Multer saves the file to 'uploads/images'
+
+
+//   try {
+//     const userId = req.user.id;
+//      const imageUrl = req.file.path; 
+//     const updatedUser = await UserModel.findByIdAndUpdate(
+//       userId,
+//       {
+//         avatar: imageUrl 
+//       },
+//       { new: true }
+//     );
+//     console.log(updatedUser);
+//     if (updatedUser) {
+//       res.status(200).json({ success: true, user: updatedUser });
+//     } else {
+//       res.status(404).json({ success: false, error: "User not found" });
+//     }
+//   } catch (error) {
+//     console.error("Error setting avatar:", error);
+//     res.status(500).json({ success: false, error: "Internal Server Error" });
+//   }
+// };
+
+// exports.setAvatar = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const imageUrl = req.file.path; // Multer saves the file path in req.file.path
+
+//     const updatedUser = await UserModel.findByIdAndUpdate(
+//       userId,
+//       { avatarImage: imageUrl }, // Update avatarImage field with the new image URL
+//       { new: true }
+//     );
+
+//     if (!updatedUser) {
+//       return res.status(404).json({ success: false, error: "User not found" });
+//     }
+
+//     res.status(200).json({ success: true, user: updatedUser });
+//   } catch (error) {
+//     console.error("Error setting avatar:", error);
+//     res.status(500).json({ success: false, error: "Internal Server Error" });
+//   }
+// };
+
 exports.setAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
-     const imageUrl = req.file.path; 
+    const imageUrl = req.file.originalname; 
+
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
-      {
-        avatar: imageUrl 
+      { 
+        avatarImage: imageUrl,
+        isAvatarImageSet: true // Update isAvatarImageSet to true when avatarImage is set
       },
       { new: true }
     );
-    console.log(updatedUser);
+
     if (updatedUser) {
       res.status(200).json({ success: true, user: updatedUser });
     } else {

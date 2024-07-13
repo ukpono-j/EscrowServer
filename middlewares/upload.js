@@ -1,5 +1,6 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs'); 
 
 // Multer storage configuration
 const storage = multer.diskStorage({
@@ -8,7 +9,9 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique filename
+    cb(null, file.originalname);
   }
 });
 
