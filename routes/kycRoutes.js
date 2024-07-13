@@ -1,7 +1,7 @@
 const express = require('express');
 const { submitKYC, getKYCDetails } = require('../controllers/kycController');
 const authenticateUser = require('../middlewares/authenticateUser');
-const upload = require('./upload');
+const upload = require('../middlewares/upload');
 
 const router = express.Router();
 

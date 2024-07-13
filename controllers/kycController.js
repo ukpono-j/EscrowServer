@@ -1,29 +1,49 @@
 const KYC = require('../modules/Kyc');
 
+// Controller to handle KYC submission
 const submitKYC = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const {
-      documentType,
-      firstName,
-      lastName,
-      dateOfBirth,
-    } = req.body;
-    const documentPhoto = req.files['documentPhoto'][0].filename;
-    const personalPhoto = req.files['personalPhoto'][0].filename;
+    console.log("Submitting KYC...");
 
-    const kyc = new KYC({
+    const { documentType, firstName, lastName, dateOfBirth } = req.body;
+    const { documentPhoto, personalPhoto } = req.files;
+
+    console.log("Received form data and files:", req.body, req.files);
+
+    // Ensure user ID is available (e.g., from authentication)
+    const userId = req.user.id;
+
+     // Validate required fields
+     if (!documentType || !firstName || !lastName || !dateOfBirth) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+     // Validate dateOfBirth format before creating new Date object
+     const dobDate = new Date(dateOfBirth);
+     if (isNaN(dobDate.getTime())) {
+       throw new Error("Invalid date format for dateOfBirth");
+     }
+ 
+     // Ensure documentType is a valid enum value
+     if (!['Drivers License', 'NIN Slip', 'Passport'].includes(documentType)) {
+       throw new Error("Invalid documentType provided");
+     }
+
+    // Save KYC data to MongoDB
+    const newKYC = new KYC({
       user: userId,
       documentType,
-      documentPhoto,
-      personalPhoto,
+      documentPhoto: documentPhoto[0].filename,
+      personalPhoto: personalPhoto[0].filename,
       firstName,
       lastName,
-      dateOfBirth,
+      dateOfBirth: dobDate,
       isSubmitted: true,
     });
 
-    await kyc.save();
+    await newKYC.save();
+
+    console.log("KYC data saved:", newKYC);
 
     res.status(201).json({ success: true, message: "KYC submitted successfully" });
   } catch (error) {
@@ -32,6 +52,7 @@ const submitKYC = async (req, res) => {
   }
 };
 
+// Controller to fetch KYC details
 const getKYCDetails = async (req, res) => {
   try {
     const userId = req.user.id;
