@@ -2,11 +2,40 @@ const express = require('express');
 const router = express.Router();
 const transactionController = require('../controllers/transactionController');
 const authenticateUser = require('../middlewares/authenticateUser');
+const { body, validationResult } = require('express-validator');
 const Transaction = require('../modules/Transactions');
 const mongoose = require('mongoose');
 const Chatroom = require("../modules/Chatroom");
 
-router.post('/create-transaction', authenticateUser, transactionController.createTransaction);
+// Middleware to validate input
+const validateInput = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({ errors: errors.array() });
+    }
+    next();
+};
+
+
+// Example validation configurations for different routes
+router.post('/create-transaction',
+    authenticateUser,
+    [
+        body('paymentName').notEmpty().withMessage('name is required'),
+        body('email').notEmpty().withMessage('email is required'),
+        body('paymentAmount').notEmpty().isNumeric().withMessage('Amount must be a number'),
+        body('paymentName').notEmpty().withMessage('paymentName is required'),
+        body('paymentBank').notEmpty().withMessage('Payment Bank Name is required'),
+        body('paymentAccountNumber').notEmpty().isNumeric().withMessage('bank number must be a number'),
+        body('paymentDescription').notEmpty().withMessage('Description is required'),
+        // Add more validations as needed
+    ],
+    validateInput,
+    transactionController.createTransaction
+);
+
+
+// router.post('/create-transaction', authenticateUser, transactionController.createTransaction);
 router.get('/get-transaction', authenticateUser, transactionController.getUserTransactions);
 
 router.post('/complete-transaction', authenticateUser, transactionController.completeTransaction);
