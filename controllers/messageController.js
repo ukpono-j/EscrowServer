@@ -20,3 +20,4 @@ exports.addMessage = async (req, res) => {
     res.status(500).json({ error: 'Failed to add message' });
   }
 };
+

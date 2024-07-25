@@ -10,13 +10,14 @@ const transactionRoutes = require('./routes/transactionRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const kycRoutes = require('./routes/kycRoutes');
 const messageRoutes = require('./routes/messages');
+const path = require('path');
 const socket = require("socket.io");
 require("dotenv").config();
 
-
 app.use(express.urlencoded({ extended: false }));
 
-app.use("/images", express.static("./uploads/images"));
+// app.use("/images", express.static("./uploads/images"));
+app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')));
 
 const corsOptions = {
   origin: [

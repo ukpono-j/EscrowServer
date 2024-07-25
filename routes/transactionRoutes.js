@@ -6,6 +6,8 @@ const { body, validationResult } = require('express-validator');
 const Transaction = require('../modules/Transactions');
 const mongoose = require('mongoose');
 const Chatroom = require("../modules/Chatroom");
+const upload = require('../middlewares/upload'); 
+
 
 // Middleware to validate input
 const validateInput = (req, res, next) => {
@@ -34,7 +36,6 @@ router.post('/create-transaction',
     transactionController.createTransaction
 );
 
-
 // router.post('/create-transaction', authenticateUser, transactionController.createTransaction);
 router.get('/get-transaction', authenticateUser, transactionController.getUserTransactions);
 
@@ -48,9 +49,15 @@ router.post('/update-payment-status', authenticateUser, transactionController.up
 
 router.post('/create-chatroom', authenticateUser, transactionController.createChatRoom);
 router.get("/:id", authenticateUser, transactionController.getTransactionById);
-router.post("/submit-waybill", authenticateUser, transactionController.submitWaybillDetails);
+
+// router.post("/submit-waybill", authenticateUser, transactionController.submitWaybillDetails);
+router.post('/submit-waybill',authenticateUser, upload.single('image'), transactionController.submitWaybillDetails);
+
+// Add this route to get waybill details
+router.get('/waybill-details/:transactionId', authenticateUser, transactionController.getWaybillDetails);
 
 // Add this route
 router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getTransactionByChatroomId);
 
 module.exports = router;
+

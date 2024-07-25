@@ -1,5 +1,17 @@
 const mongoose = require("mongoose");
 
+
+const waybillSchema = new mongoose.Schema({
+  item: { type: String, required: true },
+  image: { type: String }, // Store image path or binary data
+  price: { type: Number, required: true },
+  shippingAddress: { type: String, required: true },
+  trackingNumber: { type: String, required: true },
+  deliveryDate: { type: Date, required: true },
+});
+
+
+
 const transactionSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId, // Assuming you're using MongoDB ObjectId for user IDs
@@ -89,19 +101,22 @@ const transactionSchema = new mongoose.Schema({
     enum: ["active", "paid",],
     default: "active",
   },
+
   buyerConfirmedReceipt: {
     type: Boolean,
     default: false,
   },
+    // Nested waybill details schema
+    waybillDetails: { type: waybillSchema },
   // Add waybill details
-  waybillDetails: {
-    item: String,
-    image: String,
-    price: Number,
-    shippingAddress: String,
-    trackingNumber: String,
-    deliveryDate: Date,
-  }
+  // waybillDetails: {
+  //   item: String,
+  //   image: String,
+  //   price: Number,
+  //   shippingAddress: String,
+  //   trackingNumber: String,
+  //   deliveryDate: Date,
+  // }
   // Additional fields for your transaction model can be added here
   // ...
 });

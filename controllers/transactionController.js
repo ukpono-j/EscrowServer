@@ -203,23 +203,84 @@ exports.getTransactionById = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+// exports.submitWaybillDetails = async (req, res) => {
+//   const { transactionId, waybillDetails } = req.body;
+//   try {
+//     const transaction = await Transaction.findByIdAndUpdate(
+//       transactionId,
+//       { waybillDetails, proofOfWaybill: "confirmed" },
+//       { new: true }
+//     );
+//     if (!transaction) {
+//       return res.status(404).json({ error: "Transaction not found" });
+//     }
+//     res.status(200).json(transaction);
+//   } catch (error) {
+//     console.error("Error submitting waybill details:", error); // Log the error for debugging
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
 exports.submitWaybillDetails = async (req, res) => {
-  const { transactionId, waybillDetails } = req.body;
+  const { transactionId } = req.body;
+  const { item, price, shippingAddress, trackingNumber, deliveryDate } = req.body;
+  const image = req.file; // File handling
+
+  if (!item || !price || !shippingAddress || !trackingNumber || !deliveryDate) {
+    return res.status(400).json({ error: "All required fields must be provided" });
+  }
+
   try {
-    const transaction = await Transaction.findByIdAndUpdate(
-      transactionId,
-      { waybillDetails, proofOfWaybill: "confirmed" },
-      { new: true }
-    );
+    const transaction = await Transaction.findById(transactionId);
+
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
-    res.status(200).json(transaction);
+
+    // Use the relative path to the image
+    const imagePath = image ? `uploads/images/${image.filename}` : null;
+
+
+    // Update waybill details
+    transaction.waybillDetails = {
+      item: item || null,
+      // image: image ? image.path : null,
+      image: imagePath,
+      price: price || null,
+      shippingAddress: shippingAddress || null,
+      trackingNumber: trackingNumber || null,
+      deliveryDate: deliveryDate || null,
+    };
+
+    await transaction.save();
+
+    res.json(transaction);
   } catch (error) {
-    console.error("Error submitting waybill details:", error); // Log the error for debugging
-    res.status(500).json({ error: "Internal server error" });
+    console.error("Error submitting waybill details:", error);
+    res.status(500).json({ error: "Server error" });
   }
 };
+
+
+exports.getWaybillDetails = async (req, res) => {
+  const { transactionId } = req.params;
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Return the waybill details
+    res.json(transaction.waybillDetails);
+  } catch (error) {
+    console.error("Error fetching waybill details:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+
 
 exports.getTransactionByChatroomId = async (req, res) => {
   try {
@@ -256,7 +317,7 @@ exports.createChatRoom = async (req, res) => {
   console.log("Received transactionId:", transactionId);
   console.log("Authenticated userId:", userId);
 
-  
+
   try {
     // Validate request body
     if (!transactionId || !mongoose.Types.ObjectId.isValid(transactionId)) {
