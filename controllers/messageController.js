@@ -12,12 +12,13 @@ exports.getMessages = async (req, res) => {
 
 exports.addMessage = async (req, res) => {
   try {
-    const { chatroomId, userId, userFirstName, message } = req.body;
-    const newMessage = new Message({ chatroomId, userId, userFirstName, message });
+    const { chatroomId, userId, userFirstName, message,avatarImage } = req.body;
+    const newMessage = new Message({ chatroomId, userId, userFirstName, message, avatarImage });
     await newMessage.save();
     res.status(201).json(newMessage);
   } catch (error) {
     res.status(500).json({ error: 'Failed to add message' });
   }
 };
+
 

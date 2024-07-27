@@ -7,6 +7,7 @@ const messageSchema = new mongoose.Schema({
   message: { type: String, required: true },
   timestamp: { type: Date, default: Date.now },
   avatarImage: { type: String },
+  
 });
 
 module.exports = mongoose.model('Message', messageSchema);
