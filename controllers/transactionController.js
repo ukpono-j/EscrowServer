@@ -382,9 +382,11 @@ exports.cancelTransaction = async (req, res) => {
     // Update the transaction's status to cancelled
     transaction.status = "cancelled";
     await transaction.save(); // Save the updated transaction
+    console.log('Transaction status updated to cancelled:', transaction);
 
     return res.status(200).json({
-      message: "Transaction successfully cancelled",
+      // message: "Transaction successfully cancelled",
+      message: `Transaction with ID ${transactionId} successfully canceled`,
       transaction,
     });
   } catch (error) {
