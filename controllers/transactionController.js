@@ -360,3 +360,35 @@ exports.createChatRoom = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 }
+
+
+// Cancel transaction controller
+exports.cancelTransaction = async (req, res) => {
+  try {
+    const { transactionId } = req.params; // Get the transaction ID from the route params
+
+    // Find the transaction by its ID
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Check if the transaction is already cancelled
+    if (transaction.status === "cancelled") {
+      return res.status(400).json({ message: "Transaction is already cancelled" });
+    }
+
+    // Update the transaction's status to cancelled
+    transaction.status = "cancelled";
+    await transaction.save(); // Save the updated transaction
+
+    return res.status(200).json({
+      message: "Transaction successfully cancelled",
+      transaction,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

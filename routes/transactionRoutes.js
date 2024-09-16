@@ -42,22 +42,29 @@ router.get('/get-transaction', authenticateUser, transactionController.getUserTr
 router.post('/complete-transaction', authenticateUser, transactionController.completeTransaction);
 router.get('/complete-transaction', authenticateUser, transactionController.getCompletedTransactions);
 
+router.put("/cancel/:transactionId",authenticateUser, transactionController.cancelTransaction);
+
 router.post('/join-transaction', authenticateUser, transactionController.joinTransaction);
 
-
+//============================ Update Payment Status ================================
 router.post('/update-payment-status', authenticateUser, transactionController.updatePaymentStatus);
 
+// ======================= Create Chat Room Endpoint ================================
 router.post('/create-chatroom', authenticateUser, transactionController.createChatRoom);
+
+
+// samething here, I will have to look at the endpoint to be sure that they are not doing the samething as the waybill endpoints
 router.get("/:id", authenticateUser, transactionController.getTransactionById);
 
 // router.post("/submit-waybill", authenticateUser, transactionController.submitWaybillDetails);
 router.post('/submit-waybill',authenticateUser, upload.single('image'), transactionController.submitWaybillDetails);
 
-// Add this route to get waybill details
+// Add this route to get waybill details /// rememeber to remove this, it feels like different endpoints doing the samething.
 router.get('/waybill-details/:transactionId', authenticateUser, transactionController.getWaybillDetails);
 
 // Add this route
 router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getTransactionByChatroomId);
 
 module.exports = router;
+
 
