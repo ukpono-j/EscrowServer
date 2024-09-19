@@ -3,6 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const User = require("../modules/Users"); // Adjust the path if needed
 const mongoose = require("mongoose");
 const Chatroom = require('../modules/Chatroom');
+const Notification = require('../modules/Notification');
+
 
 exports.createTransaction = async (req, res) => {
   try {
@@ -37,6 +39,19 @@ exports.createTransaction = async (req, res) => {
 
     // Save the transaction to the database
     await newTransaction.save();
+
+    const buyerNotification = new Notification({
+      userId: userId,
+      title: 'New Transaction Created',
+      message: `${paymentDescription}`,
+      transactionId: newTransaction._id
+
+    })
+
+    await buyerNotification.save();
+
+    // Log the notification to confirm it was created
+    console.log('Notification created:', buyerNotification);
 
     // Create a new chatroom associated with the transaction
     const newChatroom = new Chatroom({
