@@ -27,7 +27,8 @@ const corsOptions = {
     " https://escrowserver.onrender.com",
     "https://api.multiavatar.com",
     "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CASU46oe.css",
-    "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CzsLtlNO.js"
+    "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CzsLtlNO.js",
+    "http://mymiddleman.ng/"
   ],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
