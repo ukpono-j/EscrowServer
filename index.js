@@ -46,6 +46,7 @@ const io = socket({
       "https://escrow-app-delta.vercel.app",
       "https://escrowserver.onrender.com",
       "https://api.multiavatar.com",
+      "https://mymiddleman.ng",
     ],
     methods: ["GET", "POST"],
     credentials: true,
