@@ -39,7 +39,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Handle preflight requests globally for all routes
-app.options('*', cors(corsOptions));
+// Manually handle preflight requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://mymiddleman.ng');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, auth-token');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);  // Respond with a 200 status for preflight OPTIONS request
+});
 
 app.use(express.urlencoded({ extended: false }));
 
