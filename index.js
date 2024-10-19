@@ -29,6 +29,7 @@ const corsOptions = {
     "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CASU46oe.css",
     "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CzsLtlNO.js",
     "http://mymiddleman.ng/",
+    "https://escrowserver.onrender.com",
   ],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
@@ -104,8 +105,6 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/kyc', kycRoutes);
 app.use('/api/messages', messageRoutes);
-
-
 
 
 const PORT = process.env.PORT || 3001;
