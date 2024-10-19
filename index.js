@@ -24,7 +24,7 @@ const corsOptions = {
     "http://localhost:5173",
     "https://escrow-app.onrender.com",
     "https://escrow-app-delta.vercel.app",
-    " https://escrowserver.onrender.com",
+    "https://escrowserver.onrender.com",
     "https://api.multiavatar.com",
     "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CASU46oe.css",
     "file:///C:/Users/PC/Documents/Zeek's%20Documents/Coding/EscrowApp-master/EscrowApp-master/dist/assets/index-CzsLtlNO.js",
