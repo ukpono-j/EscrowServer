@@ -14,6 +14,7 @@ const path = require('path');
 const socket = require("socket.io");
 require("dotenv").config();
 
+
 const corsOptions = {
   origin: [
     "http://localhost:5173",
@@ -30,29 +31,6 @@ const corsOptions = {
   optionsSuccessStatus: 204,
   allowedHeaders: "Content-Type, Authorization, auth-token",
 };
-
-// app.use(cors(corsOptions));
-// // Handle preflight requests globally for all routes
-// app.options('*', cors(corsOptions));
-
-// Apply CORS middleware at the top before any route is defined
-app.use(cors(corsOptions));
-
-// Handle preflight requests globally for all routes
-// Manually handle preflight requests
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://mymiddleman.ng');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, auth-token');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);  // Respond with a 200 status for preflight OPTIONS request
-});
-
-app.use(express.urlencoded({ extended: false }));
-
-// app.use("/images", express.static("./uploads/images"));
-app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')));
-
 
 
 // Set up socket.io with cors options
@@ -89,6 +67,14 @@ const io = socket({
 //     });
 //   });
 // });
+
+app.use(express.urlencoded({ extended: false }));
+
+// app.use("/images", express.static("./uploads/images"));
+app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')));
+
+
+
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
@@ -112,7 +98,7 @@ io.on("connection", (socket) => {
 connectDB();
 
 // Middleware
-
+app.use(cors(corsOptions));
 app.use(express.json());
 
 
@@ -126,7 +112,7 @@ app.use('/api/messages', messageRoutes);
 
 
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, "0.0.0.0", () => {
+ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
