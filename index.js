@@ -24,11 +24,23 @@ const corsOptions = {
     "https://api.multiavatar.com",
     "https://mymiddleman.ng",
   ],
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  // methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   credentials: true,
-  optionsSuccessStatus: 204,
   allowedHeaders: "Content-Type, Authorization, auth-token",
+  optionsSuccessStatus: 204,
 };
+
+app.use(cors(corsOptions));
+
+// Manually handle preflight requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://mymiddleman.ng');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, auth-token');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);  // Respond with a 200 status for preflight OPTIONS request
+});
 
 
 // Set up socket.io with cors options
@@ -96,7 +108,7 @@ io.on("connection", (socket) => {
 connectDB();
 
 // Middleware
-app.use(cors(corsOptions));
+
 app.use(express.json());
 
 
