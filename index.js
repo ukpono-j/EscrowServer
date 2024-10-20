@@ -160,16 +160,20 @@ const corsOptions = {
   ],
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"], // Allow methods in an array format
   credentials: true,
-  allowedHeaders: "Content-Type, Authorization, auth-token", // Allowed headers
+  // allowedHeaders: "Content-Type, Authorization, auth-token", // Allowed headers
+  allowedHeaders: ["Content-Type", "Authorization", "auth-token"],
   optionsSuccessStatus: 204,
 };
 
 // Apply CORS middleware at the top of the server setup
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
 
 // Manually handle preflight (OPTIONS) requests for CORS
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://mymiddleman.ng');
+  // res.header('Access-Control-Allow-Origin', 'https://mymiddleman.ng');
+  res.header('Access-Control-Allow-Origin', req.headers.origin); 
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, auth-token');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Credentials', 'true');
