@@ -158,7 +158,7 @@ const corsOptions = {
     "https://api.multiavatar.com",
     "https://mymiddleman.ng",
   ],
-  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"], // Allow methods in an array format
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"], // Allow methods in an array format
   credentials: true,
   // allowedHeaders: "Content-Type, Authorization, auth-token", // Allowed headers
   allowedHeaders: ["Content-Type", "Authorization", "auth-token"],
