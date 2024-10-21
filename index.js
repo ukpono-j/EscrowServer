@@ -15,23 +15,23 @@ const socket = require("socket.io");
 require("dotenv").config();
 
 
-const corsOptions = {
-  // origin: [
-  //   "https://mymiddleman.ng",
-  //   "http://localhost:5173",
-  //   "https://escrow-app.onrender.com",
-  //   "https://escrow-app-delta.vercel.app",
-  //   "https://escrowserver.onrender.com",
-  //   "https://api.multiavatar.com",
-  // ],
-  // origin: "*",
-  // methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-  // credentials: false,
-  // allowedHeaders: "Content-Type, Authorization, auth-token",
-  // optionsSuccessStatus: 204,
-};
+// const corsOptions = {
+//   // origin: [
+//   //   "https://mymiddleman.ng",
+//   //   "http://localhost:5173",
+//   //   "https://escrow-app.onrender.com",
+//   //   "https://escrow-app-delta.vercel.app",
+//   //   "https://escrowserver.onrender.com",
+//   //   "https://api.multiavatar.com",
+//   // ],
+//   // origin: "*",
+//   // methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+//   // credentials: false,
+//   // allowedHeaders: "Content-Type, Authorization, auth-token",
+//   // optionsSuccessStatus: 204,
+// };
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 
 // **Add middleware to log CORS headers**
 // app.use((req, res, next) => {
