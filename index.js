@@ -16,30 +16,38 @@ require("dotenv").config();
 
 
 const corsOptions = {
-  origin: [
-    "https://mymiddleman.ng",
-    "http://localhost:5173",
-    "https://escrow-app.onrender.com",
-    "https://escrow-app-delta.vercel.app",
-    "https://escrowserver.onrender.com",
-    "https://api.multiavatar.com",
-  ],
+  // origin: [
+  //   "https://mymiddleman.ng",
+  //   "http://localhost:5173",
+  //   "https://escrow-app.onrender.com",
+  //   "https://escrow-app-delta.vercel.app",
+  //   "https://escrowserver.onrender.com",
+  //   "https://api.multiavatar.com",
+  // ],
   // origin: "*",
-  // methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
-  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE","OPTIONS"],
-  credentials: true,
-  allowedHeaders: "Content-Type, Authorization, auth-token",
-  optionsSuccessStatus: 204,
+  // methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  // credentials: false,
+  // allowedHeaders: "Content-Type, Authorization, auth-token",
+  // optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
 
 // **Add middleware to log CORS headers**
-app.use((req, res, next) => {
-  res.on('finish', () => {
-    console.log("CORS Headers Sent:", res.getHeaders());
-  });
-  next();
+// app.use((req, res, next) => {
+//   console.log(`Request received for ${req.url}`); // Log incoming request
+//   res.on('finish', () => {
+//     console.log("CORS Headers Sent:", res.get('Access-Control-Allow-Origin'));
+//     console.log("Full Headers:", res.getHeaders()); // Logs all headers
+//   });
+//   next();
+// });
+
+// Catch unhandled errors and log CORS headers in the case of errors
+app.use((err, req, res, next) => {
+  console.error("Error occurred:", err);
+  res.status(500).send("Internal Server Error");
+  next(err);  // ensure headers logging still happens on errors
 });
 
 // Set up socket.io with cors options
