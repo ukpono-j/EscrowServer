@@ -24,7 +24,7 @@ const corsOptions = {
   //   "https://api.multiavatar.com",
   //   "https://mymiddleman.ng",
   // ],
-  origin: "*",
+  origin: ["*"],
   // methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE","OPTIONS"],
   credentials: true,
