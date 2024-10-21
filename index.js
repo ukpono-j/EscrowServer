@@ -16,15 +16,15 @@ require("dotenv").config();
 
 
 const corsOptions = {
-  // origin: [
-  //   "http://localhost:5173",
-  //   "https://escrow-app.onrender.com",
-  //   "https://escrow-app-delta.vercel.app",
-  //   "https://escrowserver.onrender.com",
-  //   "https://api.multiavatar.com",
-  //   "https://mymiddleman.ng",
-  // ],
-  origin: "*",
+  origin: [
+    "https://mymiddleman.ng",
+    "http://localhost:5173",
+    "https://escrow-app.onrender.com",
+    "https://escrow-app-delta.vercel.app",
+    "https://escrowserver.onrender.com",
+    "https://api.multiavatar.com",
+  ],
+  // origin: "*",
   // methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE","OPTIONS"],
   credentials: false,
