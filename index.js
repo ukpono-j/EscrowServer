@@ -34,6 +34,14 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// **Add middleware to log CORS headers**
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    console.log("CORS Headers Sent:", res.getHeaders());
+  });
+  next();
+});
+
 // Set up socket.io with cors options
 const io = socket({
   cors: {
