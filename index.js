@@ -24,17 +24,15 @@ const corsOptions = {
   //   "https://api.multiavatar.com",
   //   "https://mymiddleman.ng",
   // ],
-  origin: ["*"],
+  origin: "*",
   // methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE","OPTIONS"],
-  credentials: true,
+  credentials: false,
   allowedHeaders: "Content-Type, Authorization, auth-token",
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Handle preflight requests explicitly
-app.options("*", cors(corsOptions));
 
 // Set up socket.io with cors options
 const io = socket({
