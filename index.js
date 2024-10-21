@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const socketIo = require("socket.io");
+// const socketIo = require("socket.io");
 const http = require("http");
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
@@ -33,7 +33,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
+// Handle preflight requests explicitly
+app.options("*", cors(corsOptions));
 
 // Set up socket.io with cors options
 const io = socket({
