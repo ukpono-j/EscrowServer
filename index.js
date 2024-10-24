@@ -117,6 +117,11 @@ app.use('/api/kyc', kycRoutes);
 app.use('/api/messages', messageRoutes);
 
 
+// Handle client-side routing by sending index.html for unknown routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
