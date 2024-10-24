@@ -15,39 +15,28 @@ const socket = require("socket.io");
 require("dotenv").config();
 
 
-// const corsOptions = {
-//   // origin: [
-//   //   "https://mymiddleman.ng",
-//   //   "http://localhost:5173",
-//   //   "https://escrow-app.onrender.com",
-//   //   "https://escrow-app-delta.vercel.app",
-//   //   "https://escrowserver.onrender.com",
-//   //   "https://api.multiavatar.com",
-//   // ],
-//   // origin: "*",
-//   // methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-//   // credentials: false,
-//   // allowedHeaders: "Content-Type, Authorization, auth-token",
-//   // optionsSuccessStatus: 204,
-// };
+const corsOptions = {
+  // origin: [
+  //   "https://mymiddleman.ng",
+  //   "http://localhost:5173",
+  //   "https://escrow-app.onrender.com",
+  //   "https://escrow-app-delta.vercel.app",
+  //   "https://escrowserver.onrender.com",
+  //   "https://api.multiavatar.com",
+  // ],
+  origin: "*",
+  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+  credentials: false,
+  allowedHeaders: "Content-Type, Authorization, auth-token",
+  optionsSuccessStatus: 204,
+};
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 
-// **Add middleware to log CORS headers**
-// app.use((req, res, next) => {
-//   console.log(`Request received for ${req.url}`); // Log incoming request
-//   res.on('finish', () => {
-//     console.log("CORS Headers Sent:", res.get('Access-Control-Allow-Origin'));
-//     console.log("Full Headers:", res.getHeaders()); // Logs all headers
-//   });
-//   next();
-// });
-
-// Catch unhandled errors and log CORS headers in the case of errors
-app.use((err, req, res, next) => {
-  console.error("Error occurred:", err);
-  res.status(500).send("Internal Server Error");
-  next(err);  // ensure headers logging still happens on errors
+app.use(function (request, response, next) {
+  response.header("Access-Control-Allow-Origin", "*");
+  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
 });
 
 // Set up socket.io with cors options
@@ -129,7 +118,7 @@ app.use('/api/messages', messageRoutes);
 
 
 const PORT = process.env.PORT || 3001;
- const server = app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
 
