@@ -117,6 +117,9 @@ app.use('/api/kyc', kycRoutes);
 app.use('/api/messages', messageRoutes);
 
 
+// Serve static files from the React app (adjust 'build' if needed)
+app.use(express.static(path.join(__dirname, 'build')));
+
 // Handle client-side routing by sending index.html for unknown routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
