@@ -80,10 +80,6 @@ app.use(express.urlencoded({ extended: false }));
 app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')));
 
 
-// Catch-all route to handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname,'build', 'index.html'));
-});
 
 
 io.on("connection", (socket) => {
