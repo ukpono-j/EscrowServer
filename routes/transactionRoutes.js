@@ -39,7 +39,7 @@ router.post('/create-transaction',
 // router.post('/create-transaction', authenticateUser, transactionController.createTransaction);
 router.get('/get-transaction', authenticateUser, transactionController.getUserTransactions);
 
-router.post('/complete-transaction', authenticateUser, transactionController.completeTransaction);
+router.put('/complete-transaction/:transactionId', authenticateUser, transactionController.completeTransaction);
 router.get('/complete-transaction', authenticateUser, transactionController.getCompletedTransactions);
 
 router.put("/cancel/:transactionId",authenticateUser, transactionController.cancelTransaction);

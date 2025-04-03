@@ -98,25 +98,60 @@ exports.getUserTransactions = async (req, res) => {
 
 
 
+
+// exports.completeTransaction = async (req, res) => {
+//   console.log('Complete transaction request received:', req.body); // Log the request body
+//   try {
+//     const { transactionId } = req.body;
+
+//     // Find the transaction by ID and update its status to "completed"
+//     const completedTransaction = await Transaction.findOneAndUpdate(
+//       { transactionId: transactionId },
+//       { status: 'completed' },
+//       { new: true }
+//     );
+
+//     if (!completedTransaction) {
+//       return res.status(404).json({ error: 'Transaction not found' });
+//     }
+
+//     res.status(200).json(completedTransaction);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: 'Internal Server Error' });
+//   }
+// };
+
+
 exports.completeTransaction = async (req, res) => {
   try {
-    const { transactionId } = req.body;
+    const { transactionId } = req.params; // Get the transaction ID from the route params
 
-    // Find the transaction by ID and update its status to "completed"
-    const completedTransaction = await Transaction.findOneAndUpdate(
-      { transactionId: transactionId },
-      { status: 'completed' },
-      { new: true }
-    );
+    // Find the transaction by its ID
+    const transaction = await Transaction.findById(transactionId);
 
-    if (!completedTransaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
     }
 
-    res.status(200).json(completedTransaction);
+    // Check if the transaction is already cancelled
+    if (transaction.status === "completed") {
+      return res.status(400).json({ message: "Transaction is already completed" });
+    }
+
+    // Update the transaction's status to cancelled
+    transaction.status = "completed";
+    await transaction.save(); // Save the updated transaction
+    console.log('Transaction status updated to completed:', transaction);
+
+    return res.status(200).json({
+      // message: "Transaction successfully cancelled",
+      message: `Transaction with ID ${transactionId} successfully completed`,
+      transaction,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
