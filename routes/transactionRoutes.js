@@ -7,6 +7,7 @@ const Transaction = require('../modules/Transactions');
 const mongoose = require('mongoose');
 const Chatroom = require("../modules/Chatroom");
 const upload = require('../middlewares/upload'); 
+const VerifyPaystackSignature = require('../utils/VerifyPaystackSignature');
 
 
 // Middleware to validate input
@@ -36,6 +37,7 @@ router.post('/create-transaction',
     transactionController.createTransaction
 );
 
+
 // router.post('/create-transaction', authenticateUser, transactionController.createTransaction);
 router.get('/get-transaction', authenticateUser, transactionController.getUserTransactions);
 
@@ -64,6 +66,20 @@ router.get('/waybill-details/:transactionId', authenticateUser, transactionContr
 
 // Add this route
 router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getTransactionByChatroomId);
+
+
+router.post('/initiate', transactionController.initiatePayment);
+router.post('/confirm', authenticateUser, transactionController.confirmTransaction);
+router.post('/webhook/paystack', express.json({ verify: VerifyPaystackSignature }), transactionController.handleWebhook);
+router.get('/check-funded', authenticateUser, transactionController.checkTransactionFunded);
+// router.post('/webhook/paystack', 
+//     express.raw({type: 'application/json'}), // Important: Use raw for proper signature verification
+//     VerifyPaystackSignature,
+//     (req, res) => {
+//         console.log("Webhook endpoint hit with data:", req.body);
+//         transactionController.handleWebhook(req, res);
+//     }
+// );
 
 module.exports = router;
 

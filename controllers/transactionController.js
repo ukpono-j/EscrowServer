@@ -4,6 +4,7 @@ const User = require("../modules/Users"); // Adjust the path if needed
 const mongoose = require("mongoose");
 const Chatroom = require('../modules/Chatroom');
 const Notification = require('../modules/Notification');
+const axios = require('axios');
 
 
 exports.createTransaction = async (req, res) => {
@@ -96,31 +97,6 @@ exports.getUserTransactions = async (req, res) => {
   }
 };
 
-
-
-
-// exports.completeTransaction = async (req, res) => {
-//   console.log('Complete transaction request received:', req.body); // Log the request body
-//   try {
-//     const { transactionId } = req.body;
-
-//     // Find the transaction by ID and update its status to "completed"
-//     const completedTransaction = await Transaction.findOneAndUpdate(
-//       { transactionId: transactionId },
-//       { status: 'completed' },
-//       { new: true }
-//     );
-
-//     if (!completedTransaction) {
-//       return res.status(404).json({ error: 'Transaction not found' });
-//     }
-
-//     res.status(200).json(completedTransaction);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: 'Internal Server Error' });
-//   }
-// };
 
 
 exports.completeTransaction = async (req, res) => {
@@ -253,23 +229,6 @@ exports.getTransactionById = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-// exports.submitWaybillDetails = async (req, res) => {
-//   const { transactionId, waybillDetails } = req.body;
-//   try {
-//     const transaction = await Transaction.findByIdAndUpdate(
-//       transactionId,
-//       { waybillDetails, proofOfWaybill: "confirmed" },
-//       { new: true }
-//     );
-//     if (!transaction) {
-//       return res.status(404).json({ error: "Transaction not found" });
-//     }
-//     res.status(200).json(transaction);
-//   } catch (error) {
-//     console.error("Error submitting waybill details:", error); // Log the error for debugging
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// };
 
 exports.submitWaybillDetails = async (req, res) => {
   const { transactionId } = req.body;
@@ -443,4 +402,347 @@ exports.cancelTransaction = async (req, res) => {
     console.error(error);
     return res.status(500).json({ message: "Internal server error" });
   }
+};
+
+// =============================================================================
+// =============================================
+// exports.initiatePayment = async (req, res) => {
+//   console.log('Initiate payment request received');
+
+//   const { amount, transactionId, email } = req.body;
+
+//   // Log the received data to ensure it's correct
+//   console.log(`Email: ${email}, Amount: ${amount}, Transaction ID: ${transactionId}`);
+
+//   if (!email || !amount || !transactionId) {
+//     return res.status(400).json({ message: "Missing required fields" });
+//   }
+
+//   try {
+//     const response = await axios.post(
+//       "https://api.paystack.co/transaction/initialize",
+//       {
+//         email,
+//         amount: amount * 100,  // Convert to Kobo
+//         metadata: { transactionId }
+//       },
+//       {
+//         headers: {
+//           Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`,  // Paystack Secret Key
+//         },
+//       }
+//     );
+
+//     // Log the response from Paystack for debugging
+//     console.log("Paystack response:", response.data);
+
+//     // If Paystack call is successful
+
+//     await Transaction.findByIdAndUpdate(transactionId, {
+//       paymentReference: response.data.data.reference,
+//     });
+
+
+//     res.json({ authorization_url: response.data.data.authorization_url });
+//   } catch (err) {
+//     console.error("Payment initialization failed:", err);
+//     console.error("Error details:", err.response ? err.response.data : err.message);
+//     res.status(500).json({ message: "Payment initialization failed", error: err.response ? err.response.data : err.message });
+//   }
+// };
+exports.initiatePayment = async (req, res) => {
+  console.log('Initiate payment request received');
+
+  const { amount, transactionId, email } = req.body;
+
+  // Log the received data
+  console.log(`Email: ${email}, Amount: ${amount}, Transaction ID: ${transactionId}`);
+
+  // Check if all required fields are provided
+  if (!email || !amount || !transactionId) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
+    // Step 1: Validate transaction ID format
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.error("❌ Invalid transaction ID format:", transactionId);
+      return res.status(400).json({ message: "Invalid transaction ID format" });
+    }
+
+    // Step 2: Find the transaction by ID
+    // IMPORTANT: Using findById() looks for the MongoDB _id field
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      console.error("❌ Transaction not found with ID:", transactionId);
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    console.log("✅ Found transaction:", transaction._id);
+
+    // Step 3: Initialize payment with Paystack
+    const response = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        email,
+        amount: amount * 100,  // Convert to Kobo
+        metadata: {
+          transactionId: transaction._id.toString(),
+          // Add any other metadata you need
+        }
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`,
+        },
+      }
+    );
+
+    // Log the Paystack response
+    console.log("Paystack response:", response.data);
+
+    // Step 4: Save Paystack reference to the transaction
+    transaction.paymentReference = response.data.data.reference;
+    await transaction.save();
+
+    console.log("✅ Saved payment reference:", transaction.paymentReference);
+
+    // Return the authorization URL for the client
+    res.json({
+      authorization_url: response.data.data.authorization_url,
+      reference: response.data.data.reference
+    });
+  } catch (err) {
+    console.error("Payment initialization failed:", err);
+
+    // Handle potential Axios response errors
+    const errorMessage = err.response ? err.response.data : err.message;
+    console.error("Error details:", errorMessage);
+
+    res.status(500).json({
+      message: "Payment initialization failed",
+      error: errorMessage
+    });
+  }
+};
+
+
+// exports.handleWebhook = async (req, res) => {
+//   try {
+//     const event = req.body;
+//     console.log("Webhook payload received:", event);
+
+//     if (event.event === "charge.success") {
+//       // Get the reference and metadata from the event
+//       const reference = event.data.reference;
+//       const metadata = event.data.metadata || {};
+//       // const transactionId = metadata.transactionId;
+//       const transactionId = event.data.metadata.transactionId;
+//       console.log("Metadata from webhook:", event.data.metadata);
+
+//       console.log(`Processing successful payment: Reference=${reference}, TransactionID=${transactionId}`);
+
+//       // First try to find by the transactionId in metadata
+//       let tx = null;
+//       if (transactionId && mongoose.Types.ObjectId.isValid(transactionId)) {
+//         tx = await Transaction.findById(transactionId);
+//       }
+
+//       // If not found by transactionId, try to find by reference
+//       if (!tx) {
+//         tx = await Transaction.findOneAndUpdate(
+//           { "paymentReference": reference },
+//           { 
+//             "paymentReference": reference,
+//             "status": "funded",
+//             "funded": true
+//           },
+//           { new: true }
+//         );
+//       } else {
+//         // Update the transaction if found by ID
+//         tx.status = "funded";
+//         tx.funded = true;
+//         tx.paymentReference = reference;
+//         await tx.save();
+//       }
+
+
+
+//       if (tx) {
+//         console.log(`Transaction ${tx._id} marked as funded`);
+//       } else {
+//         console.log(`Warning: Could not find transaction for reference ${reference}`);
+//       }
+//     }
+
+//     res.sendStatus(200);
+//   } catch (error) {
+//     console.error("Error in webhook handler:", error);
+//     // Always return 200 to Paystack to acknowledge receipt
+//     res.sendStatus(200);
+//   }
+// };
+
+// Webhook Handler
+exports.handleWebhook = async (req, res) => {
+  try {
+    const event = req.body;
+    console.log("⚡ Webhook received:", event.event);
+
+    // For detailed debugging
+    console.log("Webhook payload:", JSON.stringify(event, null, 2));
+
+    // Handle successful payments
+    if (event.event === "charge.success") {
+      const reference = event.data.reference;
+      const metadata = event.data.metadata || {};
+      const transactionId = metadata.transactionId;
+
+      console.log("🔍 Payment success details:", {
+        reference,
+        transactionId,
+      });
+
+      let transaction = null;
+
+      // Try to find transaction by ID from metadata
+      if (transactionId && mongoose.Types.ObjectId.isValid(transactionId)) {
+        console.log(`🔍 Searching by transactionId: ${transactionId}`);
+        transaction = await Transaction.findById(transactionId);
+        if (transaction) {
+          console.log("✅ Found transaction by ID:", transaction._id);
+        }
+      }
+
+      // If not found by ID, try by reference
+      if (!transaction) {
+        console.log(`🔍 Searching by paymentReference: ${reference}`);
+        transaction = await Transaction.findOne({ paymentReference: reference });
+        if (transaction) {
+          console.log("✅ Found transaction by reference:", transaction._id);
+        }
+      }
+
+      // Handle case where transaction is not found
+      if (!transaction) {
+        console.error(`❌ Transaction not found. Reference=${reference}, TransactionId=${transactionId}`);
+        // Still return 200 to acknowledge receipt
+        return res.status(200).json({
+          message: "Webhook received, but transaction not found"
+        });
+      }
+
+      // Check if already funded
+      if (transaction.funded) {
+        console.log("ℹ️ Transaction already marked as funded:", transaction._id);
+        return res.status(200).json({ message: "Transaction already funded" });
+      }
+
+      // Update transaction status
+      transaction.funded = true;
+      // transaction.status = "funded";
+      transaction.status = "completed"; 
+      transaction.paymentStatus = "paid";
+      transaction.paymentReference = reference;
+      await transaction.save();
+
+      console.log(`💰 Transaction ${transaction._id} marked as funded`);
+      return res.status(200).json({ message: "Transaction updated successfully" });
+    }
+
+    // Always return 200 for all webhook events
+    return res.status(200).json({ message: "Webhook received" });
+  } catch (error) {
+    console.error("🔥 Webhook error:", error);
+    // Return 200 even if there's an error to acknowledge receipt
+    return res.status(200).json({
+      message: "Webhook received with processing error"
+    });
+  }
+};
+
+
+exports.checkTransactionFunded = async (req, res) => {
+  const { transactionId } = req.query;
+
+  if (!transactionId || !mongoose.Types.ObjectId.isValid(transactionId)) {
+    return res.status(400).json({
+      funded: false,
+      message: "Invalid transaction ID format"
+    });
+  }
+
+  try {
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({
+        funded: false,
+        message: "Transaction not found"
+      });
+    }
+
+    res.json({
+      funded: transaction.funded,
+      status: transaction.status
+    });
+  } catch (error) {
+    console.error("Error checking transaction status:", error);
+    res.status(500).json({
+      funded: false,
+      message: "Error checking transaction status"
+    });
+  }
+};
+
+exports.confirmTransaction = async (req, res) => {
+  const { reference } = req.body;
+  const user = req.user;
+
+  const tx = await Transaction.findOne({ paystackReference: reference });
+  if (!tx) return res.status(404).json({ message: "Transaction not found" });
+
+  if (user.role === 'buyer') tx.buyerConfirmed = true;
+  if (user.role === 'seller') tx.sellerConfirmed = true;
+
+  if (tx.buyerConfirmed && tx.sellerConfirmed) {
+    tx.status = "confirmed";
+    await tx.save();
+    await triggerPayout(tx); // ⬇️ See next step
+  } else {
+    await tx.save();
+  }
+
+  res.status(200).json(tx);
+};
+
+
+// controllers/paymentController.js
+const triggerPayout = async (transaction) => {
+  const recipient = await axios.post("https://api.paystack.co/transferrecipient", {
+    type: "nuban",
+    name: transaction.sellerName,
+    account_number: transaction.sellerAccountNumber,
+    bank_code: transaction.sellerBankCode,
+    currency: "NGN"
+  }, {
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    }
+  });
+
+  const transfer = await axios.post("https://api.paystack.co/transfer", {
+    source: "balance",
+    amount: transaction.amount * 100,
+    recipient: recipient.data.data.recipient_code,
+    reason: `Payout for transaction ${transaction._id}`
+  }, {
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    }
+  });
+
+  return transfer.data;
 };

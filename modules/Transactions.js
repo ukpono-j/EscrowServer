@@ -108,6 +108,27 @@ const transactionSchema = new mongoose.Schema({
   },
     // Nested waybill details schema
     waybillDetails: { type: waybillSchema },
+    buyerConfirmed: {
+      type: Boolean,
+      default: false,
+    },
+    sellerConfirmed: {
+      type: Boolean,
+      default: false,
+    },
+    payoutReleased: {
+      type: Boolean,
+      default: false
+    },
+    funded: {
+      type: Boolean,
+      default: false,
+    },
+    paymentReference: {
+      type: String,
+      unique: true,
+      sparse: true  // This allows multiple null values
+    },
   // Add waybill details
   // waybillDetails: {
   //   item: String,
