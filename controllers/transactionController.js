@@ -88,7 +88,11 @@ exports.getUserTransactions = async (req, res) => {
         { userId: userId },
         { participants: userId }
       ]
-    }).populate('chatroomId'); // Populate chatroomId to get chatroom details
+    })
+      .populate('chatroomId') // Populate chatroomId to get chatroom details
+      .populate('userId', 'firstName email') // Populate creator info
+      .populate('participants', 'firstName email') // Populate participant info
+      .sort({ createdAt: -1 });
 
     res.status(200).json(transactions);
   } catch (error) {
@@ -149,6 +153,44 @@ exports.getCompletedTransactions = async (req, res) => {
 };
 
 
+// exports.joinTransaction = async (req, res) => {
+//   try {
+//     const { transactionId } = req.body;
+//     const { id: userId } = req.user;
+
+//     console.log('Received transactionId:', transactionId);
+//     console.log('Received userId:', userId);
+
+//     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+//       console.log('Invalid transaction ID');
+//       return res.status(400).json({ error: "Invalid transaction ID" });
+//     }
+
+//     const transaction = await Transaction.findOne({ transactionId });
+//     console.log('Found Transaction:', transaction);
+
+//     if (!transaction) {
+//       return res.status(404).json({ error: "Transaction not found" });
+//     }
+
+//     const isParticipant = transaction.participants.some(
+//       (participant) => participant.toString() === userId.toString()
+//     );
+
+//     if (isParticipant) {
+//       return res.status(400).json({ error: "User is already a participant in this transaction" });
+//     }
+
+//     transaction.participants.push(userId);
+//     await transaction.save();
+
+//     res.status(200).json({ message: "Successfully joined the transaction", transaction });
+//   } catch (error) {
+//     console.error("Error joining transaction:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
 exports.joinTransaction = async (req, res) => {
   try {
     const { transactionId } = req.body;
@@ -162,14 +204,41 @@ exports.joinTransaction = async (req, res) => {
       return res.status(400).json({ error: "Invalid transaction ID" });
     }
 
-    const transaction = await Transaction.findOne({ transactionId });
+
+
+    // Log the query being used
+    console.log(`Attempting to find transaction with ID: ${transactionId}`);
+
+    // const transaction = await Transaction.findById(transactionId);
+    // console.log('Found Transaction:', transaction);
+    // Try finding by either _id or transactionId
+    const transaction = await Transaction.findOne({
+      $or: [
+        { _id: transactionId },
+        { transactionId: transactionId }
+      ]
+    });
+
     console.log('Found Transaction:', transaction);
+
+    if (!transaction) {
+      // Check if any transactions exist at all (for debugging)
+      const count = await Transaction.countDocuments();
+      console.log(`Total transactions in database: ${count}`);
+
+      return res.status(404).json({
+        error: "Transaction not found",
+        requestedId: transactionId
+      });
+    }
 
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const isParticipant = transaction.participants.some(
+    // Filter out null values and check if user is already a participant
+    const validParticipants = transaction.participants.filter(participant => participant !== null);
+    const isParticipant = validParticipants.some(
       (participant) => participant.toString() === userId.toString()
     );
 
@@ -177,10 +246,42 @@ exports.joinTransaction = async (req, res) => {
       return res.status(400).json({ error: "User is already a participant in this transaction" });
     }
 
+    // Handle the user type logic
+    const creatorId = transaction.userId.toString();
+    const creatorType = transaction.selectedUserType;
+
+    // If the creator is a buyer, participant becomes seller and vice versa
+    const participantType = creatorType === 'buyer' ? 'seller' : 'buyer';
+
+    // Check if we already have the maximum allowed participants (creator + 1 participant)
+    if (validParticipants.length >= 1 && validParticipants[0].toString() !== creatorId) {
+      return res.status(400).json({ error: "Transaction already has the maximum number of participants" });
+    }
+
+    // Add participant to the transaction
+    transaction.participants = validParticipants; // Clean up null values
     transaction.participants.push(userId);
+
+    // Update transaction status when participant joins
+    transaction.status = "pending";
+
+    // Update transaction status when participant joins
+    // if (!transaction.sellerConfirmed && participantType === 'seller') {
+    //   transaction.sellerConfirmed = true;
+    // }
+
+    // if (!transaction.buyerConfirmed && participantType === 'buyer') {
+    //   transaction.buyerConfirmed = true;
+    // }
+
     await transaction.save();
 
-    res.status(200).json({ message: "Successfully joined the transaction", transaction });
+    res.status(200).json({
+      message: "Successfully joined the transaction",
+      transaction,
+      role: participantType // Return the role that the joining user will play
+    });
+
   } catch (error) {
     console.error("Error joining transaction:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -643,7 +744,7 @@ exports.handleWebhook = async (req, res) => {
       // Update transaction status
       transaction.funded = true;
       // transaction.status = "funded";
-      transaction.status = "completed"; 
+      // transaction.status = "completed";
       transaction.paymentStatus = "paid";
       transaction.paymentReference = reference;
       await transaction.save();
@@ -686,7 +787,7 @@ exports.checkTransactionFunded = async (req, res) => {
 
     res.json({
       funded: transaction.funded,
-      status: transaction.status
+      // status: transaction.status
     });
   } catch (error) {
     console.error("Error checking transaction status:", error);
@@ -697,52 +798,364 @@ exports.checkTransactionFunded = async (req, res) => {
   }
 };
 
-exports.confirmTransaction = async (req, res) => {
-  const { reference } = req.body;
-  const user = req.user;
+// exports.confirmTransaction = async (req, res) => {
+//   try {
+//     const { transactionId } = req.body;
+//     const user = req.user;
 
-  const tx = await Transaction.findOne({ paystackReference: reference });
-  if (!tx) return res.status(404).json({ message: "Transaction not found" });
+//     // Validate the transaction ID
+//     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+//       return res.status(400).json({ message: "Invalid transaction ID format" });
+//     }
 
-  if (user.role === 'buyer') tx.buyerConfirmed = true;
-  if (user.role === 'seller') tx.sellerConfirmed = true;
+//     // Find the transaction
+//     const transaction = await Transaction.findById(transactionId);
+//     if (!transaction) {
+//       return res.status(404).json({ message: "Transaction not found" });
+//     }
 
-  if (tx.buyerConfirmed && tx.sellerConfirmed) {
-    tx.status = "confirmed";
-    await tx.save();
-    await triggerPayout(tx); // ⬇️ See next step
-  } else {
-    await tx.save();
-  }
+//     // Determine user type and update appropriate confirmation flag
+//     // if (user._id.toString() === transaction.userId.toString()) {
+//     //   // This is the transaction creator (buyer)
+//     //   transaction.buyerConfirmed = true;
+//     //   console.log("Buyer confirmed transaction:", transactionId);
+//     // } else if (transaction.participants.includes(user._id)) {
+//     //   // This is a participant (seller)
+//     //   transaction.sellerConfirmed = true;
+//     //   console.log("Seller confirmed transaction:", transactionId);
+//     // } else {
+//     //   return res.status(403).json({ message: "User not authorized for this transaction" });
+//     // }
 
-  res.status(200).json(tx);
-};
+//       // Determine user type and update appropriate confirmation flag
+//       if (user._id.toString() === transaction.userId.toString()) {
+//         // This is the transaction creator
+//         if (transaction.selectedUserType === "buyer") {
+//           transaction.buyerConfirmed = true;
+//           console.log("Buyer confirmed transaction:", transactionId);
+//         } else if (transaction.selectedUserType === "seller") {
+//           transaction.sellerConfirmed = true;
+//           console.log("Seller confirmed transaction:", transactionId);
+//         }
+//       } else {
+//         // This is the other party (not the creator)
+//         if (transaction.selectedUserType === "buyer") {
+//           // If creator is buyer, other party is seller
+//           transaction.sellerConfirmed = true;
+//           console.log("Seller confirmed transaction:", transactionId);
+//         } else if (transaction.selectedUserType === "seller") {
+//           // If creator is seller, other party is buyer
+//           transaction.buyerConfirmed = true;
+//           console.log("Buyer confirmed transaction:", transactionId);
+//         } else {
+//           return res.status(403).json({ message: "User not authorized for this transaction" });
+//         }
+//       }
+
+//     // Check if both parties have confirmed
+//     if (transaction.buyerConfirmed && transaction.sellerConfirmed && !transaction.payoutReleased) {
+//       transaction.status = "completed";
+//       transaction.payoutReleased = true;
+
+//       // Save before triggering payout to prevent duplicate payouts
+//       await transaction.save();
+
+//       // Trigger payout to seller
+//       try {
+//         const payoutResult = await triggerPayout(transaction);
+//         console.log("Payout initiated:", payoutResult);
+
+//         // Optionally update the transaction with payout reference
+//         if (payoutResult && payoutResult.data && payoutResult.data.transfer_code) {
+//           transaction.payoutReference = payoutResult.data.transfer_code;
+//           await transaction.save();
+//         }
+
+//         return res.status(200).json({
+//           message: "Transaction completed and payout initiated",
+//           transaction
+//         });
+//       } catch (payoutError) {
+//         console.error("Payout failed:", payoutError);
+
+//         // Still mark as completed but note the payout failure
+//         return res.status(200).json({
+//           message: "Transaction completed but payout failed. Admin will review.",
+//           transaction,
+//           payoutError: payoutError.message
+//         });
+//       }
+//     } else {
+//       // Save transaction with updated confirmation status
+//       await transaction.save();
+
+//       return res.status(200).json({
+//         message: "Confirmation received",
+//         buyerConfirmed: transaction.buyerConfirmed,
+//         sellerConfirmed: transaction.sellerConfirmed,
+//         status: transaction.status
+//       });
+//     }
+//   } catch (error) {
+//     console.error("Error in confirmTransaction:", error);
+//     return res.status(500).json({ 
+//       message: "Server error processing confirmation", 
+//       error: error.message 
+//     });
+//   }
+// };
 
 
 // controllers/paymentController.js
+
+exports.confirmTransaction = async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+    const user = req.user;
+
+    console.log("confirmTransaction controller, Authenticated User:", user.email);
+
+    // Check if user is defined
+    if (!user || !user._id) {
+      return res.status(401).json({ message: "User not authenticated or user ID missing" });
+    }
+
+    // Validate the transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      return res.status(400).json({ message: "Invalid transaction ID format" });
+    }
+
+    // Find the transaction and populate participant details
+    // const transaction = await Transaction.findById(transactionId)
+    //   .populate('userId', 'name email')
+    //   .populate('participants', 'name email');
+
+    // Find the transaction and populate participant details
+    const transaction = await Transaction.findById(transactionId)
+      .populate('userId', 'firstName lastName email')
+      .populate('participants', 'firstName lastName email');
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Check if transaction has userId before comparing
+    if (!transaction.userId) {
+      return res.status(400).json({ message: "Transaction has no user ID" });
+    }
+
+    // // If user is the creator and there are no participants yet
+    // if (
+    //   user._id.toString() === transaction.userId.toString() &&
+    //   (!transaction.participants || transaction.participants.length === 0)
+    // ) {
+    //   return res.status(400).json({
+    //     message: "There is no participant in this transaction. Please wait for someone to join."
+    //   });
+    // }
+
+    // Convert user ID to string for consistent comparison
+    const userIdString = user.id.toString();
+
+    const creatorIdString = transaction.userId._id ? transaction.userId._id.toString() : transaction.userId.toString();
+
+    // Output for debugging
+    console.log("User ID (from token):", userIdString);
+    console.log("Transaction creator ID:", creatorIdString);
+    console.log("Participant IDs in transaction:", transaction.participants.map(p => p._id ? p._id.toString() : 'Invalid participant'));
+
+
+    // If user is the creator and there are no participants yet
+    if (userIdString === creatorIdString && 
+      (!transaction.participants || transaction.participants.length === 0)) {
+    return res.status(400).json({
+      message: "There is no participant in this transaction. Please wait for someone to join."
+    });
+  }
+const isCreator = userIdString === creatorIdString;
+
+   // Determine user type and update appropriate confirmation flag
+   if (isCreator) {
+    // This is the transaction creator
+    if (transaction.selectedUserType === "buyer") {
+      transaction.buyerConfirmed = true;
+      console.log("Buyer confirmed transaction:", transactionId);
+    } else if (transaction.selectedUserType === "seller") {
+      transaction.sellerConfirmed = true;
+      console.log("Seller confirmed transaction:", transactionId);
+    }
+  } else {
+    // This is the participant (not the creator)
+    if (transaction.selectedUserType === "buyer") {
+      // If creator is buyer, other party is seller
+      transaction.sellerConfirmed = true;
+      console.log("Seller confirmed transaction:", transactionId);
+    } else if (transaction.selectedUserType === "seller") {
+      // If creator is seller, other party is buyer
+      transaction.buyerConfirmed = true;
+      console.log("Buyer confirmed transaction:", transactionId);
+    }
+  }
+
+
+    // Check if both parties have confirmed
+    if (transaction.buyerConfirmed && transaction.sellerConfirmed && !transaction.payoutReleased) {
+      transaction.status = "completed";
+      transaction.payoutReleased = true;
+
+      // Save before triggering payout to prevent duplicate payouts
+      await transaction.save();
+
+      // Trigger payout to seller
+      try {
+        const payoutResult = await triggerPayout(transaction);
+        console.log("Payout initiated:", payoutResult);
+
+        // Optionally update the transaction with payout reference
+        if (payoutResult && payoutResult.data && payoutResult.data.transfer_code) {
+          transaction.payoutReference = payoutResult.data.transfer_code;
+          await transaction.save();
+        }
+
+        return res.status(200).json({
+          message: "Transaction completed and payout initiated",
+          transaction,
+          buyerConfirmed: transaction.buyerConfirmed,
+          sellerConfirmed: transaction.sellerConfirmed,
+          status: transaction.status
+        });
+      } catch (payoutError) {
+        console.error("Payout failed:", payoutError);
+
+        // Still mark as completed but note the payout failure
+        return res.status(200).json({
+          message: "Transaction completed but payout failed. Admin will review.",
+          transaction,
+          buyerConfirmed: transaction.buyerConfirmed,
+          sellerConfirmed: transaction.sellerConfirmed,
+          status: transaction.status,
+          payoutError: payoutError.message
+        });
+      }
+    } else {
+      // Save transaction with updated confirmation status
+      await transaction.save();
+
+      return res.status(200).json({
+        message: "Confirmation received",
+        buyerConfirmed: transaction.buyerConfirmed,
+        sellerConfirmed: transaction.sellerConfirmed,
+        status: transaction.status
+      });
+    }
+  } catch (error) {
+    console.error("Error in confirmTransaction:", error);
+    return res.status(500).json({
+      message: "Server error processing confirmation",
+      error: error.message
+    });
+  }
+};
+
+// First, get the list of banks to find the correct code
+const getBankCode = async (bankName) => {
+  try {
+    const response = await axios.get(
+      "https://api.paystack.co/bank",
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+        }
+      }
+    );
+    
+    if (response.data.status) {
+      // Find the bank with matching name (case insensitive)
+      const bankData = response.data.data.find(
+        bank => bank.name.toLowerCase() === bankName.toLowerCase()
+      );
+      
+      return bankData ? bankData.code : null;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching bank list:", error);
+    return null;
+  }
+};
+
 const triggerPayout = async (transaction) => {
-  const recipient = await axios.post("https://api.paystack.co/transferrecipient", {
-    type: "nuban",
-    name: transaction.sellerName,
-    account_number: transaction.sellerAccountNumber,
-    bank_code: transaction.sellerBankCode,
-    currency: "NGN"
-  }, {
-    headers: {
-      Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
-    }
-  });
+  try {
+    // First, we need to create a transfer recipient
+    console.log("Creating transfer recipient for transaction:", transaction._id);
 
-  const transfer = await axios.post("https://api.paystack.co/transfer", {
-    source: "balance",
-    amount: transaction.amount * 100,
-    recipient: recipient.data.data.recipient_code,
-    reason: `Payout for transaction ${transaction._id}`
-  }, {
-    headers: {
-      Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
-    }
-  });
+     // Get the correct bank code
+     let bankCode;
+     if (!transaction.paymentBankCode) {
+       // If you only have bank name stored, convert it to code
+       bankCode = await getBankCode(transaction.paymentBank);
+       if (!bankCode) {
+         throw new Error(`Could not find bank code for "${transaction.paymentBank}"`);
+       }
+     } else {
+       bankCode = transaction.paymentBankCode;
+     }
 
-  return transfer.data;
+     
+    // Get participant details (assuming this is the seller)
+    // You'll need to adapt this based on how you store seller bank details
+    // This may require a query to your User model to get bank details
+
+    // For this example, I'm assuming the seller bank details are stored in the transaction
+    const recipientResponse = await axios.post(
+      "https://api.paystack.co/transferrecipient",
+      {
+        type: "nuban",
+        name: transaction.paymentName, // Update with actual seller name field
+        account_number: transaction.paymentAccountNumber,
+        bank_code: transaction.paymentBank, // Make sure this is the bank code, not the name
+        currency: "NGN"
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+        }
+      }
+    );
+
+    if (!recipientResponse.data.status) {
+      throw new Error("Failed to create transfer recipient: " +
+        (recipientResponse.data.message || "Unknown error"));
+    }
+
+    const recipientCode = recipientResponse.data.data.recipient_code;
+    console.log("Transfer recipient created with code:", recipientCode);
+
+    // Now initiate the transfer
+    const transferResponse = await axios.post(
+      "https://api.paystack.co/transfer",
+      {
+        source: "balance",
+        amount: transaction.paymentAmount * 100, // Convert to kobo
+        recipient: recipientCode,
+        reason: `Payout for transaction ${transaction._id}`
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+        }
+      }
+    );
+
+    if (!transferResponse.data.status) {
+      throw new Error("Failed to initiate transfer: " +
+        (transferResponse.data.message || "Unknown error"));
+    }
+
+    console.log("Transfer initiated successfully:", transferResponse.data);
+    return transferResponse.data;
+  } catch (error) {
+    console.error("Error in triggerPayout:", error);
+    throw error;
+  }
 };

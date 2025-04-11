@@ -28,7 +28,7 @@ const corsOptions = {
   origin: "*",
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   credentials: false,
-  allowedHeaders: "Content-Type, Authorization, auth-token",
+  allowedHeaders: "Content-Type, Authorization, auth-token, x-auth-token",
   optionsSuccessStatus: 204,
 };
 
@@ -36,7 +36,7 @@ app.use(cors(corsOptions));
 
 app.use(function (request, response, next) {
   response.header("Access-Control-Allow-Origin", "*");
-  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, auth-token, x-auth-token");
   next();
 });
 

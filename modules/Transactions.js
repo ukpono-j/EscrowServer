@@ -93,7 +93,7 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["active", "cancelled", "completed",],
+    enum: ["active", "cancelled", "completed", "pending"],
     default: "active",
   },
   paymentStatus: {
@@ -128,6 +128,11 @@ const transactionSchema = new mongoose.Schema({
       type: String,
       unique: true,
       sparse: true  // This allows multiple null values
+    },
+    payoutReference: {
+      type: String,
+      unique: true,
+      sparse: true
     },
   // Add waybill details
   // waybillDetails: {
