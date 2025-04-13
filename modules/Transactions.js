@@ -134,6 +134,15 @@ const transactionSchema = new mongoose.Schema({
       unique: true,
       sparse: true
     },
+    paymentBankCode: {
+      type: String,
+      required: true,
+    },
+    payoutError: {
+      type: String,
+      default: null
+    },
+    
   // Add waybill details
   // waybillDetails: {
   //   item: String,

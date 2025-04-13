@@ -6,7 +6,7 @@ const { body, validationResult } = require('express-validator');
 const Transaction = require('../modules/Transactions');
 const mongoose = require('mongoose');
 const Chatroom = require("../modules/Chatroom");
-const upload = require('../middlewares/upload'); 
+const upload = require('../middlewares/upload');
 const VerifyPaystackSignature = require('../utils/VerifyPaystackSignature');
 
 
@@ -44,7 +44,7 @@ router.get('/get-transaction', authenticateUser, transactionController.getUserTr
 router.put('/complete-transaction/:transactionId', authenticateUser, transactionController.completeTransaction);
 router.get('/complete-transaction', authenticateUser, transactionController.getCompletedTransactions);
 
-router.put("/cancel/:transactionId",authenticateUser, transactionController.cancelTransaction);
+router.put("/cancel/:transactionId", authenticateUser, transactionController.cancelTransaction);
 
 router.post('/join-transaction', authenticateUser, transactionController.joinTransaction);
 
@@ -54,12 +54,12 @@ router.post('/update-payment-status', authenticateUser, transactionController.up
 // ======================= Create Chat Room Endpoint ================================
 router.post('/create-chatroom', authenticateUser, transactionController.createChatRoom);
 
-
+router.get('/banks', authenticateUser, transactionController.getBanks);
 // samething here, I will have to look at the endpoint to be sure that they are not doing the samething as the waybill endpoints
 router.get("/:id", authenticateUser, transactionController.getTransactionById);
 
 // router.post("/submit-waybill", authenticateUser, transactionController.submitWaybillDetails);
-router.post('/submit-waybill',authenticateUser, upload.single('image'), transactionController.submitWaybillDetails);
+router.post('/submit-waybill', authenticateUser, upload.single('image'), transactionController.submitWaybillDetails);
 
 // Add this route to get waybill details /// rememeber to remove this, it feels like different endpoints doing the samething.
 router.get('/waybill-details/:transactionId', authenticateUser, transactionController.getWaybillDetails);
@@ -72,6 +72,9 @@ router.post('/initiate', transactionController.initiatePayment);
 router.post('/confirm', authenticateUser, transactionController.confirmTransaction);
 router.post('/webhook/paystack', express.json({ verify: VerifyPaystackSignature }), transactionController.handleWebhook);
 router.get('/check-funded', authenticateUser, transactionController.checkTransactionFunded);
+router.post('/bank/verify', authenticateUser, transactionController.verifyBankAccount);
+
+
 // router.post('/webhook/paystack', 
 //     express.raw({type: 'application/json'}), // Important: Use raw for proper signature verification
 //     VerifyPaystackSignature,

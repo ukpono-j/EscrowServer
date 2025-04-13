@@ -18,6 +18,7 @@ exports.createTransaction = async (req, res) => {
       selectedUserType,
       willUseCourier,
       paymentBank,
+      paymentBankCode,
       paymentAccountNumber,
     } = req.body;
 
@@ -34,6 +35,7 @@ exports.createTransaction = async (req, res) => {
       selectedUserType,
       willUseCourier,
       paymentBank,
+      paymentBankCode,
       paymentAccountNumber,
       createdAt: createdAt,
     });
@@ -966,36 +968,36 @@ exports.confirmTransaction = async (req, res) => {
 
 
     // If user is the creator and there are no participants yet
-    if (userIdString === creatorIdString && 
+    if (userIdString === creatorIdString &&
       (!transaction.participants || transaction.participants.length === 0)) {
-    return res.status(400).json({
-      message: "There is no participant in this transaction. Please wait for someone to join."
-    });
-  }
-const isCreator = userIdString === creatorIdString;
+      return res.status(400).json({
+        message: "There is no participant in this transaction. Please wait for someone to join."
+      });
+    }
+    const isCreator = userIdString === creatorIdString;
 
-   // Determine user type and update appropriate confirmation flag
-   if (isCreator) {
-    // This is the transaction creator
-    if (transaction.selectedUserType === "buyer") {
-      transaction.buyerConfirmed = true;
-      console.log("Buyer confirmed transaction:", transactionId);
-    } else if (transaction.selectedUserType === "seller") {
-      transaction.sellerConfirmed = true;
-      console.log("Seller confirmed transaction:", transactionId);
+    // Determine user type and update appropriate confirmation flag
+    if (isCreator) {
+      // This is the transaction creator
+      if (transaction.selectedUserType === "buyer") {
+        transaction.buyerConfirmed = true;
+        console.log("Buyer confirmed transaction:", transactionId);
+      } else if (transaction.selectedUserType === "seller") {
+        transaction.sellerConfirmed = true;
+        console.log("Seller confirmed transaction:", transactionId);
+      }
+    } else {
+      // This is the participant (not the creator)
+      if (transaction.selectedUserType === "buyer") {
+        // If creator is buyer, other party is seller
+        transaction.sellerConfirmed = true;
+        console.log("Seller confirmed transaction:", transactionId);
+      } else if (transaction.selectedUserType === "seller") {
+        // If creator is seller, other party is buyer
+        transaction.buyerConfirmed = true;
+        console.log("Buyer confirmed transaction:", transactionId);
+      }
     }
-  } else {
-    // This is the participant (not the creator)
-    if (transaction.selectedUserType === "buyer") {
-      // If creator is buyer, other party is seller
-      transaction.sellerConfirmed = true;
-      console.log("Seller confirmed transaction:", transactionId);
-    } else if (transaction.selectedUserType === "seller") {
-      // If creator is seller, other party is buyer
-      transaction.buyerConfirmed = true;
-      console.log("Buyer confirmed transaction:", transactionId);
-    }
-  }
 
 
     // Check if both parties have confirmed
@@ -1005,6 +1007,18 @@ const isCreator = userIdString === creatorIdString;
 
       // Save before triggering payout to prevent duplicate payouts
       await transaction.save();
+
+      // before the triggerPayout call
+      console.log("About to trigger payout for transaction:", {
+        transactionId: transaction._id,
+        amount: transaction.paymentAmount,
+        isFunded: transaction.funded,
+        bankDetails: {
+          name: transaction.paymentName,
+          accountNumber: transaction.paymentAccountNumber,
+          bankCode: transaction.paymentBankCode
+        }
+      });
 
       // Trigger payout to seller
       try {
@@ -1026,6 +1040,19 @@ const isCreator = userIdString === creatorIdString;
         });
       } catch (payoutError) {
         console.error("Payout failed:", payoutError);
+
+        // Update transaction to reflect payout failure but keep completed status
+        transaction.payoutError = payoutError.message;
+        await transaction.save();
+
+        // Create a manual task for admin review
+        try {
+          // Here you would normally create a task for admin
+          console.log("Creating admin review task for failed payout of transaction:", transaction._id);
+          // await AdminTask.create({ type: 'PAYOUT_FAILURE', transactionId: transaction._id, error: payoutError.message });
+        } catch (err) {
+          console.error("Failed to create admin task:", err);
+        }
 
         // Still mark as completed but note the payout failure
         return res.status(200).json({
@@ -1057,6 +1084,44 @@ const isCreator = userIdString === creatorIdString;
   }
 };
 
+
+
+// Function to fetch banks from Paystack
+exports.getBanks = async (req, res) => {
+  try {
+    console.log("Attempting to fetch banks from Paystack...");
+
+    if (!process.env.PAYSTACK_SECRET) {
+      console.error("PAYSTACK_SECRET is not defined in environment variables");
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+
+    const response = await axios.get(
+      'https://api.paystack.co/bank',
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+        }
+      }
+    );
+
+    console.log("Paystack API responded with status:", response.status);
+
+    if (response.data.status) {
+      return res.json(response.data);
+    }
+
+    return res.status(400).json({ message: 'Failed to fetch banks' });
+  } catch (error) {
+    console.error('Error fetching banks:', error);
+    return res.status(500).json({
+      message: 'Server error while fetching banks',
+      error: error.message
+    });
+  }
+};
+
 // First, get the list of banks to find the correct code
 const getBankCode = async (bankName) => {
   try {
@@ -1068,13 +1133,13 @@ const getBankCode = async (bankName) => {
         }
       }
     );
-    
+
     if (response.data.status) {
       // Find the bank with matching name (case insensitive)
       const bankData = response.data.data.find(
         bank => bank.name.toLowerCase() === bankName.toLowerCase()
       );
-      
+
       return bankData ? bankData.code : null;
     }
     return null;
@@ -1086,42 +1151,100 @@ const getBankCode = async (bankName) => {
 
 const triggerPayout = async (transaction) => {
   try {
-    // First, we need to create a transfer recipient
+    // Validate all required fields are present
+    if (!transaction.paymentName) {
+      throw new Error("Missing payment name for transaction");
+    }
+    if (!transaction.paymentAccountNumber) {
+      throw new Error("Missing account number for transaction");
+    }
+    if (!transaction.paymentBankCode) {
+      throw new Error("Missing bank code for transaction");
+    }
+    if (!transaction.paymentAmount || transaction.paymentAmount <= 0) {
+      throw new Error("Invalid payment amount for transaction");
+    }
+
+    console.log("Creating transfer recipient with details:", {
+      type: "nuban",
+      name: transaction.paymentName,
+      account_number: transaction.paymentAccountNumber,
+      bank_code: transaction.paymentBankCode,
+      amount: transaction.paymentAmount * 100
+    });
+
+    // Enhanced axios config with timeout
+    const axiosConfig = {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+      },
+      timeout: 30000 // 30 seconds timeout
+    };
+
+
+
+    // First, we need to create a transfer recipient with retry logic
     console.log("Creating transfer recipient for transaction:", transaction._id);
 
-     // Get the correct bank code
-     let bankCode;
-     if (!transaction.paymentBankCode) {
-       // If you only have bank name stored, convert it to code
-       bankCode = await getBankCode(transaction.paymentBank);
-       if (!bankCode) {
-         throw new Error(`Could not find bank code for "${transaction.paymentBank}"`);
-       }
-     } else {
-       bankCode = transaction.paymentBankCode;
-     }
+    // Make sure we have the correct bank code
+    const bankCode = transaction.paymentBankCode;
+    if (!bankCode) {
+      throw new Error("Missing bank code for transaction");
+    }
 
-     
+    let recipientResponse;
+    const maxRetries = 3;
+    let retryCount = 0;
+
     // Get participant details (assuming this is the seller)
     // You'll need to adapt this based on how you store seller bank details
     // This may require a query to your User model to get bank details
 
     // For this example, I'm assuming the seller bank details are stored in the transaction
-    const recipientResponse = await axios.post(
-      "https://api.paystack.co/transferrecipient",
-      {
-        type: "nuban",
-        name: transaction.paymentName, // Update with actual seller name field
-        account_number: transaction.paymentAccountNumber,
-        bank_code: transaction.paymentBank, // Make sure this is the bank code, not the name
-        currency: "NGN"
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    // const recipientResponse = await axios.post(
+    //   "https://api.paystack.co/transferrecipient",
+    //   {
+    //     type: "nuban",
+    //     name: transaction.paymentName, // Update with actual seller name field
+    //     account_number: transaction.paymentAccountNumber,
+    //     bank_code: transaction.paymentBankCode, // Make sure this is the bank code, not the name
+    //     currency: "NGN"
+    //   },
+    //   {
+    //     headers: {
+    //       Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    //     }
+    //   }
+    // );
+
+    while (retryCount < maxRetries) {
+      try {
+        recipientResponse = await axios.post(
+          "https://api.paystack.co/transferrecipient",
+          {
+            type: "nuban",
+            name: transaction.paymentName,
+            account_number: transaction.paymentAccountNumber,
+            bank_code: transaction.paymentBankCode,
+            currency: "NGN"
+          },
+          axiosConfig
+        );
+
+        // If request succeeded, break the retry loop
+        break;
+      } catch (error) {
+        retryCount++;
+        console.log(`Recipient creation attempt ${retryCount} failed:`, error.message);
+
+        if (retryCount >= maxRetries) {
+          throw new Error(`Failed to create transfer recipient after ${maxRetries} attempts: ${error.message}`);
         }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
-    );
+    }
 
     if (!recipientResponse.data.status) {
       throw new Error("Failed to create transfer recipient: " +
@@ -1131,21 +1254,61 @@ const triggerPayout = async (transaction) => {
     const recipientCode = recipientResponse.data.data.recipient_code;
     console.log("Transfer recipient created with code:", recipientCode);
 
-    // Now initiate the transfer
-    const transferResponse = await axios.post(
-      "https://api.paystack.co/transfer",
-      {
-        source: "balance",
-        amount: transaction.paymentAmount * 100, // Convert to kobo
-        recipient: recipientCode,
-        reason: `Payout for transaction ${transaction._id}`
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    // Now initiate the transfer with retry logic
+    let transferResponse;
+    retryCount = 0;
+    // const transferResponse = await axios.post(
+    //   "https://api.paystack.co/transfer",
+    //   {
+    //     source: "balance",
+    //     amount: transaction.paymentAmount * 100, // Convert to kobo
+    //     recipient: recipientCode,
+    //     reason: `Payout for transaction ${transaction._id}`
+    //   },
+    //   {
+    //     headers: {
+    //       Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+    //     }
+    //   }
+    // );
+
+    while (retryCount < maxRetries) {
+      try {
+        transferResponse = await axios.post(
+          "https://api.paystack.co/transfer",
+          {
+            source: "balance",
+            amount: transaction.paymentAmount * 100, // Convert to kobo
+            recipient: recipientCode,
+            reason: `Payout for transaction ${transaction._id}`
+          },
+          axiosConfig
+        );
+
+        // If request succeeded, break the retry loop
+        break;
+      } catch (error) {
+        retryCount++;
+        console.log(`Transfer initiation attempt ${retryCount} failed:`, error.message);
+
+        if (retryCount >= maxRetries) {
+          throw new Error(`Failed to initiate transfer after ${maxRetries} attempts: ${error.message}`);
         }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
-    );
+    }
+
+
+    console.log("Transfer request details:", {
+      source: "balance",
+      amount: transaction.paymentAmount * 100,
+      recipient: recipientCode,
+      reason: `Payout for transaction ${transaction._id}`
+    });
+
+    console.log("Transfer response full data:", transferResponse.data);
 
     if (!transferResponse.data.status) {
       throw new Error("Failed to initiate transfer: " +
@@ -1157,5 +1320,47 @@ const triggerPayout = async (transaction) => {
   } catch (error) {
     console.error("Error in triggerPayout:", error);
     throw error;
+  }
+};
+
+
+
+// Add this new function to your controller
+exports.verifyBankAccount = async (req, res) => {
+  try {
+    const { account_number, bank_code } = req.body;
+
+    if (!account_number || !bank_code) {
+      return res.status(400).json({ message: 'Account number and bank code are required' });
+    }
+
+    const response = await axios.get(
+      `https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${bank_code}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
+        }
+      }
+    );
+
+    console.log("Bank verification response:", response.data);
+
+    if (response.data.status) {
+      return res.json({
+        status: true,
+        data: response.data.data
+      });
+    }
+
+    return res.status(400).json({
+      message: 'Failed to verify account',
+      error: response.data.message
+    });
+  } catch (error) {
+    console.error('Error verifying bank account:', error);
+    return res.status(500).json({
+      message: 'Server error while verifying bank account',
+      error: error.message
+    });
   }
 };
