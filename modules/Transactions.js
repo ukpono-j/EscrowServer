@@ -106,43 +106,44 @@ const transactionSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-    // Nested waybill details schema
-    waybillDetails: { type: waybillSchema },
-    buyerConfirmed: {
-      type: Boolean,
-      default: false,
-    },
-    sellerConfirmed: {
-      type: Boolean,
-      default: false,
-    },
-    payoutReleased: {
-      type: Boolean,
-      default: false
-    },
-    funded: {
-      type: Boolean,
-      default: false,
-    },
-    paymentReference: {
-      type: String,
-      unique: true,
-      sparse: true  // This allows multiple null values
-    },
-    payoutReference: {
-      type: String,
-      unique: true,
-      sparse: true
-    },
-    paymentBankCode: {
-      type: String,
-      required: true,
-    },
-    payoutError: {
-      type: String,
-      default: null
-    },
-    
+  // Nested waybill details schema
+  waybillDetails: { type: waybillSchema },
+  buyerConfirmed: {
+    type: Boolean,
+    default: false,
+  },
+  sellerConfirmed: {
+    type: Boolean,
+    default: false,
+  },
+  payoutReleased: {
+    type: Boolean,
+    default: false
+  },
+  funded: {
+    type: Boolean,
+    default: false,
+  },
+  paymentReference: {
+    type: String,
+    unique: true,
+    sparse: true  // This allows multiple null values
+  },
+  payoutReference: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  paymentBankCode: {
+    type: String,
+    required: true,
+    default: "000"
+  },
+  payoutError: {
+    type: String,
+    default: null
+  },
+
   // Add waybill details
   // waybillDetails: {
   //   item: String,
