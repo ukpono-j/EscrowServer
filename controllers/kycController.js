@@ -3,12 +3,12 @@ const KYC = require('../modules/Kyc');
 // Controller to handle KYC submission
 const submitKYC = async (req, res) => {
   try {
-    console.log("Submitting KYC...");
+    // console.log("Submitting KYC...");
 
     const { documentType, firstName, lastName, dateOfBirth } = req.body;
     const { documentPhoto, personalPhoto } = req.files;
 
-    console.log("Received form data and files:", req.body, req.files);
+    // console.log("Received form data and files:", req.body, req.files);
 
     // Ensure user ID is available (e.g., from authentication)
     const userId = req.user.id;
@@ -48,7 +48,7 @@ const submitKYC = async (req, res) => {
 
     await newKYC.save();
 
-    console.log("KYC data saved:", newKYC);
+    // console.log("KYC data saved:", newKYC);
 
     res.status(201).json({ success: true, message: "KYC submitted successfully" });
   } catch (error) {

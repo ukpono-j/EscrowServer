@@ -84,11 +84,11 @@ app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')
 
 
 io.on("connection", (socket) => {
-  console.log("Socket connected:", socket.id);
+  // console.log("Socket connected:", socket.id);
 
   socket.on("join-room", (roomId, userId) => {
     socket.join(roomId);
-    console.log(`User ${userId} joined room ${roomId}`);
+    // console.log(`User ${userId} joined room ${roomId}`);
 
     socket.on("message", (message) => {
       io.to(roomId).emit("message", message);
@@ -96,7 +96,7 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
       io.to(roomId).emit("user-disconnected", userId);
-      console.log(`User ${userId} disconnected from room ${roomId}`);
+      // console.log(`User ${userId} disconnected from room ${roomId}`);
     });
   });
 });
@@ -122,7 +122,7 @@ app.use('/api/messages', messageRoutes);
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running on port ${PORT}`);
+  // console.log(`Server is running on port ${PORT}`);
 });
 
 // Attach socket.io to the server

@@ -5,7 +5,7 @@ module.exports = function(req, res, next) {
     try {
         const signature = req.headers["x-paystack-signature"];
         if (!signature) {
-            console.log("No Paystack signature found in headers");
+            // console.log("No Paystack signature found in headers");
             return res.status(400).send("No signature");
         }
 
@@ -18,11 +18,11 @@ module.exports = function(req, res, next) {
                           .update(body)
                           .digest("hex");
         
-        console.log("Received signature:", signature);
-        console.log("Computed hash:", hash);
+        // console.log("Received signature:", signature);
+        // console.log("Computed hash:", hash);
         
         if (signature !== hash) {
-            console.log("Invalid signature");
+            // console.log("Invalid signature");
             return res.status(400).send("Invalid signature");
         }
         
@@ -31,7 +31,7 @@ module.exports = function(req, res, next) {
             req.body = JSON.parse(req.body);
         }
         
-        console.log("Signature verified successfully");
+        // console.log("Signature verified successfully");
         next();
     } catch (error) {
         console.error("Signature verification error:", error);

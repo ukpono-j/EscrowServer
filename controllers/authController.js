@@ -80,10 +80,10 @@ const setupEtherealAccount = async () => {
       greetingTimeout: 5000,
     });
 
-    console.log('Ethereal Email test account created:');
-    console.log(`- Email: ${testAccount.user}`);
-    console.log(`- Password: ${testAccount.pass}`);
-    console.log('View messages at: https://ethereal.email');
+    // console.log('Ethereal Email test account created:');
+    // console.log(`- Email: ${testAccount.user}`);
+    // console.log(`- Password: ${testAccount.pass}`);
+    // console.log('View messages at: https://ethereal.email');
 
     return testTransporter;
   } catch (error) {
@@ -91,10 +91,10 @@ const setupEtherealAccount = async () => {
     // Fallback to a fake transport that just logs emails
     return {
       sendMail: (mailOptions) => {
-        console.log("EMAIL WOULD BE SENT IN PRODUCTION");
-        console.log("To:", mailOptions.to);
-        console.log("Subject:", mailOptions.subject);
-        console.log("OTP:", mailOptions.html.match(/\d{6}/)[0]);
+        // console.log("EMAIL WOULD BE SENT IN PRODUCTION");
+        // console.log("To:", mailOptions.to);
+        // console.log("Subject:", mailOptions.subject);
+        // console.log("OTP:", mailOptions.html.match(/\d{6}/)[0]);
         return Promise.resolve({ messageId: 'fake-message-id' });
       }
     };
@@ -128,9 +128,9 @@ exports.forgotPassword = async (req, res) => {
 
     // In development mode, skip actual email sending
     if (process.env.NODE_ENV !== 'production') {
-      console.log('=========================================');
-      console.log(`DEVELOPMENT MODE - Password Reset OTP for ${email}: ${otp}`);
-      console.log('=========================================');
+      // console.log('=========================================');
+      // console.log(`DEVELOPMENT MODE - Password Reset OTP for ${email}: ${otp}`);
+      // console.log('=========================================');
 
       return res.status(200).json({
         success: true,
@@ -253,7 +253,7 @@ exports.resetPassword = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("Received login request for email:", email);
+    // console.log("Received login request for email:", email);
     const user = await UserModel.findOne({ email: email });
 
     if (user && bcrypt.compareSync(password, user.password)) {

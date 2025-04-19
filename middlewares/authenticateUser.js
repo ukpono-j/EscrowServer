@@ -5,7 +5,7 @@ const User = require('../modules/Users');
 const authenticateUser = async (req, res, next) => {
   const token = req.header("auth-token");
 
-  console.log("Received Token:", token); // Debug log
+  // console.log("Received Token:", token); // Debug log
 
   if (!token) {
     return res.status(401).json({ error: "No authentication token provided" });
@@ -26,7 +26,7 @@ const authenticateUser = async (req, res, next) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    console.log("Authenticated User:", user.email || user._id);
+    // console.log("Authenticated User:", user.email || user._id);
     req.user = user;
     next(); // Continue to the next middleware or route handler
   } catch (error) {

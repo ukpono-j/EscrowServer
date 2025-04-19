@@ -54,7 +54,7 @@ exports.createTransaction = async (req, res) => {
     await buyerNotification.save();
 
     // Log the notification to confirm it was created
-    console.log('Notification created:', buyerNotification);
+    // console.log('Notification created:', buyerNotification);
 
     // Create a new chatroom associated with the transaction
     const newChatroom = new Chatroom({
@@ -124,7 +124,7 @@ exports.completeTransaction = async (req, res) => {
     // Update the transaction's status to cancelled
     transaction.status = "completed";
     await transaction.save(); // Save the updated transaction
-    console.log('Transaction status updated to completed:', transaction);
+    // console.log('Transaction status updated to completed:', transaction);
 
     return res.status(200).json({
       // message: "Transaction successfully cancelled",
@@ -198,18 +198,18 @@ exports.joinTransaction = async (req, res) => {
     const { transactionId } = req.body;
     const { id: userId } = req.user;
 
-    console.log('Received transactionId:', transactionId);
-    console.log('Received userId:', userId);
+    // console.log('Received transactionId:', transactionId);
+    // console.log('Received userId:', userId);
 
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
-      console.log('Invalid transaction ID');
+      // console.log('Invalid transaction ID');
       return res.status(400).json({ error: "Invalid transaction ID" });
     }
 
 
 
     // Log the query being used
-    console.log(`Attempting to find transaction with ID: ${transactionId}`);
+    // console.log(`Attempting to find transaction with ID: ${transactionId}`);
 
     // const transaction = await Transaction.findById(transactionId);
     // console.log('Found Transaction:', transaction);
@@ -221,12 +221,12 @@ exports.joinTransaction = async (req, res) => {
       ]
     });
 
-    console.log('Found Transaction:', transaction);
+    // console.log('Found Transaction:', transaction);
 
     if (!transaction) {
       // Check if any transactions exist at all (for debugging)
       const count = await Transaction.countDocuments();
-      console.log(`Total transactions in database: ${count}`);
+      // console.log(`Total transactions in database: ${count}`);
 
       return res.status(404).json({
         error: "Transaction not found",
@@ -397,10 +397,10 @@ exports.getWaybillDetails = async (req, res) => {
 exports.getTransactionByChatroomId = async (req, res) => {
   try {
     const { chatroomId } = req.params;
-    console.log("Received chatroomId:", chatroomId); // Log the received chatroomId
+    // console.log("Received chatroomId:", chatroomId); // Log the received chatroomId
 
     if (!mongoose.Types.ObjectId.isValid(chatroomId)) {
-      console.log("Invalid chatroomId:", chatroomId); // Log invalid chatroomId case
+      // console.log("Invalid chatroomId:", chatroomId); // Log invalid chatroomId case
       return res.status(400).json({ message: "Invalid chatroom ID" });
     }
 
@@ -409,11 +409,11 @@ exports.getTransactionByChatroomId = async (req, res) => {
       .exec();
 
     if (!transaction) {
-      console.log("Transaction not found for chatroomId:", chatroomId); // Log transaction not found
+      // console.log("Transaction not found for chatroomId:", chatroomId); // Log transaction not found
       return res.status(404).json({ message: "Transaction not found" });
     }
 
-    console.log("Transaction found:", transaction); // Log the found transaction
+    // console.log("Transaction found:", transaction); // Log the found transaction
     res.status(200).json(transaction);
   } catch (error) {
     console.error("Error fetching transaction:", error);
@@ -426,32 +426,32 @@ exports.createChatRoom = async (req, res) => {
   const { transactionId } = req.body;
   const userId = req.user.id;
 
-  console.log("Received transactionId:", transactionId);
-  console.log("Authenticated userId:", userId);
+  // console.log("Received transactionId:", transactionId);
+  // console.log("Authenticated userId:", userId);
 
 
   try {
     // Validate request body
     if (!transactionId || !mongoose.Types.ObjectId.isValid(transactionId)) {
-      console.log("Invalid transaction ID:", transactionId);
+      // console.log("Invalid transaction ID:", transactionId);
       return res.status(400).json({ message: "Invalid transaction ID" });
     }
 
     if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-      console.log("Invalid user ID:", userId);
+      // console.log("Invalid user ID:", userId);
       return res.status(400).json({ message: "Invalid user ID" });
     }
 
     // Find the transaction
     let transaction = await Transaction.findById(transactionId).populate('participants');
     if (!transaction) {
-      console.log("Transaction not found for ID:", transactionId);
+      // console.log("Transaction not found for ID:", transactionId);
       return res.status(404).json({ message: "Transaction not found" });
     }
 
     // Check if chatroom already exists
     if (transaction.chatroomId) {
-      console.log("Chatroom already exists for transaction ID:", transactionId);
+      // console.log("Chatroom already exists for transaction ID:", transactionId);
       return res.status(200).json({ chatroomId: transaction.chatroomId });
     }
 
@@ -494,7 +494,7 @@ exports.cancelTransaction = async (req, res) => {
     // Update the transaction's status to cancelled
     transaction.status = "cancelled";
     await transaction.save(); // Save the updated transaction
-    console.log('Transaction status updated to cancelled:', transaction);
+    // console.log('Transaction status updated to cancelled:', transaction);
 
     return res.status(200).json({
       // message: "Transaction successfully cancelled",
@@ -554,12 +554,12 @@ exports.cancelTransaction = async (req, res) => {
 //   }
 // };
 exports.initiatePayment = async (req, res) => {
-  console.log('Initiate payment request received');
+  // console.log('Initiate payment request received');
 
   const { amount, transactionId, email } = req.body;
 
   // Log the received data
-  console.log(`Email: ${email}, Amount: ${amount}, Transaction ID: ${transactionId}`);
+  // console.log(`Email: ${email}, Amount: ${amount}, Transaction ID: ${transactionId}`);
 
   // Check if all required fields are provided
   if (!email || !amount || !transactionId) {
@@ -582,7 +582,7 @@ exports.initiatePayment = async (req, res) => {
       return res.status(404).json({ message: "Transaction not found" });
     }
 
-    console.log("✅ Found transaction:", transaction._id);
+    // console.log("✅ Found transaction:", transaction._id);
 
     // Step 3: Initialize payment with Paystack
     const response = await axios.post(
@@ -603,13 +603,13 @@ exports.initiatePayment = async (req, res) => {
     );
 
     // Log the Paystack response
-    console.log("Paystack response:", response.data);
+    // console.log("Paystack response:", response.data);
 
     // Step 4: Save Paystack reference to the transaction
     transaction.paymentReference = response.data.data.reference;
     await transaction.save();
 
-    console.log("✅ Saved payment reference:", transaction.paymentReference);
+    // console.log("✅ Saved payment reference:", transaction.paymentReference);
 
     // Return the authorization URL for the client
     res.json({
@@ -692,10 +692,10 @@ exports.initiatePayment = async (req, res) => {
 exports.handleWebhook = async (req, res) => {
   try {
     const event = req.body;
-    console.log("⚡ Webhook received:", event.event);
+    // console.log("⚡ Webhook received:", event.event);
 
     // For detailed debugging
-    console.log("Webhook payload:", JSON.stringify(event, null, 2));
+    // console.log("Webhook payload:", JSON.stringify(event, null, 2));
 
     // Handle successful payments
     if (event.event === "charge.success") {
@@ -712,19 +712,19 @@ exports.handleWebhook = async (req, res) => {
 
       // Try to find transaction by ID from metadata
       if (transactionId && mongoose.Types.ObjectId.isValid(transactionId)) {
-        console.log(`🔍 Searching by transactionId: ${transactionId}`);
+        // console.log(`🔍 Searching by transactionId: ${transactionId}`);
         transaction = await Transaction.findById(transactionId);
         if (transaction) {
-          console.log("✅ Found transaction by ID:", transaction._id);
+          // console.log("✅ Found transaction by ID:", transaction._id);
         }
       }
 
       // If not found by ID, try by reference
       if (!transaction) {
-        console.log(`🔍 Searching by paymentReference: ${reference}`);
+        // console.log(`🔍 Searching by paymentReference: ${reference}`);
         transaction = await Transaction.findOne({ paymentReference: reference });
         if (transaction) {
-          console.log("✅ Found transaction by reference:", transaction._id);
+          // console.log("✅ Found transaction by reference:", transaction._id);
         }
       }
 
@@ -739,7 +739,7 @@ exports.handleWebhook = async (req, res) => {
 
       // Check if already funded
       if (transaction.funded) {
-        console.log("ℹ️ Transaction already marked as funded:", transaction._id);
+        // console.log("ℹ️ Transaction already marked as funded:", transaction._id);
         return res.status(200).json({ message: "Transaction already funded" });
       }
 
@@ -751,7 +751,7 @@ exports.handleWebhook = async (req, res) => {
       transaction.paymentReference = reference;
       await transaction.save();
 
-      console.log(`💰 Transaction ${transaction._id} marked as funded`);
+      // console.log(`💰 Transaction ${transaction._id} marked as funded`);
       return res.status(200).json({ message: "Transaction updated successfully" });
     }
 
@@ -806,7 +806,7 @@ exports.confirmTransaction = async (req, res) => {
     const { transactionId } = req.body;
     const user = req.user;
 
-    console.log("confirmTransaction controller, Authenticated User:", user.email);
+    // console.log("confirmTransaction controller, Authenticated User:", user.email);
 
     // Check if user is defined
     if (!user || !user._id) {
@@ -853,9 +853,9 @@ exports.confirmTransaction = async (req, res) => {
     const creatorIdString = transaction.userId._id ? transaction.userId._id.toString() : transaction.userId.toString();
 
     // Output for debugging
-    console.log("User ID (from token):", userIdString);
-    console.log("Transaction creator ID:", creatorIdString);
-    console.log("Participant IDs in transaction:", transaction.participants.map(p => p._id ? p._id.toString() : 'Invalid participant'));
+    // console.log("User ID (from token):", userIdString);
+    // console.log("Transaction creator ID:", creatorIdString);
+    // console.log("Participant IDs in transaction:", transaction.participants.map(p => p._id ? p._id.toString() : 'Invalid participant'));
 
 
     // If user is the creator and there are no participants yet
@@ -872,21 +872,21 @@ exports.confirmTransaction = async (req, res) => {
       // This is the transaction creator
       if (transaction.selectedUserType === "buyer") {
         transaction.buyerConfirmed = true;
-        console.log("Buyer confirmed transaction:", transactionId);
+        // console.log("Buyer confirmed transaction:", transactionId);
       } else if (transaction.selectedUserType === "seller") {
         transaction.sellerConfirmed = true;
-        console.log("Seller confirmed transaction:", transactionId);
+        // console.log("Seller confirmed transaction:", transactionId);
       }
     } else {
       // This is the participant (not the creator)
       if (transaction.selectedUserType === "buyer") {
         // If creator is buyer, other party is seller
         transaction.sellerConfirmed = true;
-        console.log("Seller confirmed transaction:", transactionId);
+        // console.log("Seller confirmed transaction:", transactionId);
       } else if (transaction.selectedUserType === "seller") {
         // If creator is seller, other party is buyer
         transaction.buyerConfirmed = true;
-        console.log("Buyer confirmed transaction:", transactionId);
+        // console.log("Buyer confirmed transaction:", transactionId);
       }
     }
 
@@ -914,7 +914,7 @@ exports.confirmTransaction = async (req, res) => {
       // Trigger payout to seller
       try {
         const payoutResult = await triggerPayout(transaction);
-        console.log("Payout initiated:", payoutResult);
+        // console.log("Payout initiated:", payoutResult);
 
         // Optionally update the transaction with payout reference
         if (payoutResult && payoutResult.data && payoutResult.data.transfer_code) {
@@ -939,7 +939,7 @@ exports.confirmTransaction = async (req, res) => {
         // Create a manual task for admin review
         try {
           // Here you would normally create a task for admin
-          console.log("Creating admin review task for failed payout of transaction:", transaction._id);
+          // console.log("Creating admin review task for failed payout of transaction:", transaction._id);
           // await AdminTask.create({ type: 'PAYOUT_FAILURE', transactionId: transaction._id, error: payoutError.message });
         } catch (err) {
           console.error("Failed to create admin task:", err);
@@ -980,7 +980,7 @@ exports.confirmTransaction = async (req, res) => {
 // Function to fetch banks from Paystack
 exports.getBanks = async (req, res) => {
   try {
-    console.log("Attempting to fetch banks from Paystack...");
+    // console.log("Attempting to fetch banks from Paystack...");
 
     if (!process.env.PAYSTACK_SECRET) {
       console.error("PAYSTACK_SECRET is not defined in environment variables");
@@ -997,7 +997,7 @@ exports.getBanks = async (req, res) => {
       }
     );
 
-    console.log("Paystack API responded with status:", response.status);
+    // console.log("Paystack API responded with status:", response.status);
 
     if (response.data.status) {
       return res.json(response.data);
@@ -1075,7 +1075,7 @@ const triggerPayout = async (transaction) => {
 
 
     // First, we need to create a transfer recipient with retry logic
-    console.log("Creating transfer recipient for transaction:", transaction._id);
+    // console.log("Creating transfer recipient for transaction:", transaction._id);
 
     // Make sure we have the correct bank code
     const bankCode = transaction.paymentBankCode;
@@ -1126,7 +1126,7 @@ const triggerPayout = async (transaction) => {
         break;
       } catch (error) {
         retryCount++;
-        console.log(`Recipient creation attempt ${retryCount} failed:`, error.message);
+        // console.log(`Recipient creation attempt ${retryCount} failed:`, error.message);
 
         if (retryCount >= maxRetries) {
           throw new Error(`Failed to create transfer recipient after ${maxRetries} attempts: ${error.message}`);
@@ -1143,7 +1143,7 @@ const triggerPayout = async (transaction) => {
     }
 
     const recipientCode = recipientResponse.data.data.recipient_code;
-    console.log("Transfer recipient created with code:", recipientCode);
+    // console.log("Transfer recipient created with code:", recipientCode);
 
     // Now initiate the transfer with retry logic
     let transferResponse;
@@ -1180,7 +1180,7 @@ const triggerPayout = async (transaction) => {
         break;
       } catch (error) {
         retryCount++;
-        console.log(`Transfer initiation attempt ${retryCount} failed:`, error.message);
+        // console.log(`Transfer initiation attempt ${retryCount} failed:`, error.message);
 
         if (retryCount >= maxRetries) {
           throw new Error(`Failed to initiate transfer after ${maxRetries} attempts: ${error.message}`);
@@ -1199,14 +1199,14 @@ const triggerPayout = async (transaction) => {
       reason: `Payout for transaction ${transaction._id}`
     });
 
-    console.log("Transfer response full data:", transferResponse.data);
+    // console.log("Transfer response full data:", transferResponse.data);
 
     if (!transferResponse.data.status) {
       throw new Error("Failed to initiate transfer: " +
         (transferResponse.data.message || "Unknown error"));
     }
 
-    console.log("Transfer initiated successfully:", transferResponse.data);
+    // console.log("Transfer initiated successfully:", transferResponse.data);
     return transferResponse.data;
   } catch (error) {
     console.error("Error in triggerPayout:", error);
@@ -1234,7 +1234,7 @@ exports.verifyBankAccount = async (req, res) => {
       }
     );
 
-    console.log("Bank verification response:", response.data);
+    // console.log("Bank verification response:", response.data);
 
     if (response.data.status) {
       return res.json({

@@ -20,7 +20,7 @@ const fs = require("fs");
 require("dotenv").config();
 const path = require("path");
 
-console.log(process.env.JWT_SECRET);
+// console.log(process.env.JWT_SECRET);
 // app.use(compression());
 
 app.use(express.json());
@@ -53,7 +53,7 @@ mongoose
     useUnifiedTopology: true,
   })
   .then(() => {
-    console.log("Successfully connected to MongoDB");
+    // console.log("Successfully connected to MongoDB");
   })
   .catch((error) => {
     console.error("Error connecting to MongoDB: ", error);
@@ -116,7 +116,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("send-msg", (data) => {
-    console.log("sendmsg", { data });
+    // console.log("sendmsg", { data });
 
     const sendUserSocketId = app.get("onlineUsers").get(data.to);
 
@@ -149,12 +149,12 @@ io.on("connection", (socket) => {
 app.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log("Request Body:", req.body);
-    console.log("Received login request for email:", email);
+    // console.log("Request Body:", req.body);
+    // console.log("Received login request for email:", email);
     const user = await UserModel.findOne({ email: email });
 
-    console.log("Email:", email);
-    console.log("User:", user);
+    // console.log("Email:", email);
+    // console.log("User:", user);
 
     if (user && bcrypt.compareSync(password, user.password)) {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
@@ -596,7 +596,7 @@ app.get("/notifications", authenticateUser, async (req, res) => {
 app.post("/notifications", authenticateUser, async (req, res) => {
   try {
     const { title, message, transactionId } = req.body;
-    console.log("Received Notification Request:", req.body);
+    // console.log("Received Notification Request:", req.body);
     const { id: userId } = req.user;
 
     if (!title || !message || !transactionId) {
@@ -688,7 +688,7 @@ app.post(
         },
         { new: true }
       );
-      console.log(updatedUser);
+      // console.log(updatedUser);
       if (updatedUser) {
         res.status(200).json({ success: true, user: updatedUser });
       } else {
@@ -718,7 +718,7 @@ app.post("/send-message", authenticateUser, async (req, res) => {
 
     // Save the message to the database
     await newMessage.save();
-    console.log("New message sent:", newMessage);
+    // console.log("New message sent:", newMessage);
 
     res.status(201).json({ message: "Message sent successfully" });
   } catch (error) {
@@ -900,11 +900,11 @@ app.post(
   upload.single("media"),
   async (req, res) => {
     try {
-      console.log("Received a file upload request");
+      // console.log("Received a file upload request");
 
       // Get the user ID from the authenticated user's request object
       const { id: userId } = req.user;
-      console.log("User ID:", userId);
+      // console.log("User ID:", userId);
 
       const { to, from } = req.body;
 
@@ -967,7 +967,7 @@ app.get("/chat-message-uploads", authenticateUser, async (req, res) => {
       },
     }));
 
-    console.log("formated Message", formattedMessages);
+    // console.log("formated Message", formattedMessages);
 
     res.status(200).json(formattedMessages);
   } catch (error) {
@@ -1015,7 +1015,7 @@ app.post(
 
       // Save the KYC document
       await kyc.save();
-      console.log(kyc);
+      // console.log(kyc);
       res
         .status(201)
         .json({ success: true, message: "KYC submitted successfully" });
@@ -1051,7 +1051,7 @@ app.get('/kyc-details', authenticateUser, async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running on port ${PORT}`);
+  // console.log(`Server is running on port ${PORT}`);
 });
 
 // Attach socket.io to the server
