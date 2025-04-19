@@ -980,35 +980,40 @@ exports.confirmTransaction = async (req, res) => {
 // Function to fetch banks from Paystack
 exports.getBanks = async (req, res) => {
   try {
-    // console.log("Attempting to fetch banks from Paystack...");
-
+    // Set CORS headers specifically for this endpoint
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, auth-token");
+    
     if (!process.env.PAYSTACK_SECRET) {
       console.error("PAYSTACK_SECRET is not defined in environment variables");
-      return res.status(500).json({ message: 'Server configuration error' });
+      return res.status(500).json({ 
+        status: false, 
+        message: 'Server configuration error',
+        // Return empty data array instead of nothing
+        data: [] 
+      });
     }
-
 
     const response = await axios.get(
       'https://api.paystack.co/bank',
       {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
-        }
+        },
+        // Add timeout to prevent hanging requests
+        timeout: 8000
       }
     );
 
-    // console.log("Paystack API responded with status:", response.status);
-
-    if (response.data.status) {
-      return res.json(response.data);
-    }
-
-    return res.status(400).json({ message: 'Failed to fetch banks' });
+    return res.json(response.data);
   } catch (error) {
     console.error('Error fetching banks:', error);
+    // Return a structured response with empty data array
     return res.status(500).json({
+      status: false,
       message: 'Server error while fetching banks',
-      error: error.message
+      error: error.message,
+      data: []
     });
   }
 };
@@ -1216,13 +1221,16 @@ const triggerPayout = async (transaction) => {
 
 
 
-// Add this new function to your controller
+// Function to verify bank account
 exports.verifyBankAccount = async (req, res) => {
   try {
     const { account_number, bank_code } = req.body;
 
     if (!account_number || !bank_code) {
-      return res.status(400).json({ message: 'Account number and bank code are required' });
+      return res.status(400).json({ 
+        status: false, 
+        message: 'Account number and bank code are required' 
+      });
     }
 
     const response = await axios.get(
@@ -1230,28 +1238,23 @@ exports.verifyBankAccount = async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET}`
-        }
+        },
+        timeout: 8000
       }
     );
 
-    // console.log("Bank verification response:", response.data);
-
-    if (response.data.status) {
-      return res.json({
-        status: true,
-        data: response.data.data
-      });
-    }
-
-    return res.status(400).json({
-      message: 'Failed to verify account',
-      error: response.data.message
-    });
+    return res.json(response.data);
   } catch (error) {
     console.error('Error verifying bank account:', error);
-    return res.status(500).json({
-      message: 'Server error while verifying bank account',
-      error: error.message
+    // More descriptive error messages
+    let message = 'Failed to verify account';
+    if (error.response && error.response.data) {
+      message = error.response.data.message || message;
+    }
+    
+    return res.status(error.response?.status || 500).json({
+      status: false,
+      message: message
     });
   }
 };
