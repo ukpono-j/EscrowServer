@@ -250,18 +250,47 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+// exports.login = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     // console.log("Received login request for email:", email);
+//     const user = await UserModel.findOne({ email: email });
+
+//     if (user && bcrypt.compareSync(password, user.password)) {
+//       // Create a JWT with proper expiration (8 hours)
+//       const token = jwt.sign(
+//         { id: user._id },
+//         process.env.JWT_SECRET,
+//         { expiresIn: '8h' }  // Token expires in 8 hours
+//       );
+
+//       res.header("auth-token", token).json({ message: "Login successful!", token });
+//     } else {
+//       res.status(401).json({ error: "Invalid Credentials" });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     // console.log("Received login request for email:", email);
     const user = await UserModel.findOne({ email: email });
 
-    if (user && bcrypt.compareSync(password, user.password)) {
-      // Create a JWT with proper expiration (8 hours)
+    if (!user) {
+      // If user doesn't exist, return 404 status
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (bcrypt.compareSync(password, user.password)) {
+      // Create a JWT with longer expiration (7 days)
       const token = jwt.sign(
         { id: user._id },
         process.env.JWT_SECRET,
-        { expiresIn: '8h' }  // Token expires in 8 hours
+        { expiresIn: '7d' }  // Token expires in 7 days instead of 8 hours
       );
 
       res.header("auth-token", token).json({ message: "Login successful!", token });
@@ -273,6 +302,7 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
 
 exports.register = async (req, res) => {
   try {

@@ -31,6 +31,11 @@ const authenticateUser = async (req, res, next) => {
     next(); // Continue to the next middleware or route handler
   } catch (error) {
     console.error("Authentication error:", error);
+    // Send a specific error message for token expiration
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Token expired", tokenExpired: true });
+    }
+
     res.status(401).json({ error: "Invalid token" });
   }
 };

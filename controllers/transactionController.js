@@ -801,12 +801,188 @@ exports.checkTransactionFunded = async (req, res) => {
 };
 
 
+// exports.confirmTransaction = async (req, res) => {
+//   try {
+//     const { transactionId } = req.body;
+//     const user = req.user;
+
+//     // console.log("confirmTransaction controller, Authenticated User:", user.email);
+
+//     // Check if user is defined
+//     if (!user || !user._id) {
+//       return res.status(401).json({ message: "User not authenticated or user ID missing" });
+//     }
+
+//     // Validate the transaction ID
+//     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+//       return res.status(400).json({ message: "Invalid transaction ID format" });
+//     }
+
+//     // Find the transaction and populate participant details
+//     // const transaction = await Transaction.findById(transactionId)
+//     //   .populate('userId', 'name email')
+//     //   .populate('participants', 'name email');
+
+//     // Find the transaction and populate participant details
+//     const transaction = await Transaction.findById(transactionId)
+//       .populate('userId', 'firstName lastName email')
+//       .populate('participants', 'firstName lastName email');
+
+//     if (!transaction) {
+//       return res.status(404).json({ message: "Transaction not found" });
+//     }
+
+//     // Check if transaction has userId before comparing
+//     if (!transaction.userId) {
+//       return res.status(400).json({ message: "Transaction has no user ID" });
+//     }
+
+//     // // If user is the creator and there are no participants yet
+//     // if (
+//     //   user._id.toString() === transaction.userId.toString() &&
+//     //   (!transaction.participants || transaction.participants.length === 0)
+//     // ) {
+//     //   return res.status(400).json({
+//     //     message: "There is no participant in this transaction. Please wait for someone to join."
+//     //   });
+//     // }
+
+//     // Convert user ID to string for consistent comparison
+//     const userIdString = user.id.toString();
+
+//     const creatorIdString = transaction.userId._id ? transaction.userId._id.toString() : transaction.userId.toString();
+
+//     // Output for debugging
+//     // console.log("User ID (from token):", userIdString);
+//     // console.log("Transaction creator ID:", creatorIdString);
+//     // console.log("Participant IDs in transaction:", transaction.participants.map(p => p._id ? p._id.toString() : 'Invalid participant'));
+
+
+//     // If user is the creator and there are no participants yet
+//     if (userIdString === creatorIdString &&
+//       (!transaction.participants || transaction.participants.length === 0)) {
+//       return res.status(400).json({
+//         message: "There is no participant in this transaction. Please wait for someone to join."
+//       });
+//     }
+//     const isCreator = userIdString === creatorIdString;
+
+//     // Determine user type and update appropriate confirmation flag
+//     if (isCreator) {
+//       // This is the transaction creator
+//       if (transaction.selectedUserType === "buyer") {
+//         transaction.buyerConfirmed = true;
+//         // console.log("Buyer confirmed transaction:", transactionId);
+//       } else if (transaction.selectedUserType === "seller") {
+//         transaction.sellerConfirmed = true;
+//         // console.log("Seller confirmed transaction:", transactionId);
+//       }
+//     } else {
+//       // This is the participant (not the creator)
+//       if (transaction.selectedUserType === "buyer") {
+//         // If creator is buyer, other party is seller
+//         transaction.sellerConfirmed = true;
+//         // console.log("Seller confirmed transaction:", transactionId);
+//       } else if (transaction.selectedUserType === "seller") {
+//         // If creator is seller, other party is buyer
+//         transaction.buyerConfirmed = true;
+//         // console.log("Buyer confirmed transaction:", transactionId);
+//       }
+//     }
+
+
+//     // Check if both parties have confirmed
+//     if (transaction.buyerConfirmed && transaction.sellerConfirmed && !transaction.payoutReleased) {
+//       transaction.status = "completed";
+//       transaction.payoutReleased = true;
+
+//       // Save before triggering payout to prevent duplicate payouts
+//       await transaction.save();
+
+//       // before the triggerPayout call
+//       console.log("About to trigger payout for transaction:", {
+//         transactionId: transaction._id,
+//         amount: transaction.paymentAmount,
+//         isFunded: transaction.funded,
+//         bankDetails: {
+//           name: transaction.paymentName,
+//           accountNumber: transaction.paymentAccountNumber,
+//           bankCode: transaction.paymentBankCode
+//         }
+//       });
+
+//       // Trigger payout to seller
+//       try {
+//         const payoutResult = await triggerPayout(transaction);
+//         // console.log("Payout initiated:", payoutResult);
+
+//         // Optionally update the transaction with payout reference
+//         if (payoutResult && payoutResult.data && payoutResult.data.transfer_code) {
+//           transaction.payoutReference = payoutResult.data.transfer_code;
+//           await transaction.save();
+//         }
+
+//         return res.status(200).json({
+//           message: "Transaction completed and payout initiated",
+//           transaction,
+//           buyerConfirmed: transaction.buyerConfirmed,
+//           sellerConfirmed: transaction.sellerConfirmed,
+//           status: transaction.status
+//         });
+//       } catch (payoutError) {
+//         console.error("Payout failed:", payoutError);
+
+//         // Update transaction to reflect payout failure but keep completed status
+//         transaction.payoutError = payoutError.message;
+//         await transaction.save();
+
+//         // Create a manual task for admin review
+//         try {
+//           // Here you would normally create a task for admin
+//           // console.log("Creating admin review task for failed payout of transaction:", transaction._id);
+//           // await AdminTask.create({ type: 'PAYOUT_FAILURE', transactionId: transaction._id, error: payoutError.message });
+//         } catch (err) {
+//           console.error("Failed to create admin task:", err);
+//         }
+
+//         // Still mark as completed but note the payout failure
+//         return res.status(200).json({
+//           message: "Transaction completed but payout failed. Admin will review.",
+//           transaction,
+//           buyerConfirmed: transaction.buyerConfirmed,
+//           sellerConfirmed: transaction.sellerConfirmed,
+//           status: transaction.status,
+//           payoutError: payoutError.message
+//         });
+//       }
+//     } else {
+//       // Save transaction with updated confirmation status
+//       await transaction.save();
+
+//       return res.status(200).json({
+//         message: "Confirmation received",
+//         buyerConfirmed: transaction.buyerConfirmed,
+//         sellerConfirmed: transaction.sellerConfirmed,
+//         status: transaction.status
+//       });
+//     }
+//   } catch (error) {
+//     console.error("Error in confirmTransaction:", error);
+//     return res.status(500).json({
+//       message: "Server error processing confirmation",
+//       error: error.message
+//     });
+//   }
+// };
+
+
+
+// Function to fetch banks from Paystack
+
 exports.confirmTransaction = async (req, res) => {
   try {
     const { transactionId } = req.body;
     const user = req.user;
-
-    // console.log("confirmTransaction controller, Authenticated User:", user.email);
 
     // Check if user is defined
     if (!user || !user._id) {
@@ -817,11 +993,6 @@ exports.confirmTransaction = async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
       return res.status(400).json({ message: "Invalid transaction ID format" });
     }
-
-    // Find the transaction and populate participant details
-    // const transaction = await Transaction.findById(transactionId)
-    //   .populate('userId', 'name email')
-    //   .populate('participants', 'name email');
 
     // Find the transaction and populate participant details
     const transaction = await Transaction.findById(transactionId)
@@ -837,26 +1008,9 @@ exports.confirmTransaction = async (req, res) => {
       return res.status(400).json({ message: "Transaction has no user ID" });
     }
 
-    // // If user is the creator and there are no participants yet
-    // if (
-    //   user._id.toString() === transaction.userId.toString() &&
-    //   (!transaction.participants || transaction.participants.length === 0)
-    // ) {
-    //   return res.status(400).json({
-    //     message: "There is no participant in this transaction. Please wait for someone to join."
-    //   });
-    // }
-
     // Convert user ID to string for consistent comparison
     const userIdString = user.id.toString();
-
     const creatorIdString = transaction.userId._id ? transaction.userId._id.toString() : transaction.userId.toString();
-
-    // Output for debugging
-    // console.log("User ID (from token):", userIdString);
-    // console.log("Transaction creator ID:", creatorIdString);
-    // console.log("Participant IDs in transaction:", transaction.participants.map(p => p._id ? p._id.toString() : 'Invalid participant'));
-
 
     // If user is the creator and there are no participants yet
     if (userIdString === creatorIdString &&
@@ -865,31 +1019,82 @@ exports.confirmTransaction = async (req, res) => {
         message: "There is no participant in this transaction. Please wait for someone to join."
       });
     }
+    
     const isCreator = userIdString === creatorIdString;
+    let confirmingPartyName = "";
+    let otherPartyId = null;
+    let otherPartyName = "";
+
+    // Set confirming party name based on user data
+    if (user.firstName && user.lastName) {
+      confirmingPartyName = `${user.firstName} ${user.lastName}`;
+    } else {
+      confirmingPartyName = user.email;
+    }
 
     // Determine user type and update appropriate confirmation flag
     if (isCreator) {
       // This is the transaction creator
       if (transaction.selectedUserType === "buyer") {
         transaction.buyerConfirmed = true;
-        // console.log("Buyer confirmed transaction:", transactionId);
+        
+        // Find the seller (participant) for notifications
+        if (transaction.participants && transaction.participants.length > 0) {
+          const participant = transaction.participants[0];
+          otherPartyId = participant._id;
+          otherPartyName = participant.firstName && participant.lastName ? 
+            `${participant.firstName} ${participant.lastName}` : participant.email;
+        }
       } else if (transaction.selectedUserType === "seller") {
         transaction.sellerConfirmed = true;
-        // console.log("Seller confirmed transaction:", transactionId);
+        
+        // Find the buyer (participant) for notifications
+        if (transaction.participants && transaction.participants.length > 0) {
+          const participant = transaction.participants[0];
+          otherPartyId = participant._id;
+          otherPartyName = participant.firstName && participant.lastName ? 
+            `${participant.firstName} ${participant.lastName}` : participant.email;
+        }
       }
     } else {
       // This is the participant (not the creator)
       if (transaction.selectedUserType === "buyer") {
         // If creator is buyer, other party is seller
         transaction.sellerConfirmed = true;
-        // console.log("Seller confirmed transaction:", transactionId);
+        
+        // Set creator as other party for notifications
+        otherPartyId = transaction.userId._id;
+        otherPartyName = transaction.userId.firstName && transaction.userId.lastName ? 
+          `${transaction.userId.firstName} ${transaction.userId.lastName}` : transaction.userId.email;
       } else if (transaction.selectedUserType === "seller") {
-        // If creator is seller, other party is buyer
+        // If creator is buyer, other party is seller
         transaction.buyerConfirmed = true;
-        // console.log("Buyer confirmed transaction:", transactionId);
+        
+        // Set creator as other party for notifications
+        otherPartyId = transaction.userId._id;
+        otherPartyName = transaction.userId.firstName && transaction.userId.lastName ? 
+          `${transaction.userId.firstName} ${transaction.userId.lastName}` : transaction.userId.email;
       }
     }
-
+    
+    // Create notification for the other party
+    if (otherPartyId) {
+      // Create "pending completion" notification if the other party hasn't confirmed yet
+      if (!(transaction.buyerConfirmed && transaction.sellerConfirmed)) {
+        try {
+          await Notification.create({
+            userId: otherPartyId,
+            title: "Transaction Completion Pending",
+            message: `${confirmingPartyName} has confirmed completion of transaction "${transaction.paymentDescription}". Please review and complete this transaction.`,
+            status: "pending",
+            type: "transaction",
+            transactionId: transaction._id
+          });
+        } catch (notifError) {
+          console.error("Error creating notification:", notifError);
+        }
+      }
+    }
 
     // Check if both parties have confirmed
     if (transaction.buyerConfirmed && transaction.sellerConfirmed && !transaction.payoutReleased) {
@@ -898,6 +1103,33 @@ exports.confirmTransaction = async (req, res) => {
 
       // Save before triggering payout to prevent duplicate payouts
       await transaction.save();
+      
+      // Create notifications for both parties that transaction is complete
+      try {
+        // Notification for creator
+        await Notification.create({
+          userId: transaction.userId._id,
+          title: "Transaction Completed",
+          message: `Both you and ${otherPartyName} have confirmed completion of transaction "${transaction.paymentDescription}". Payout process has been initiated.`,
+          status: "accepted",
+          type: "transaction",
+          transactionId: transaction._id
+        });
+        
+        // Notification for participant
+        if (transaction.participants && transaction.participants.length > 0) {
+          await Notification.create({
+            userId: transaction.participants[0]._id,
+            title: "Transaction Completed",
+            message: `Both you and ${transaction.userId.firstName} ${transaction.userId.lastName} have confirmed completion of transaction "${transaction.paymentDescription}". Payout process has been initiated.`,
+            status: "accepted",
+            type: "transaction",
+            transactionId: transaction._id
+          });
+        }
+      } catch (notifError) {
+        console.error("Error creating completion notifications:", notifError);
+      }
 
       // before the triggerPayout call
       console.log("About to trigger payout for transaction:", {
@@ -914,7 +1146,6 @@ exports.confirmTransaction = async (req, res) => {
       // Trigger payout to seller
       try {
         const payoutResult = await triggerPayout(transaction);
-        // console.log("Payout initiated:", payoutResult);
 
         // Optionally update the transaction with payout reference
         if (payoutResult && payoutResult.data && payoutResult.data.transfer_code) {
@@ -939,7 +1170,6 @@ exports.confirmTransaction = async (req, res) => {
         // Create a manual task for admin review
         try {
           // Here you would normally create a task for admin
-          // console.log("Creating admin review task for failed payout of transaction:", transaction._id);
           // await AdminTask.create({ type: 'PAYOUT_FAILURE', transactionId: transaction._id, error: payoutError.message });
         } catch (err) {
           console.error("Failed to create admin task:", err);
@@ -976,8 +1206,6 @@ exports.confirmTransaction = async (req, res) => {
 };
 
 
-
-// Function to fetch banks from Paystack
 exports.getBanks = async (req, res) => {
   try {
     // Set CORS headers specifically for this endpoint
