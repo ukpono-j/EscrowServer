@@ -207,7 +207,6 @@ exports.joinTransaction = async (req, res) => {
     }
 
 
-
     // Log the query being used
     // console.log(`Attempting to find transaction with ID: ${transactionId}`);
 

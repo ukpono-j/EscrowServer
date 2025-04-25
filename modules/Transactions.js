@@ -71,7 +71,7 @@ const transactionSchema = new mongoose.Schema({
   },
   willUseCourier: {
     type: Boolean,
-    required: true,
+    // required: true,
   },
   proofOfWaybill: {
     type: String,
