@@ -35,6 +35,48 @@ const UserSchema = new mongoose.Schema({
   avatarImage: {
     type: String,
   },
+  // Wallet functionality
+  wallet: {
+    balance: {
+      type: Number,
+      default: 0
+    },
+    lastFunded: {
+      type: Date
+    },
+    transactions: [
+      {
+        type: {
+          type: String,
+          enum: ['credit', 'debit'],
+          required: true
+        },
+        amount: {
+          type: Number,
+          required: true
+        },
+        description: {
+          type: String,
+          required: true
+        },
+        reference: {
+          type: String
+        },
+        transactionId: {
+          type: String
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now
+        },
+        status: {
+          type: String,
+          enum: ['pending', 'completed', 'failed'],
+          default: 'pending'
+        }
+      }
+    ]
+  }
 });
 
 const UserModel = mongoose.model("User", UserSchema);
