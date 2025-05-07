@@ -1,83 +1,80 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const UserSchema = new mongoose.Schema({
   firstName: {
     type: String,
     required: true,
+    trim: true
   },
   lastName: {
     type: String,
     required: true,
-  },
-  password: {
-    type: String,
-    required: true,
+    trim: true
   },
   email: {
     type: String,
     required: true,
     unique: true,
+    trim: true,
+    lowercase: true,
+    validate: {
+      validator: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+      message: 'Invalid email format'
+    }
   },
-
-  bank: {
+  password: {
     type: String,
-  },
-  accountNumber: {
-    type: String,
+    required: true,
+    minlength: 8,
+    select: false // Never return password in queries
   },
   dateOfBirth: {
-    type: String,
+    type: Date,
+    required: true,
+    validate: {
+      validator: (dob) => {
+        const ageDiff = Date.now() - dob.getTime();
+        const ageDate = new Date(ageDiff);
+        return Math.abs(ageDate.getUTCFullYear() - 1970) >= 18;
+      },
+      message: 'User must be at least 18 years old'
+    }
   },
-  isAvatarImageSet: {
+  phoneNumber: {
+    type: String,
+    trim: true
+  },
+  isVerified: {
     type: Boolean,
-    default: false, // Default value is set to false
+    default: false
   },
-  avatarImage: {
-    type: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  // Wallet functionality
-  wallet: {
-    balance: {
-      type: Number,
-      default: 0
-    },
-    lastFunded: {
-      type: Date
-    },
-    transactions: [
-      {
-        type: {
-          type: String,
-          enum: ['credit', 'debit'],
-          required: true
-        },
-        amount: {
-          type: Number,
-          required: true
-        },
-        description: {
-          type: String,
-          required: true
-        },
-        reference: {
-          type: String
-        },
-        transactionId: {
-          type: String
-        },
-        timestamp: {
-          type: Date,
-          default: Date.now
-        },
-        status: {
-          type: String,
-          enum: ['pending', 'completed', 'failed'],
-          default: 'pending'
-        }
-      }
-    ]
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
-const UserModel = mongoose.model("User", UserSchema);
-module.exports = UserModel;
+// Hash password before saving
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Method to compare passwords
+UserSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+module.exports = mongoose.model('User', UserSchema);

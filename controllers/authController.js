@@ -1,15 +1,16 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const UserModel = require("../modules/Users");
+const User = require("../modules/Users");
+const Wallet = require('../modules/wallet');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
+const { v4: uuidv4 } = require('uuid');
 
 // Create transporter for sending emails
 let transporter;
 
 // Initialize email transporter based on environment
 if (process.env.NODE_ENV === 'production') {
-  // Production email service (can be configured for any provider)
   transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
@@ -20,8 +21,6 @@ if (process.env.NODE_ENV === 'production') {
     }
   });
 } else {
-  // For local development: use Ethereal (fake SMTP service)
-  // The createTestAccount function will be called on first email send
   transporter = null;
 }
 
@@ -43,7 +42,6 @@ const otpSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true,
-    // Automatically delete expired OTPs (TTL index)
     expires: 0
   },
   createdAt: {
@@ -52,7 +50,6 @@ const otpSchema = new mongoose.Schema({
   }
 });
 
-// Create the model or use existing one to avoid duplicate model errors
 const OTPModel = mongoose.models.OTP || mongoose.model('OTP', otpSchema);
 
 // Generate a random 6-digit OTP
@@ -60,103 +57,63 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Setup an Ethereal test account for local development (called once)
+// Setup an Ethereal test account for local development
 const setupEtherealAccount = async () => {
   try {
-    // Create a test account on ethereal.email
     const testAccount = await nodemailer.createTestAccount();
-
-    // Create reusable transporter using the test account
     const testTransporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false,
       auth: {
         user: testAccount.user,
         pass: testAccount.pass,
       },
-      // Add this to prevent connection timeouts
       connectionTimeout: 5000,
       greetingTimeout: 5000,
     });
-
-    // console.log('Ethereal Email test account created:');
-    // console.log(`- Email: ${testAccount.user}`);
-    // console.log(`- Password: ${testAccount.pass}`);
-    // console.log('View messages at: https://ethereal.email');
-
     return testTransporter;
   } catch (error) {
     console.error("Error creating Ethereal account:", error);
-    // Fallback to a fake transport that just logs emails
     return {
       sendMail: (mailOptions) => {
-        // console.log("EMAIL WOULD BE SENT IN PRODUCTION");
-        // console.log("To:", mailOptions.to);
-        // console.log("Subject:", mailOptions.subject);
-        // console.log("OTP:", mailOptions.html.match(/\d{6}/)[0]);
         return Promise.resolve({ messageId: 'fake-message-id' });
       }
     };
   }
 };
 
-
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-
-    // Find user by email
-    const user = await UserModel.findOne({ email });
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ error: "No account found with this email" });
     }
 
-    // Generate OTP
     const otp = generateOTP();
-
-    // Store OTP in database (remove any existing ones first)
     await OTPModel.deleteMany({ email });
-
-    // Create new OTP document
     await OTPModel.create({
       email,
       otp,
       userId: user._id.toString(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000)
     });
 
-    // In development mode, skip actual email sending
     if (process.env.NODE_ENV !== 'production') {
-      // console.log('=========================================');
-      // console.log(`DEVELOPMENT MODE - Password Reset OTP for ${email}: ${otp}`);
-      // console.log('=========================================');
-
       return res.status(200).json({
         success: true,
         message: "OTP generated successfully",
         devMode: true,
-        devOtp: otp  // Include OTP in response for development
+        devOtp: otp
       });
     }
 
-    // For production: Try to send email
     try {
-      // Make sure transporter is set up for production
       if (!transporter) {
-        // Initialize production transporter
-        transporter = nodemailer.createTransport({
-          host: process.env.EMAIL_HOST,
-          port: process.env.EMAIL_PORT,
-          secure: process.env.EMAIL_SECURE === 'true',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD,
-          }
-        });
+        transporter = await setupEtherealAccount();
       }
 
-      // Prepare email with OTP
       const msg = {
         from: process.env.FROM_EMAIL || 'noreply@yourapplication.com',
         to: email,
@@ -175,9 +132,7 @@ exports.forgotPassword = async (req, res) => {
         `
       };
 
-      // Send email
       await transporter.sendMail(msg);
-
       res.status(200).json({
         success: true,
         message: "OTP sent to your email"
@@ -194,52 +149,37 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// Verify OTP and reset password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-
-    // Find OTP document for this email
     const otpDoc = await OTPModel.findOne({ email });
 
-    // Check if OTP exists
     if (!otpDoc) {
       return res.status(400).json({ error: "No OTP request found. Please request a new OTP." });
     }
 
-    // Check if OTP is valid
     if (otpDoc.otp !== otp) {
       return res.status(400).json({ error: "Invalid OTP. Please try again." });
     }
 
-    // Check if OTP has expired
     if (new Date() > new Date(otpDoc.expiresAt)) {
-      // Clean up expired OTP
       await OTPModel.deleteOne({ _id: otpDoc._id });
       return res.status(400).json({ error: "OTP has expired. Please request a new one." });
     }
 
-    // Get user ID from OTP document
     const userId = otpDoc.userId;
-
-    // Hash the new password
     const hashedPassword = bcrypt.hashSync(newPassword, 10);
-
-    // Update user's password in the database
-    const updatedUser = await UserModel.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       { password: hashedPassword },
-      { new: true } // Return the updated document
+      { new: true }
     );
 
     if (!updatedUser) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    // Remove OTP from database after successful password reset
     await OTPModel.deleteOne({ _id: otpDoc._id });
-
-    // Return success response
     res.status(200).json({
       success: true,
       message: "Password reset successful"
@@ -250,85 +190,153 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// exports.login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     // console.log("Received login request for email:", email);
-//     const user = await UserModel.findOne({ email: email });
+exports.register = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { firstName, lastName, email, password, dateOfBirth } = req.body;
+    console.log('Register attempt:', { firstName, lastName, email, dateOfBirth });
 
-//     if (user && bcrypt.compareSync(password, user.password)) {
-//       // Create a JWT with proper expiration (8 hours)
-//       const token = jwt.sign(
-//         { id: user._id },
-//         process.env.JWT_SECRET,
-//         { expiresIn: '8h' }  // Token expires in 8 hours
-//       );
+    // Validate input
+    if (!firstName || !lastName || !email || !password || !dateOfBirth) {
+      console.log('Missing required fields');
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'All fields are required' });
+    }
 
-//       res.header("auth-token", token).json({ message: "Login successful!", token });
-//     } else {
-//       res.status(401).json({ error: "Invalid Credentials" });
-//     }
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// };
+    // Check if user already exists
+    const existingUser = await User.findOne({ email }).session(session);
+    if (existingUser) {
+      console.log('Email already exists:', email);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Email already in use' });
+    }
+
+    // Create new user
+    const user = new User({
+      firstName,
+      lastName,
+      email,
+      password,
+      dateOfBirth: new Date(dateOfBirth)
+    });
+
+    const savedUser = await user.save({ session });
+    console.log('User saved:', savedUser._id, 'Password hashed:', savedUser.password.startsWith('$2b$'));
+    if (!savedUser._id) {
+      throw new Error('Failed to create user: No _id generated');
+    }
+
+    // Check for existing wallet
+    const existingWallet = await Wallet.findOne({ userId: savedUser._id }).session(session);
+    if (existingWallet) {
+      console.log('Wallet already exists for user:', savedUser._id);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Wallet already exists for this user' });
+    }
+
+    // Create wallet for the user
+    const wallet = new Wallet({
+      userId: savedUser._id
+    });
+    await wallet.save({ session });
+    console.log('Wallet created for user:', savedUser._id);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: savedUser._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      token,
+      user: {
+        id: savedUser._id,
+        firstName: savedUser.firstName,
+        lastName: savedUser.lastName,
+        email: savedUser.email
+      }
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Registration error:', error);
+    if (error.code === 11000) {
+      res.status(400).json({ error: 'Duplicate key error: Email or wallet already exists', details: error.keyValue });
+    } else {
+      res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+  }
+};
 
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    // console.log("Received login request for email:", email);
-    const user = await UserModel.findOne({ email: email });
+    console.log('Login attempt:', { email });
 
+    // Validate input
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user with password
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
-      // If user doesn't exist, return 404 status
-      return res.status(404).json({ error: "User not found" });
+      console.log('User not found:', email);
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    if (bcrypt.compareSync(password, user.password)) {
-      // Create a JWT with longer expiration (7 days)
-      const token = jwt.sign(
-        { id: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }  // Token expires in 7 days instead of 8 hours
-      );
+    console.log('User found:', user._id, 'Stored password:', user.password);
 
-      res.header("auth-token", token).json({ message: "Login successful!", token });
+    // Check if password is a valid bcrypt hash
+    const isBcryptHash = user.password.startsWith('$2b$') || user.password.startsWith('$2a$');
+    let isMatch = false;
+
+    if (isBcryptHash) {
+      // Normal bcrypt comparison
+      isMatch = await user.comparePassword(password);
     } else {
-      res.status(401).json({ error: "Invalid Credentials" });
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-
-exports.register = async (req, res) => {
-  try {
-    const { firstName, lastName, email, password, bank, dateOfBirth, accountNumber } = req.body;
-
-    const existingUser = await UserModel.findOne({ email: email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email already exists" });
+      // Fallback for plain-text passwords (temporary for debugging)
+      console.warn('Plain-text password detected for user:', email);
+      isMatch = user.password === password;
     }
 
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    console.log('Password match:', isMatch);
 
-    const newUser = new UserModel({
-      firstName,
-      lastName,
-      email,
-      password: hashedPassword,
-      bank,
-      accountNumber,
-      dateOfBirth,
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      }
     });
-
-    await newUser.save();
-    res.status(200).json({ message: "User registered successfully!" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };

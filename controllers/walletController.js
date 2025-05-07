@@ -1,211 +1,324 @@
-const UserModel = require('../modules/Users');
+const Wallet = require('../modules/wallet');
+const User = require('../modules/Users');
 const axios = require('axios');
+const axiosRetry = require('axios-retry').default;
 const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 
-// Environment variables should be properly set in your .env file
-const PAYMENT_POINT_SECRET_KEY = process.env.PAYMENT_POINT_SECRET_KEY;
-const PAYMENT_POINT_PUBLIC_KEY = process.env.PAYMENT_POINT_PUBLIC_KEY;
-const PAYMENT_POINT_API_URL = process.env.PAYMENT_POINT_API_URL || 'https://api.paymentpoint.co/api/v1';
+// Configure axios retries
+axiosRetry(axios, {
+  retries: 3,
+  retryDelay: (retryCount) => retryCount * 1000, // 1s, 2s, 3s
+  retryCondition: (error) => {
+    return error.code === 'ECONNABORTED' || error.response?.status >= 500;
+  },
+});
 
-// Get user wallet balance
+// Get wallet balance
 exports.getWalletBalance = async (req, res) => {
   try {
-    const { id: userId } = req.user;
-    const user = await UserModel.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    console.log('Fetching wallet balance for user:', req.user.id);
+    const wallet = await Wallet.findOne({ userId: req.user.id });
+    if (!wallet) {
+      console.warn('Wallet not found for user:', req.user.id);
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
 
-    // Return wallet balance and last 5 transactions
-    const walletData = {
-      balance: user.wallet?.balance || 0,
-      recentTransactions: user.wallet?.transactions?.slice(0, 5) || []
-    };
+    await wallet.recalculateBalance();
 
-    res.status(200).json(walletData);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-// Get wallet transaction history
-exports.getWalletTransactions = async (req, res) => {
-  try {
-    const { id: userId } = req.user;
-    const { page = 1, limit = 10 } = req.query;
-    
-    const user = await UserModel.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const transactions = user.wallet?.transactions || [];
-    const startIndex = (page - 1) * limit;
-    const endIndex = page * limit;
-    
-    const paginatedTransactions = transactions.slice(startIndex, endIndex);
-    
     res.status(200).json({
-      transactions: paginatedTransactions,
-      total: transactions.length,
-      page: parseInt(page),
-      totalPages: Math.ceil(transactions.length / limit)
+      success: true,
+      balance: wallet.balance,
+      totalDeposits: wallet.totalDeposits,
+      currency: wallet.currency,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Get balance error:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 
-// Initialize wallet funding
+// Initiate funding
 exports.initiateFunding = async (req, res) => {
   try {
-    const { id: userId } = req.user;
-    const { amount } = req.body;
-    
+    const { amount, email, phoneNumber } = req.body;
+    const userId = req.user.id;
+
+    console.log('Initiate funding request:', { userId, amount, email, phoneNumber });
+
     if (!amount || amount <= 0) {
-      return res.status(400).json({ error: "Valid amount is required" });
+      console.warn('Invalid amount provided:', amount);
+      return res.status(400).json({ success: false, error: 'Valid amount is required' });
     }
 
-    const user = await UserModel.findById(userId);
+    const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      console.warn('User not found:', userId);
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Generate a unique reference
-    const reference = `WF-${userId.slice(-6)}-${Date.now()}`;
-    
-    // Create PaymentPoint Payment Request
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+      console.warn('Wallet not found for user:', userId);
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
+    }
+
+    const reference = `WF-${userId.toString().slice(-6)}-${Date.now()}`;
+
+    const paymentRequest = {
+      email: email || user.email,
+      name: user.firstName ? `${user.firstName} ${user.lastName || ''}` : user.email.split('@')[0],
+      phoneNumber: phoneNumber || user.phoneNumber || '00000000000',
+      bankCode: ['20946'], // Palmpay
+      businessId: process.env.PAYMENT_POINT_BUSINESS_ID,
+      metadata: {
+        userId: userId.toString(),
+        walletId: wallet._id.toString(),
+        type: 'wallet_funding',
+        amount: amount.toString(),
+        reference,
+        callback_url: `${process.env.BASE_URL}/api/wallet/verify-funding`,
+      },
+    };
+
+    const headers = {
+      Authorization: `Bearer ${process.env.PAYMENT_POINT_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+      'api-key': process.env.PAYMENT_POINT_PUBLIC_KEY,
+    };
+
+    const url = `${process.env.PAYMENT_POINT_API_URL}/api/v1/createVirtualAccount`;
+    console.log('Initiating virtual account:', {
+      url,
+      headers: { ...headers, Authorization: 'Bearer [REDACTED]' },
+      body: paymentRequest,
+    });
+
+    let response;
     try {
-      const paymentRequest = {
-        amount: amount * 100, // PaymentPoint requires amount in kobo
-        email: user.email,
-        reference: reference,
-        callback_url: `${req.protocol}://${req.get('host')}/api/wallet/verify-funding`,
-        metadata: {
-          userId: userId,
-          type: 'wallet_funding'
-        }
-      };
-
-      // Make API call to PaymentPoint
-      const response = await axios.post(
-        `${PAYMENT_POINT_API_URL}/transaction/initialize`, 
-        paymentRequest,
-        {
-          headers: {
-            'Authorization': `Bearer ${PAYMENT_POINT_SECRET_KEY}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data && response.data.status === 'success') {
-        // Record pending transaction in user's wallet
-        user.wallet = user.wallet || { balance: 0, transactions: [] };
-        user.wallet.transactions.unshift({
-          type: 'credit',
-          amount: amount,
-          description: 'Wallet funding',
-          reference: reference,
-          status: 'pending',
-          timestamp: new Date()
-        });
-        
-        await user.save();
-        
-        // Return payment link to frontend
-        return res.status(200).json({
-          success: true,
-          message: 'Payment initialized',
-          data: {
-            paymentLink: response.data.data.authorization_url,
-            reference: reference
-          }
-        });
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to initialize payment',
-          error: response.data
-        });
-      }
+      response = await axios.post(url, paymentRequest, { headers, timeout: 10000 });
     } catch (error) {
-      console.error('Payment initialization error:', error.message);
-      return res.status(500).json({
+      console.error('PaymentPoint API error:', {
+        endpoint: url,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        code: error.code,
+      });
+      return res.status(502).json({
         success: false,
-        message: 'Payment service error',
-        error: error.message
+        message: 'Failed to initiate virtual account',
+        error: error.response?.data?.message || error.message,
       });
     }
+
+    console.log('PaymentPoint response:', response.data);
+
+    if (response.data?.status === 'success') {
+      const transaction = {
+        type: 'deposit',
+        amount: parseFloat(amount),
+        reference,
+        status: 'pending',
+        metadata: {
+          paymentGateway: 'PaymentPoint',
+          virtualAccountId: response.data.customer.customer_id,
+          accountNumber: response.data.bankAccounts[0].accountNumber,
+          paymentReference: reference,
+        },
+        createdAt: new Date(),
+      };
+
+      wallet.transactions.push(transaction);
+      try {
+        await wallet.save();
+        console.log('Transaction saved:', { reference, walletId: wallet._id });
+      } catch (error) {
+        console.error('Wallet save error:', {
+          walletId: wallet._id,
+          reference,
+          message: error.message,
+          stack: error.stack,
+        });
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to save transaction',
+          error: error.message,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Virtual account created for funding',
+        data: {
+          virtualAccount: {
+            accountNumber: response.data.bankAccounts[0].accountNumber,
+            accountName: response.data.bankAccounts[0].accountName,
+            bankName: response.data.bankAccounts[0].bankName,
+          },
+          reference,
+        },
+      });
+    }
+
+    console.warn('PaymentPoint API returned non-success status:', response.data);
+    return res.status(400).json({
+      success: false,
+      message: 'Failed to create virtual account',
+      error: response.data.message || 'Unknown error',
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Payment initialization error:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 
 // Verify wallet funding (webhook handler)
 exports.verifyFunding = async (req, res) => {
-  const signature = req.headers['x-paymentpoint-signature'];
-  
-  // Verify webhook signature
-  const payload = JSON.stringify(req.body);
-  const expectedSignature = crypto
-    .createHmac('sha512', PAYMENT_POINT_SECRET_KEY)
-    .update(payload)
-    .digest('hex');
-  
-  if (signature !== expectedSignature) {
-    return res.status(400).json({ error: 'Invalid signature' });
-  }
-  
   try {
-    const { reference, status, amount, metadata } = req.body;
-    
-    if (!metadata || !metadata.userId) {
-      return res.status(400).json({ error: 'Invalid metadata' });
-    }
-    
-    const user = await UserModel.findById(metadata.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Find the transaction in user's wallet
-    const transactionIndex = user.wallet?.transactions.findIndex(
-      t => t.reference === reference
-    );
-    
-    if (transactionIndex === -1) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-    
-    if (status === 'success') {
-      // Update transaction status
-      user.wallet.transactions[transactionIndex].status = 'completed';
-      user.wallet.transactions[transactionIndex].transactionId = req.body.id;
-      
-      // Update wallet balance
-      const amountInNaira = amount / 100; // Convert kobo to naira
-      user.wallet.balance = (user.wallet.balance || 0) + amountInNaira;
-      user.wallet.lastFunded = new Date();
-      
-      await user.save();
-      
-      return res.status(200).json({ message: 'Payment verified and wallet updated' });
+    // Log the raw body and headers for debugging
+    console.log('Webhook received:', {
+      headers: req.headers,
+      body: req.body.toString('utf8'),
+      timestamp: new Date().toISOString(),
+    });
+
+    const signature = req.headers['paymentpoint-signature'];
+    const payload = req.body.toString('utf8');
+
+    if (signature) {
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.PAYMENT_POINT_SECRET_KEY)
+        .update(payload)
+        .digest('hex');
+      console.log('Signature verification:', {
+        received: signature,
+        expected: expectedSignature,
+        secretKeyUsed: process.env.PAYMENT_POINT_SECRET_KEY.substring(0, 4) + '...',
+        payloadLength: payload.length,
+        payloadSample: payload.substring(0, 100) + '...',
+      });
+
+      if (signature !== expectedSignature) {
+        console.error('Webhook signature verification failed:', {
+          received: signature,
+          expected: expectedSignature,
+          payload: payload,
+        });
+        return res.status(400).json({ success: false, error: 'Invalid signature' });
+      }
     } else {
-      // Update transaction as failed
-      user.wallet.transactions[transactionIndex].status = 'failed';
-      await user.save();
-      
-      return res.status(200).json({ message: 'Payment failed' });
+      console.warn('No signature provided in webhook');
+      return res.status(400).json({ success: false, error: 'Signature required' });
     }
+
+    // Parse the raw body to JSON for processing
+    const webhookData = JSON.parse(payload);
+
+    const {
+      transaction_id,
+      transaction_status,
+      amount_paid,
+      customer: { customer_id },
+      description,
+    } = webhookData;
+
+    if (!transaction_id || !transaction_status || !amount_paid || !customer_id) {
+      console.error('Invalid webhook payload:', webhookData);
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields in webhook payload',
+      });
+    }
+
+    let wallet = await Wallet.findOne({
+      'transactions.metadata.virtualAccountId': customer_id,
+    });
+
+    if (!wallet) {
+      console.error('Wallet not found for customer_id:', customer_id);
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
+    }
+
+    // Match transaction by virtualAccountId, amount, and pending status
+    let transactionIndex = wallet.transactions.findIndex(
+      (t) =>
+        t.metadata.virtualAccountId === customer_id &&
+        t.status === 'pending' &&
+        parseFloat(t.amount) === parseFloat(amount_paid)
+    );
+
+    if (transactionIndex === -1) {
+      console.warn('No matching pending transaction found for customer_id and amount:', {
+        customer_id,
+        amount_paid,
+      });
+      const newReference = `WF-${wallet.userId.toString().slice(-6)}-${Date.now()}`;
+      wallet.transactions.push({
+        type: 'deposit',
+        amount: parseFloat(amount_paid),
+        reference: newReference,
+        status: transaction_status === 'success' ? 'completed' : 'failed',
+        metadata: {
+          paymentGateway: 'PaymentPoint',
+          virtualAccountId: customer_id,
+          paymentId: transaction_id,
+          description,
+        },
+        createdAt: new Date(),
+      });
+      transactionIndex = wallet.transactions.length - 1;
+    }
+
+    const transaction = wallet.transactions[transactionIndex];
+    transaction.status = transaction_status === 'success' ? 'completed' : 'failed';
+    transaction.metadata.paymentId = transaction_id;
+    transaction.metadata.description = description;
+
+    if (transaction_status === 'success') {
+      const amountInNaira = parseFloat(amount_paid);
+      if (!isNaN(amountInNaira)) {
+        wallet.balance += amountInNaira;
+        wallet.totalDeposits += amountInNaira;
+        console.log('Balance updated:', {
+          reference: transaction.reference,
+          amount: amountInNaira,
+          newBalance: wallet.balance,
+          totalDeposits: wallet.totalDeposits,
+        });
+      } else {
+        console.error('Invalid amount:', amount_paid);
+      }
+    }
+
+    await wallet.recalculateBalance();
+    await wallet.save();
+
+    console.log('Wallet saved:', {
+      walletId: wallet._id,
+      transactionStatus: transaction_status,
+      balance: wallet.balance,
+    });
+
+    return res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error('Webhook processing error:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Webhook error:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 
@@ -213,158 +326,179 @@ exports.verifyFunding = async (req, res) => {
 exports.checkFundingStatus = async (req, res) => {
   try {
     const { reference } = req.params;
-    const { id: userId } = req.user;
-    
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (!reference) {
+      return res.status(400).json({ success: false, error: 'Reference is required' });
     }
-    
-    // Check if transaction exists and has been updated
-    const transaction = user.wallet?.transactions.find(t => t.reference === reference);
-    
+
+    const wallet = await Wallet.findOne({ userId: req.user.id });
+    if (!wallet) {
+      console.warn('Wallet not found for user:', req.user.id);
+      return res.status(404).json({ success: false, error: 'Wallet not found' });
+    }
+
+    let transaction = wallet.transactions.find((t) => t.reference === reference);
     if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
-    }
-    
-    // If transaction is still pending, verify with PaymentPoint
-    if (transaction.status === 'pending') {
+      console.log('Transaction not found locally, checking PaymentPoint:', reference);
+      const headers = {
+        Authorization: `Bearer ${process.env.PAYMENT_POINT_SECRET_KEY}`,
+        'api-key': process.env.PAYMENT_POINT_PUBLIC_KEY,
+        'Content-Type': 'application/json',
+      };
+
       try {
         const response = await axios.get(
-          `${PAYMENT_POINT_API_URL}/transaction/verify/${reference}`,
+          `${process.env.PAYMENT_POINT_API_URL}/api/v1/verifyTransactionByReference/${reference}`,
           {
-            headers: {
-              'Authorization': `Bearer ${PAYMENT_POINT_SECRET_KEY}`
-            }
+            headers,
+            timeout: 10000,
           }
         );
-        
-        if (response.data && response.data.status === 'success' && 
-            response.data.data.status === 'success') {
-          
-          // Update transaction and wallet
-          const transactionIndex = user.wallet.transactions.findIndex(
-            t => t.reference === reference
-          );
-          
-          user.wallet.transactions[transactionIndex].status = 'completed';
-          user.wallet.transactions[transactionIndex].transactionId = response.data.data.id;
-          
-          // Update wallet balance
-          const amountInNaira = response.data.data.amount / 100;
-          user.wallet.balance = (user.wallet.balance || 0) + amountInNaira;
-          user.wallet.lastFunded = new Date();
-          
-          await user.save();
-          
-          return res.status(200).json({
-            success: true,
-            message: 'Payment confirmed',
-            data: {
-              transaction: user.wallet.transactions[transactionIndex],
-              newBalance: user.wallet.balance
-            }
+
+        console.log('PaymentPoint API response:', response.data);
+
+        if (response.data?.status === 'success' && response.data.data?.status === 'success') {
+          const { amount, id, customer_id } = response.data.data;
+          transaction = {
+            type: 'deposit',
+            amount: parseFloat(amount),
+            reference,
+            status: 'completed',
+            metadata: {
+              paymentGateway: 'PaymentPoint',
+              paymentId: id,
+              paymentReference: reference,
+              virtualAccountId: customer_id,
+            },
+            createdAt: new Date(),
+          };
+
+          wallet.transactions.push(transaction);
+          wallet.balance += parseFloat(amount);
+          wallet.totalDeposits += parseFloat(amount);
+          await wallet.save();
+
+          console.log('Transaction verified via API:', {
+            reference,
+            amount,
+            newBalance: wallet.balance,
           });
         } else {
-          // If payment failed according to PaymentPoint
-          const transactionIndex = user.wallet.transactions.findIndex(
-            t => t.reference === reference
-          );
-          
-          if (transactionIndex !== -1) {
-            user.wallet.transactions[transactionIndex].status = 'failed';
-            await user.save();
-          }
-          
+          console.log('PaymentPoint verification failed:', response.data);
           return res.status(200).json({
             success: false,
-            message: 'Payment verification failed',
-            data: { status: 'failed' }
+            message: 'Payment not confirmed',
+            data: { status: response.data.data?.status || 'pending' },
           });
         }
       } catch (error) {
-        console.error('Payment verification error:', error);
-        return res.status(500).json({
+        console.error('PaymentPoint API error:', {
+          reference,
+          message: error.message,
+          code: error.code,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        if (error.response?.status === 404) {
+          return res.status(404).json({
+            success: false,
+            message: 'Transaction not found in PaymentPoint',
+          });
+        }
+        return res.status(502).json({
           success: false,
-          message: 'Error verifying payment',
-          error: error.message
+          error: 'Failed to verify transaction with PaymentPoint',
+          details: error.response?.data?.message || error.message,
         });
       }
     }
-    
-    // Return existing transaction status
+
+    if (transaction.status === 'completed') {
+      await wallet.recalculateBalance();
+    }
+
     return res.status(200).json({
       success: transaction.status === 'completed',
-      message: transaction.status === 'completed' 
-        ? 'Payment confirmed' 
-        : 'Payment failed',
+      message:
+        transaction.status === 'completed'
+          ? 'Payment confirmed'
+          : 'Payment pending or failed',
       data: {
         transaction,
-        newBalance: user.wallet.balance
-      }
+        newBalance: wallet.balance,
+      },
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Check funding status error:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 
-// Use wallet balance for transaction payment
-exports.useWalletForPayment = async (req, res) => {
+// Reconcile pending transactions
+exports.reconcileTransactions = async (req, res) => {
   try {
-    const { id: userId } = req.user;
-    const { amount, transactionId, description } = req.body;
-    
-    if (!amount || amount <= 0 || !transactionId) {
-      return res.status(400).json({ error: "Valid amount and transaction ID are required" });
+    console.log('Starting transaction reconciliation');
+    const wallets = await Wallet.find({
+      'transactions.status': 'pending',
+    });
+
+    for (const wallet of wallets) {
+      for (const tx of wallet.transactions.filter((t) => t.status === 'pending')) {
+        try {
+          const response = await axios.get(
+            `${process.env.PAYMENT_POINT_API_URL}/api/v1/verifyTransactionByReference/${tx.reference}`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.PAYMENT_POINT_SECRET_KEY}`,
+                'api-key': process.env.PAYMENT_POINT_PUBLIC_KEY,
+                'Content-Type': 'application/json',
+              },
+              timeout: 10000,
+            }
+          );
+
+          console.log('Reconciliation: PaymentPoint response for', tx.reference, response.data);
+
+          if (response.data?.status === 'success' && response.data.data?.status === 'success') {
+            tx.status = 'completed';
+            wallet.balance += parseFloat(response.data.data.amount);
+            wallet.totalDeposits += parseFloat(response.data.data.amount);
+            await wallet.recalculateBalance();
+            await wallet.save();
+            console.log('Manual reconciliation: Transaction completed:', tx.reference);
+          } else if (response.data.data?.status === 'failed') {
+            tx.status = 'failed';
+            await wallet.save();
+            console.log('Manual reconciliation: Transaction failed:', tx.reference);
+          }
+        } catch (error) {
+          console.error('Manual reconciliation error:', {
+            reference: tx.reference,
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+          });
+          if (error.response?.status === 404) {
+            console.warn('Transaction not found in PaymentPoint, marking as failed:', tx.reference);
+            tx.status = 'failed';
+            await wallet.save();
+          }
+        }
+      }
     }
 
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+    if (res) {
+      return res.status(200).json({ success: true, message: 'Transaction reconciliation completed' });
     }
-    
-    // Check if user has sufficient balance
-    const walletBalance = user.wallet?.balance || 0;
-    if (walletBalance < amount) {
-      return res.status(400).json({ 
-        error: "Insufficient wallet balance",
-        walletBalance,
-        required: amount
-      });
-    }
-    
-    // Generate a reference for this payment
-    const paymentReference = `WP-${userId.slice(-6)}-${Date.now()}`;
-    
-    // Deduct from wallet
-    user.wallet.balance -= amount;
-    
-    // Add transaction record
-    user.wallet.transactions.unshift({
-      type: 'debit',
-      amount: amount,
-      description: description || `Payment for transaction #${transactionId}`,
-      reference: paymentReference,
-      status: 'completed',
-      timestamp: new Date(),
-      transactionId: transactionId
-    });
-    
-    await user.save();
-    
-    // Return success with new balance
-    return res.status(200).json({
-      success: true,
-      message: 'Payment successful',
-      data: {
-        paymentReference,
-        newBalance: user.wallet.balance,
-        transactionId
-      }
-    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Reconciliation error:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    if (res) {
+      return res.status(500).json({ success: false, error: 'Internal server error' });
+    }
   }
 };
