@@ -13,5 +13,6 @@ router.get('/verify-funding/:reference', authenticateUser, walletController.chec
 router.post('/verify-funding', walletController.verifyFunding);
 
 router.post('/reconcile', authenticateUser, walletController.reconcileTransactions);
+router.get('/transactions', authenticateUser, walletController.getWalletTransactions);
 
 module.exports = router;

@@ -1,28 +1,24 @@
 const mongoose = require("mongoose");
 
-
 const waybillSchema = new mongoose.Schema({
   item: { type: String, required: true },
-  image: { type: String }, // Store image path or binary data
+  image: { type: String },
   price: { type: Number, required: true },
   shippingAddress: { type: String, required: true },
   trackingNumber: { type: String, required: true },
   deliveryDate: { type: Date, required: true },
 });
 
-
-
 const transactionSchema = new mongoose.Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId, // Assuming you're using MongoDB ObjectId for user IDs
+    type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
-
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    default: mongoose.Types.ObjectId, // Default to a new ObjectId
+    default: mongoose.Types.ObjectId,
   },
   paymentName: {
     type: String,
@@ -68,17 +64,16 @@ const transactionSchema = new mongoose.Schema({
   selectedUserType: {
     type: String,
     required: true,
+    enum: ['buyer', 'seller'],
   },
   willUseCourier: {
     type: Boolean,
-    // required: true,
   },
   proofOfWaybill: {
     type: String,
-    enum: ["pending", "confirmed",],
+    enum: ["pending", "confirmed"],
     default: "pending",
   },
-  // participants: [{ type: String }], // Array to store participants' emails
   participants: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
@@ -88,8 +83,8 @@ const transactionSchema = new mongoose.Schema({
     ref: "Chatroom",
   },
   createdAt: {
-    type: Date, // Store the creation timestamp as a Date object
-    default: Date.now, // Set the default value to the current date and time
+    type: Date,
+    default: Date.now,
   },
   status: {
     type: String,
@@ -98,16 +93,9 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentStatus: {
     type: String,
-    enum: ["active", "paid",],
+    enum: ["active", "paid"],
     default: "active",
   },
-
-  buyerConfirmedReceipt: {
-    type: Boolean,
-    default: false,
-  },
-  // Nested waybill details schema
-  waybillDetails: { type: waybillSchema },
   buyerConfirmed: {
     type: Boolean,
     default: false,
@@ -118,43 +106,66 @@ const transactionSchema = new mongoose.Schema({
   },
   payoutReleased: {
     type: Boolean,
-    default: false
+    default: false,
   },
   funded: {
     type: Boolean,
     default: false,
   },
-  paymentReference: {
-    type: String,
-    unique: true,
-    sparse: true  // This allows multiple null values
-  },
-  payoutReference: {
-    type: String,
-    unique: true,
-    sparse: true
-  },
   paymentBankCode: {
     type: String,
     required: true,
-    default: "000"
+    default: "000",
   },
-  payoutError: {
-    type: String,
-    default: null
+  waybillDetails: { type: waybillSchema },
+  buyerWalletId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet',
+    required: [function () { return this.status === 'completed' || this.funded; }, 'Buyer wallet is required for funded or completed transactions'],
+    validate: {
+      validator: async function (value) {
+        if (!value) return false;
+        const wallet = await mongoose.model('Wallet').findById(value);
+        return !!wallet;
+      },
+      message: 'Invalid or missing buyer wallet',
+    },
   },
+  sellerWalletId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Wallet',
+    required: [function () { return this.status === 'completed' || this.funded; }, 'Seller wallet is required for funded or completed transactions'],
+    validate: {
+      validator: async function (value) {
+        if (!value) return false;
+        const wallet = await mongoose.model('Wallet').findById(value);
+        return !!wallet;
+      },
+      message: 'Invalid or missing seller wallet',
+    },
+  },
+  locked: {
+    type: Boolean,
+    default: false,
+  },
+  lockedAmount: {
+    type: Number,
+    default: 0,
+  },
+});
 
-  // Add waybill details
-  // waybillDetails: {
-  //   item: String,
-  //   image: String,
-  //   price: Number,
-  //   shippingAddress: String,
-  //   trackingNumber: String,
-  //   deliveryDate: Date,
-  // }
-  // Additional fields for your transaction model can be added here
-  // ...
+transactionSchema.index({ transactionId: 1 }, { unique: true });
+
+transactionSchema.pre('save', async function (next) {
+  if (this.status === 'completed' || this.funded) {
+    if (!this.buyerWalletId || !this.sellerWalletId) {
+      return next(new Error('Buyer and seller wallets are required for funded or completed transactions'));
+    }
+  }
+  if (this.buyerConfirmed && this.sellerConfirmed && this.status !== 'completed') {
+    this.status = 'completed';
+  }
+  next();
 });
 
 const Transaction = mongoose.model("Transaction", transactionSchema);

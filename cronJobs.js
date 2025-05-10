@@ -1,18 +1,23 @@
 const cron = require('node-cron');
-const walletController = require('./controllers/walletController');
+const Transaction = require('./modules/Transactions');
+const { refundBuyer } = require('./controllers/transactionController');
 
-// Run every 10 minutes
-// cron.schedule('*/10 * * * *', async () => {
-//   console.log('Checking pending transactions via cron...');
-//   try {
-//     await walletController.reconcileTransactions();
-//     console.log('Cron: Transaction reconciliation completed');
-//   } catch (error) {
-//     console.error('Cron: Reconciliation error:', {
-//       message: error.message,
-//       stack: error.stack,
-//     });
-//   }
-// });
+cron.schedule('0 0 * * *', async () => {
+  console.log('Running transaction cleanup cron job');
+  try {
+    const timeoutThreshold = 7 * 24 * 60 * 60 * 1000; // 7 days
+    const transactions = await Transaction.find({
+      status: 'pending',
+      createdAt: { $lt: new Date(Date.now() - timeoutThreshold) },
+    });
 
-console.log('Cron job scheduled for pending transaction reconciliation');
+    for (const transaction of transactions) {
+      await refundBuyer(transaction._id);
+      transaction.status = 'cancelled';
+      await transaction.save();
+      console.log('Cancelled transaction:', transaction._id);
+    }
+  } catch (error) {
+    console.error('Transaction cleanup error:', error);
+  }
+});

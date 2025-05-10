@@ -1,15 +1,13 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const User = require("../modules/Users");
+const User = require('../modules/Users');
 const Wallet = require('../modules/wallet');
 const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 
-// Create transporter for sending emails
 let transporter;
 
-// Initialize email transporter based on environment
 if (process.env.NODE_ENV === 'production') {
   transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -18,46 +16,43 @@ if (process.env.NODE_ENV === 'production') {
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD,
-    }
+    },
   });
 } else {
   transporter = null;
 }
 
-// Create OTP Schema and Model for persistent storage
 const otpSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    index: true
+    index: true,
   },
   otp: {
     type: String,
-    required: true
+    required: true,
   },
   userId: {
     type: String,
-    required: true
+    required: true,
   },
   expiresAt: {
     type: Date,
     required: true,
-    expires: 0
+    expires: 0,
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 const OTPModel = mongoose.models.OTP || mongoose.model('OTP', otpSchema);
 
-// Generate a random 6-digit OTP
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Setup an Ethereal test account for local development
 const setupEtherealAccount = async () => {
   try {
     const testAccount = await nodemailer.createTestAccount();
@@ -74,11 +69,11 @@ const setupEtherealAccount = async () => {
     });
     return testTransporter;
   } catch (error) {
-    console.error("Error creating Ethereal account:", error);
+    console.error('Error creating Ethereal account:', error);
     return {
       sendMail: (mailOptions) => {
         return Promise.resolve({ messageId: 'fake-message-id' });
-      }
+      },
     };
   }
 };
@@ -88,7 +83,7 @@ exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ error: "No account found with this email" });
+      return res.status(404).json({ error: 'No account found with this email' });
     }
 
     const otp = generateOTP();
@@ -97,15 +92,15 @@ exports.forgotPassword = async (req, res) => {
       email,
       otp,
       userId: user._id.toString(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });
 
     if (process.env.NODE_ENV !== 'production') {
       return res.status(200).json({
         success: true,
-        message: "OTP generated successfully",
+        message: 'OTP generated successfully',
         devMode: true,
-        devOtp: otp
+        devOtp: otp,
       });
     }
 
@@ -129,23 +124,23 @@ exports.forgotPassword = async (req, res) => {
             <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
             <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
           </div>
-        `
+        `,
       };
 
       await transporter.sendMail(msg);
       res.status(200).json({
         success: true,
-        message: "OTP sent to your email"
+        message: 'OTP sent to your email',
       });
     } catch (emailError) {
-      console.error("Error sending email:", emailError);
+      console.error('Error sending email:', emailError);
       res.status(500).json({
-        error: "Failed to send OTP email. Please try again later."
+        error: 'Failed to send OTP email. Please try again later.',
       });
     }
   } catch (error) {
-    console.error("Error in forgotPassword:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error in forgotPassword:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -155,38 +150,36 @@ exports.resetPassword = async (req, res) => {
     const otpDoc = await OTPModel.findOne({ email });
 
     if (!otpDoc) {
-      return res.status(400).json({ error: "No OTP request found. Please request a new OTP." });
+      return res.status(400).json({ error: 'No OTP request found. Please request a new OTP.' });
     }
 
     if (otpDoc.otp !== otp) {
-      return res.status(400).json({ error: "Invalid OTP. Please try again." });
+      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
     }
 
     if (new Date() > new Date(otpDoc.expiresAt)) {
       await OTPModel.deleteOne({ _id: otpDoc._id });
-      return res.status(400).json({ error: "OTP has expired. Please request a new one." });
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
     }
 
     const userId = otpDoc.userId;
-    const hashedPassword = bcrypt.hashSync(newPassword, 10);
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { password: hashedPassword },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ error: "User not found." });
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
     }
+
+    console.log('Updating password for user:', email);
+    user.password = newPassword; // Let pre('save') hook handle hashing
+    await user.save();
 
     await OTPModel.deleteOne({ _id: otpDoc._id });
     res.status(200).json({
       success: true,
-      message: "Password reset successful"
+      message: 'Password reset successful',
     });
   } catch (error) {
-    console.error("Error in resetPassword:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error in resetPassword:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -197,7 +190,6 @@ exports.register = async (req, res) => {
     const { firstName, lastName, email, password, dateOfBirth } = req.body;
     console.log('Register attempt:', { firstName, lastName, email, dateOfBirth });
 
-    // Validate input
     if (!firstName || !lastName || !email || !password || !dateOfBirth) {
       console.log('Missing required fields');
       await session.abortTransaction();
@@ -205,7 +197,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Check if user already exists
+    console.log('Checking for existing user');
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
       console.log('Email already exists:', email);
@@ -214,115 +206,121 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
-    // Create new user
+    console.log('Creating new user');
     const user = new User({
       firstName,
       lastName,
       email,
-      password,
-      dateOfBirth: new Date(dateOfBirth)
+      password, // Let pre('save') hook handle hashing
+      dateOfBirth: new Date(dateOfBirth),
     });
-
     const savedUser = await user.save({ session });
-    console.log('User saved:', savedUser._id, 'Password hashed:', savedUser.password.startsWith('$2b$'));
-    if (!savedUser._id) {
-      throw new Error('Failed to create user: No _id generated');
-    }
+    console.log('User saved:', { userId: savedUser._id, email: savedUser.email });
 
-    // Check for existing wallet
+    console.log('Checking for existing wallet');
     const existingWallet = await Wallet.findOne({ userId: savedUser._id }).session(session);
     if (existingWallet) {
-      console.log('Wallet already exists for user:', savedUser._id);
+      console.error('Wallet already exists for user:', savedUser._id);
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ error: 'Wallet already exists for this user' });
     }
 
-    // Create wallet for the user
+    console.log('Creating wallet');
     const wallet = new Wallet({
-      userId: savedUser._id
+      userId: savedUser._id.toString(),
+      balance: 0,
+      totalDeposits: 0,
+      currency: 'NGN',
+      transactions: [],
     });
-    await wallet.save({ session });
-    console.log('Wallet created for user:', savedUser._id);
+    const savedWallet = await wallet.save({ session });
+    console.log('Wallet created:', { walletId: savedWallet._id, userId: savedWallet.userId });
+
+    console.log('Verifying wallet existence');
+    const verifyWallet = await Wallet.findOne({ userId: savedUser._id.toString() }).session(session);
+    if (!verifyWallet) {
+      console.error('Wallet verification failed: Wallet not found after save', { userId: savedUser._id });
+      throw new Error('Wallet creation failed: Wallet not found after save');
+    }
+    console.log('Wallet verified:', { walletId: verifyWallet._id });
 
     await session.commitTransaction();
+    console.log('Transaction committed for user:', { userId: savedUser._id, walletId: savedWallet._id });
+
     session.endSession();
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: savedUser._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    console.log('Generating JWT token');
+    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User and wallet registered successfully',
       token,
       user: {
         id: savedUser._id,
         firstName: savedUser.firstName,
         lastName: savedUser.lastName,
-        email: savedUser.email
-      }
+        email: savedUser.email,
+      },
+      walletId: savedWallet._id,
     });
   } catch (error) {
+    console.error('Registration error:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+    });
     await session.abortTransaction();
     session.endSession();
-    console.error('Registration error:', error);
     if (error.code === 11000) {
-      res.status(400).json({ error: 'Duplicate key error: Email or wallet already exists', details: error.keyValue });
-    } else {
-      res.status(500).json({ error: 'Internal server error', details: error.message });
+      return res.status(400).json({ error: 'Email or wallet already in use', details: error.keyValue });
     }
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt:', { email });
+    console.log('Login attempt:', { email, password: '[REDACTED]' });
 
-    // Validate input
     if (!email || !password) {
       console.log('Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user with password
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       console.log('User not found:', email);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('User found:', user._id, 'Stored password:', user.password);
+    console.log('User found:', { userId: user._id, email: user.email });
 
-    // Check if password is a valid bcrypt hash
-    const isBcryptHash = user.password.startsWith('$2b$') || user.password.startsWith('$2a$');
-    let isMatch = false;
-
-    if (isBcryptHash) {
-      // Normal bcrypt comparison
-      isMatch = await user.comparePassword(password);
-    } else {
-      // Fallback for plain-text passwords (temporary for debugging)
-      console.warn('Plain-text password detected for user:', email);
-      isMatch = user.password === password;
-    }
-
+    const isMatch = await user.comparePassword(password);
     console.log('Password match:', isMatch);
 
     if (!isMatch) {
+      console.log('Invalid password attempt for user:', email);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    let wallet = await Wallet.findOne({ userId: user._id });
+    if (!wallet) {
+      console.warn('Wallet not found during login, recreating:', user._id);
+      wallet = new Wallet({
+        userId: user._id.toString(),
+        balance: 0,
+        totalDeposits: 0,
+        currency: 'NGN',
+        transactions: [],
+      });
+      await wallet.save();
+      console.log('Wallet recreated during login:', { userId: user._id, walletId: wallet._id });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(200).json({
       success: true,
@@ -332,11 +330,16 @@ exports.login = async (req, res) => {
         id: user._id,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email
-      }
+        email: user.email,
+      },
+      walletId: wallet._id,
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', {
+      message: error.message,
+      stack: error.stack,
+      email,
+    });
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };

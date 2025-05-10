@@ -1,11 +1,40 @@
 const mongoose = require('mongoose');
 
-const WalletSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+const transactionSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    enum: ['deposit', 'withdrawal', 'transfer'],
     required: true,
-    unique: true,
+  },
+  amount: {
+    type: Number,
+    required: true,
+  },
+  reference: {
+    type: String,
+    required: true,
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'pending',
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const walletSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    unique: true, // Ensure one wallet per user
+    index: true, // Single index definition
   },
   balance: {
     type: Number,
@@ -20,68 +49,40 @@ const WalletSchema = new mongoose.Schema({
   currency: {
     type: String,
     default: 'NGN',
-    uppercase: true,
   },
-  transactions: [{
-    type: {
-      type: String,
-      enum: ['deposit', 'withdrawal', 'transfer'],
-      required: true,
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    reference: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'completed', 'failed'],
-      default: 'pending',
-    },
-    metadata: {
-      type: Object,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-  }],
+  transactions: [transactionSchema],
   createdAt: {
     type: Date,
     default: Date.now,
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
 });
 
-// Update timestamp before saving
-WalletSchema.pre('save', function (next) {
-  this.updatedAt = new Date();
-  next();
+// Prevent wallet deletion entirely
+walletSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
+  throw new Error('Wallet deletion is not allowed. Wallets are permanent.');
 });
 
-// Method to calculate total deposits from transactions
-WalletSchema.methods.calculateTotalDeposits = function () {
-  return this.transactions
+// Prevent wallet deletion via query (e.g., deleteMany)
+walletSchema.pre('deleteMany', async function (next) {
+  throw new Error('Bulk wallet deletion is not allowed. Wallets are permanent.');
+});
+
+// Recalculate balance based on completed transactions
+walletSchema.methods.recalculateBalance = async function () {
+  const completedDeposits = this.transactions
     .filter((t) => t.type === 'deposit' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
-};
 
-// Method to recalculate balance from completed transactions
-WalletSchema.methods.recalculateBalance = async function () {
-  this.balance = this.transactions
-    .filter((t) => t.type === 'deposit' && t.status === 'completed')
+  const completedWithdrawals = this.transactions
+    .filter((t) => t.type === 'withdrawal' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
-  this.totalDeposits = this.balance;
-  await this.save();
-  return this.balance;
+
+  this.balance = completedDeposits - completedWithdrawals;
+  this.totalDeposits = completedDeposits;
+
+  if (this.balance < 0) {
+    throw new Error('Balance cannot be negative');
+  }
 };
 
-module.exports = mongoose.model('Wallet', WalletSchema);
+module.exports = mongoose.model('Wallet', walletSchema);

@@ -50,31 +50,26 @@ exports.updateUserDetails = async (req, res) => {
     user.accountNumber = accountNumber || user.accountNumber;
 
     await user.save();
-    res.status(200).json({ message: "User details updated successfully!" });
+    res.status(200).json({ message: "User details updated successfully!", user });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-
-
-
 exports.setAvatar = async (req, res) => {
   try {
     const userId = req.user.id;
-    // const imageUrl = req.file.originalname; 
     const imageUrl = req.file;
 
-      // Use the relative path to the image
-      const imagePath = imageUrl ? `uploads/images/${imageUrl.filename}` : null;
-
+    // Use the relative path to the image
+    const imagePath = imageUrl ? `uploads/images/${imageUrl.filename}` : null;
 
     const updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { 
         avatarImage: imagePath,
-        isAvatarImageSet: true // Update isAvatarImageSet to true when avatarImage is set
+        isAvatarImageSet: true
       },
       { new: true }
     );

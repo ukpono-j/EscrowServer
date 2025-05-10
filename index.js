@@ -1,74 +1,127 @@
-const express = require("express");
+const express = require('express');
 const app = express();
-const cors = require("cors");
-const http = require("http");
+const cors = require('cors');
+const http = require('http');
 const connectDB = require('./config/db');
 const path = require('path');
-const socket = require("socket.io");
+const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
-require("dotenv").config();
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-// Debug log to confirm loading
-console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY);
+const mongoose = require('mongoose');
+
+async function manageIndexes() {
+  try {
+    const db = mongoose.connection.db;
+
+    // Ensure correct userId_1 index on wallets collection
+    await db.collection('wallets').createIndex({ userId: 1 }, { unique: true, name: 'userId_1' });
+    console.log('Ensured userId_1 index on wallets collection');
+
+    // Log existing indexes for debugging
+    const walletIndexes = await db.collection('wallets').indexes();
+    console.log('Current wallet indexes:', JSON.stringify(walletIndexes, null, 2));
+  } catch (error) {
+    console.error('Index management error:', error.message);
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('Continuing server startup despite index management error');
+      return;
+    }
+    throw error;
+  }
+}
+
+console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 
 const corsOptions = {
-  origin: "*",
-  methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-  credentials: false,
-  allowedHeaders: "Content-Type, Authorization, auth-token, x-auth-token, Paymentpoint-Signature",
+  origin: [
+    'http://localhost:5173',
+    'https://escrow-app.onrender.com',
+    'https://escrow-app-delta.vercel.app',
+    'https://escrowserver.onrender.com',
+    'https://api.multiavatar.com',
+    'https://mymiddleman.ng',
+  ],
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'Paymentpoint-Signature'],
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
 
-app.use(function (request, response, next) {
-  response.header("Access-Control-Allow-Origin", "*");
-  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, auth-token, x-auth-token, Paymentpoint-Signature");
-  next();
-});
-
-const io = socket({
+const server = http.createServer(app);
+const io = socketIo(server, {
   cors: {
-    origin: [
-      "http://localhost:5173",
-      "https://escrow-app.onrender.com",
-      "https://escrow-app-delta.vercel.app",
-      "https://escrowserver.onrender.com",
-      "https://api.multiavatar.com",
-      "https://mymiddleman.ng",
-    ],
-    methods: ["GET", "POST"],
+    origin: corsOptions.origin,
+    methods: ['GET', 'POST'],
     credentials: true,
   },
 });
 
-app.use(express.urlencoded({ extended: false }));
-app.use('/uploads/images', express.static(path.join(__dirname, 'uploads/images')));
+// Socket.IO Authentication Middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error('Authentication error: No token provided'));
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch (error) {
+    console.error('Socket.IO authentication error:', error.message);
+    next(new Error('Authentication error: Invalid token'));
+  }
+});
 
-// Use express.raw() for the webhook endpoint to get the raw body
-app.use('/api/wallet/verify-funding', express.raw({ type: 'application/json' }));
-// Use body-parser.json() for all other routes
-app.use(bodyParser.json());
+// Socket.IO Connection Handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.userId);
 
-io.on("connection", (socket) => {
-  socket.on("join-room", (roomId, userId) => {
-    socket.join(roomId);
-    socket.on("message", (message) => {
-      io.to(roomId).emit("message", message);
-    });
-    socket.on("disconnect", () => {
-      io.to(roomId).emit("user-disconnected", userId);
-    });
+  // Join user-specific room
+  socket.on('join-room', (userId) => {
+    if (userId === socket.userId) {
+      socket.join(userId);
+      console.log(`User ${userId} joined room ${userId}`);
+    } else {
+      console.warn(`User ${socket.userId} attempted to join unauthorized room ${userId}`);
+    }
+  });
+
+  // Existing chat room functionality
+  socket.on('join-room', (roomId, userId) => {
+    if (userId === socket.userId) {
+      socket.join(roomId);
+      console.log(`User ${userId} joined chat room ${roomId}`);
+      socket.on('message', (message) => {
+        io.to(roomId).emit('message', message);
+      });
+      socket.on('disconnect', () => {
+        io.to(roomId).emit('user-disconnected', userId);
+        console.log(`User ${userId} disconnected from chat room ${roomId}`);
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.userId);
   });
 });
 
-// Connect to the database
-connectDB();
+// Attach io to app for use in controllers
+app.set('io', io);
 
-// Middleware
+app.use(express.urlencoded({ extended: false }));
+app.use('/uploads/images', express.static(path.join(__dirname, 'Uploads/images')));
+
+app.use('/api/wallet/verify-funding', express.raw({ type: 'application/json' }));
+app.use(bodyParser.json());
+
 app.use(express.json());
 
-// Function to initialize routes after dotenv is loaded
 const initializeRoutes = () => {
   const authRoutes = require('./routes/authRoutes');
   const userRoutes = require('./routes/userRoutes');
@@ -87,25 +140,32 @@ const initializeRoutes = () => {
   app.use('/api/wallet', walletRoutes);
 };
 
-// Call the function to initialize routes
-initializeRoutes();
-
-// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server Error:', err);
-  res.status(500).json({ 
+  console.error('Server Error:', err.message);
+  res.status(500).json({
     error: 'Internal Server Error',
     message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 });
 
-// Load cron jobs
 require('./cronJobs');
 
-const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+async function startServer() {
+  try {
+    await connectDB();
+    await manageIndexes();
+    console.log('Index management completed');
+    initializeRoutes();
+    server.setTimeout(300000);
+    const PORT = process.env.PORT || 3001;
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error.message);
+    process.exit(1);
+  }
+}
 
-io.attach(server);
+startServer();

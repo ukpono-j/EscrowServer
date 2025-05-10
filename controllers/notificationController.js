@@ -100,3 +100,37 @@ exports.getNotifications = async (req, res) => {
       res.status(500).json({ error: "Internal Server Error" });
     }
   };
+
+  exports.deleteNotification = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const notification = await Notification.findOne({ _id: id, userId });
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found or unauthorized" });
+      }
+      await Notification.deleteOne({ _id: id });
+      res.status(200).json({ message: "Notification deleted successfully" });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
+  
+  exports.updateNotificationStatus = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const userId = req.user.id;
+      const notification = await Notification.findOne({ _id: id, userId });
+      if (!notification) {
+        return res.status(404).json({ error: "Notification not found or unauthorized" });
+      }
+      notification.status = status;
+      await notification.save();
+      res.status(200).json(notification);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  };
