@@ -8,18 +8,13 @@ const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-
 const mongoose = require('mongoose');
 
 async function manageIndexes() {
   try {
     const db = mongoose.connection.db;
-
-    // Ensure correct userId_1 index on wallets collection
     await db.collection('wallets').createIndex({ userId: 1 }, { unique: true, name: 'userId_1' });
     console.log('Ensured userId_1 index on wallets collection');
-
-    // Log existing indexes for debugging
     const walletIndexes = await db.collection('wallets').indexes();
     console.log('Current wallet indexes:', JSON.stringify(walletIndexes, null, 2));
   } catch (error) {
@@ -36,14 +31,21 @@ console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'https://escrow-app.onrender.com',
-    'https://escrow-app-delta.vercel.app',
-    'https://escrowserver.onrender.com',
-    'https://api.multiavatar.com',
-    'https://mymiddleman.ng',
-  ],
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://escrow-app.onrender.com',
+      'https://escrow-app-delta.vercel.app',
+      'https://escrowserver.onrender.com',
+      'https://api.multiavatar.com',
+      'https://mymiddleman.ng',
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'Paymentpoint-Signature'],
@@ -51,6 +53,15 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
+
+// Log response headers for debugging
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    console.log(`Response for ${req.method} ${req.url}:`, res.getHeaders());
+  });
+  next();
+});
 
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -81,7 +92,6 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.userId);
 
-  // Join user-specific room
   socket.on('join-room', (userId) => {
     if (userId === socket.userId) {
       socket.join(userId);
@@ -91,7 +101,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Existing chat room functionality
   socket.on('join-room', (roomId, userId) => {
     if (userId === socket.userId) {
       socket.join(roomId);
@@ -111,15 +120,12 @@ io.on('connection', (socket) => {
   });
 });
 
-// Attach io to app for use in controllers
 app.set('io', io);
 
 app.use(express.urlencoded({ extended: false }));
 app.use('/uploads/images', express.static(path.join(__dirname, 'Uploads/images')));
-
 app.use('/api/wallet/verify-funding', express.raw({ type: 'application/json' }));
 app.use(bodyParser.json());
-
 app.use(express.json());
 
 const initializeRoutes = () => {
@@ -157,7 +163,7 @@ async function startServer() {
     await manageIndexes();
     console.log('Index management completed');
     initializeRoutes();
-    server.setTimeout(300000);
+    server.setTimeout(600000); // Increase to 10 minutes
     const PORT = process.env.PORT || 3001;
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
