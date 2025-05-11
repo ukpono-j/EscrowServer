@@ -280,6 +280,70 @@ exports.register = async (req, res) => {
   }
 };
 
+// exports.login = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     console.log('Login attempt:', { email, password: '[REDACTED]' });
+
+//     if (!email || !password) {
+//       console.log('Missing email or password');
+//       return res.status(400).json({ error: 'Email and password are required' });
+//     }
+
+//     const user = await User.findOne({ email }).select('+password');
+//     if (!user) {
+//       console.log('User not found:', email);
+//       return res.status(404).json({ error: 'User not found' });
+//     }
+
+//     console.log('User found:', { userId: user._id, email: user.email });
+
+//     const isMatch = await user.comparePassword(password);
+//     console.log('Password match:', isMatch);
+
+//     if (!isMatch) {
+//       console.log('Invalid password attempt for user:', email);
+//       return res.status(401).json({ error: 'Invalid credentials' });
+//     }
+
+//     let wallet = await Wallet.findOne({ userId: user._id });
+//     if (!wallet) {
+//       console.warn('Wallet not found during login, recreating:', user._id);
+//       wallet = new Wallet({
+//         userId: user._id.toString(),
+//         balance: 0,
+//         totalDeposits: 0,
+//         currency: 'NGN',
+//         transactions: [],
+//       });
+//       await wallet.save();
+//       console.log('Wallet recreated during login:', { userId: user._id, walletId: wallet._id });
+//     }
+
+//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+//     res.status(200).json({
+//       success: true,
+//       message: 'Login successful',
+//       token,
+//       user: {
+//         id: user._id,
+//         firstName: user.firstName,
+//         lastName: user.lastName,
+//         email: user.email,
+//       },
+//       walletId: wallet._id,
+//     });
+//   } catch (error) {
+//     console.error('Login error:', {
+//       message: error.message,
+//       stack: error.stack,
+//       email,
+//     });
+//     res.status(500).json({ error: 'Internal server error', details: error.message });
+//   }
+// };
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -296,14 +360,14 @@ exports.login = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log('User found:', { userId: user._id, email: user.email });
+    console.log('User found:', { userId: user._id, email: user.email, passwordHash: user.password });
 
     const isMatch = await user.comparePassword(password);
-    console.log('Password match:', isMatch);
+    console.log('Password comparison result:', isMatch);
 
     if (!isMatch) {
       console.log('Invalid password attempt for user:', email);
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials', details: 'Password mismatch' });
     }
 
     let wallet = await Wallet.findOne({ userId: user._id });
@@ -321,6 +385,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    console.log('Login successful, token generated:', { userId: user._id, token: '[REDACTED]' });
 
     res.status(200).json({
       success: true,
@@ -339,6 +404,7 @@ exports.login = async (req, res) => {
       message: error.message,
       stack: error.stack,
       email,
+      body: req.body,
     });
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }

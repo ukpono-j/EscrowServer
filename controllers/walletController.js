@@ -1,6 +1,6 @@
 const Wallet = require('../modules/wallet');
 const User = require('../modules/Users');
-const Notification = require('../modules/Notification'); // Add Notification model
+const Notification = require('../modules/Notification');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 const crypto = require('crypto');
@@ -211,7 +211,6 @@ exports.initiateFunding = async (req, res) => {
 
       wallet.transactions.push(transaction);
 
-      // Create notification for failed funding attempt
       const notification = new Notification({
         userId,
         title: 'Wallet Funding Failed',
@@ -238,7 +237,6 @@ exports.initiateFunding = async (req, res) => {
       if (!bankAccount || !bankAccount.accountNumber || !bankAccount.accountName || !bankAccount.bankName) {
         console.error('Invalid virtual account details:', response.data);
 
-        // Create notification for invalid virtual account
         const notification = new Notification({
           userId,
           title: 'Wallet Funding Error',
@@ -272,7 +270,6 @@ exports.initiateFunding = async (req, res) => {
 
       wallet.transactions.push(transaction);
 
-      // Create notification for funding initiation
       const notification = new Notification({
         userId,
         title: 'Wallet Funding Initiated',
@@ -303,7 +300,6 @@ exports.initiateFunding = async (req, res) => {
 
     console.warn('PaymentPoint API returned non-success status:', response.data);
 
-    // Create notification for non-success response
     const notification = new Notification({
       userId,
       title: 'Wallet Funding Error',
@@ -327,7 +323,6 @@ exports.initiateFunding = async (req, res) => {
       stack: error.stack,
     });
 
-    // Create notification for general error
     const notification = new Notification({
       userId,
       title: 'Wallet Funding Error',
@@ -508,7 +503,6 @@ exports.verifyFunding = async (req, res) => {
           totalDeposits: wallet.totalDeposits,
         });
 
-        // Create notification for successful funding
         const notification = new Notification({
           userId: wallet.userId,
           title: 'Wallet Funded Successfully',
@@ -527,7 +521,6 @@ exports.verifyFunding = async (req, res) => {
         console.error('Invalid amount in webhook:', amount_paid);
       }
     } else {
-      // Create notification for failed funding
       const notification = new Notification({
         userId: wallet.userId,
         title: 'Wallet Funding Failed',
@@ -559,7 +552,6 @@ exports.verifyFunding = async (req, res) => {
       transactionReference: transaction.reference,
     });
 
-    // Emit socket event for balance update
     const io = req.app.get('io');
     io.to(wallet.userId.toString()).emit('balanceUpdate', {
       balance: wallet.balance,
@@ -647,7 +639,6 @@ exports.checkFundingStatus = async (req, res) => {
           await wallet.recalculateBalance();
           await wallet.save();
 
-          // Create notification for verified funding
           const notification = new Notification({
             userId: wallet.userId,
             title: 'Wallet Funded Successfully',
@@ -757,7 +748,6 @@ exports.reconcileTransactions = async (req, res) => {
           tx.status = 'failed';
           tx.metadata.error = 'Transaction timed out';
 
-          // Create notification for timed-out transaction
           const notification = new Notification({
             userId: wallet.userId,
             title: 'Wallet Funding Timed Out',
@@ -796,7 +786,6 @@ exports.reconcileTransactions = async (req, res) => {
             wallet.balance += parseFloat(response.data.data.amount);
             wallet.totalDeposits += parseFloat(response.data.data.amount);
 
-            // Create notification for reconciled transaction
             const notification = new Notification({
               userId: wallet.userId,
               title: 'Wallet Funded Successfully',
@@ -813,11 +802,24 @@ exports.reconcileTransactions = async (req, res) => {
 
             await wallet.recalculateBalance();
             await wallet.save();
-            console.log('Manual reconciliation: Transaction completed:', tx.reference);
+            console.log('Manual reconciliation: Transaction completed:', {
+              reference: tx.reference,
+              amount: response.data.data.amount,
+              newBalance: wallet.balance,
+            });
+
+            const io = req.app.get('io');
+            io.to(wallet.userId.toString()).emit('balanceUpdate', {
+              balance: wallet.balance,
+              transaction: {
+                amount: parseFloat(response.data.data.amount),
+                reference: tx.reference,
+              },
+            });
           } else if (response.data.data?.status === 'failed') {
             tx.status = 'failed';
+            tx.metadata.error = response.data.data?.message || 'Payment failed';
 
-            // Create notification for failed reconciliation
             const notification = new Notification({
               userId: wallet.userId,
               title: 'Wallet Funding Failed',
@@ -833,66 +835,401 @@ exports.reconcileTransactions = async (req, res) => {
             });
 
             await wallet.save();
-            console.log('Manual reconciliation: Transaction failed:', tx.reference);
           }
         } catch (error) {
-          console.error('Manual reconciliation error:', {
+          console.error('Reconciliation error for transaction:', {
             reference: tx.reference,
             message: error.message,
-            status: error.response?.status,
-            data: error.response?.data,
+            code: error.code,
+            response: error.response?.data,
           });
-          if (error.response?.status === 404) {
-            console.warn('Transaction not found in PaymentPoint, marking as failed:', tx.reference);
-            tx.status = 'failed';
-
-            // Create notification for not found transaction
-            const notification = new Notification({
-              userId: wallet.userId,
-              title: 'Wallet Funding Failed',
-              message: `Your wallet funding of ${tx.amount} NGN was not found. Transaction reference: ${tx.reference}.`,
-              transactionId: tx.reference,
-              type: 'funding',
-              status: 'failed',
-            });
-            await notification.save();
-            console.log('Not found notification created:', {
-              userId: wallet.userId,
-              reference: tx.reference,
-            });
-
-            await wallet.save();
-          }
+          continue;
         }
       }
     }
 
-    if (res) {
-      return res.status(200).json({ success: true, message: 'Transaction reconciliation completed' });
-    }
+    console.log('Transaction reconciliation completed');
+    return res.status(200).json({ success: true, message: 'Transaction reconciliation completed' });
   } catch (error) {
     console.error('Reconciliation error:', {
       message: error.message,
       stack: error.stack,
     });
-    if (res) {
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+    return res.status(500).json({ success: false, error: 'Internal server error during reconciliation' });
+  }
+};
+
+exports.verifyAccount = async (req, res) => {
+  try {
+    const { bankCode, accountNumber } = req.body;
+    const userId = req.user.id;
+
+    console.log('Verifying account:', { userId, bankCode, accountNumber });
+
+    if (!bankCode || !accountNumber || accountNumber.length !== 10) {
+      console.warn('Invalid account details:', { bankCode, accountNumber });
+      return res.status(400).json({ success: false, error: 'Valid bank code and 10-digit account number are required' });
     }
+
+    const headers = {
+      Authorization: `Bearer ${process.env.PAYMENT_POINT_SECRET_KEY}`,
+      'api-key': process.env.PAYMENT_POINT_PUBLIC_KEY,
+      'Content-Type': 'application/json',
+    };
+
+    const payload = {
+      bankCode,
+      accountNumber,
+    };
+
+    const url = `${process.env.PAYMENT_POINT_API_URL}/api/v1/verifyAccount`;
+    console.log('Calling PaymentPoint verifyAccount:', { url, payload });
+
+    let response;
+    try {
+      response = await axios.post(url, payload, {
+        headers,
+        timeout: 10000,
+      });
+      console.log('PaymentPoint verifyAccount response:', JSON.stringify(response.data, null, 2));
+    } catch (error) {
+      console.error('PaymentPoint verifyAccount error:', {
+        endpoint: url,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        code: error.code,
+      });
+
+      let errorMessage = 'Failed to verify account';
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Payment provider is currently unavailable due to a timeout. Please try again later.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid API credentials. Please contact support.';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many requests to the payment provider. Please try again later.';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Invalid account details. Please check and try again.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      return res.status(error.response?.status || 502).json({
+        success: false,
+        message: errorMessage,
+        error: error.message,
+      });
+    }
+
+    if (response.data?.status === 'success' && response.data.data?.accountName) {
+      return res.status(200).json({
+        success: true,
+        accountName: response.data.data.accountName,
+      });
+    }
+
+    console.warn('PaymentPoint verifyAccount failed:', response.data);
+    return res.status(400).json({
+      success: false,
+      message: 'Account verification failed',
+      error: response.data.message || 'Unknown error',
+    });
+  } catch (error) {
+    console.error('Verify account error:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
+  }
+};
+
+exports.withdrawFunds = async (req, res) => {
+  try {
+    const { amount, bankCode, accountNumber, accountName } = req.body;
+    const userId = req.user.id;
+
+    console.log('Initiating withdrawal:', { userId, amount, bankCode, accountNumber, accountName });
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      console.warn('Invalid amount provided:', amount);
+      return res.status(400).json({ success: false, error: 'Valid amount is required' });
+    }
+    if (!bankCode || !accountNumber || accountNumber.length !== 10 || !accountName) {
+      console.warn('Invalid account details:', { bankCode, accountNumber, accountName });
+      return res.status(400).json({ success: false, error: 'Valid bank code, 10-digit account number, and account name are required' });
+    }
+
+    let wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+      console.warn('Wallet not found, recreating:', userId);
+      wallet = new Wallet({
+        userId,
+        balance: 0,
+        totalDeposits: 0,
+        currency: 'NGN',
+        transactions: [],
+      });
+      await wallet.save();
+      console.log('Wallet recreated for withdrawal:', { userId, walletId: wallet._id });
+    }
+
+    await wallet.recalculateBalance();
+    if (wallet.balance < amount) {
+      console.warn('Insufficient balance:', { userId, balance: wallet.balance, requestedAmount: amount });
+      return res.status(400).json({ success: false, error: 'Insufficient wallet balance' });
+    }
+
+    const reference = `WD-${crypto.randomBytes(4).toString('hex')}-${Date.now()}`;
+    console.log('Generated withdrawal reference:', reference);
+
+    const headers = {
+      Authorization: `Bearer ${process.env.PAYMENT_POINT_SECRET_KEY}`,
+      'api-key': process.env.PAYMENT_POINT_PUBLIC_KEY,
+      'Content-Type': 'application/json',
+    };
+
+    const payload = {
+      amount: parseFloat(amount),
+      bankCode,
+      accountNumber,
+      accountName,
+      reference,
+      businessId: process.env.PAYMENT_POINT_BUSINESS_ID,
+      metadata: {
+        userId: userId.toString(),
+        walletId: wallet._id.toString(),
+        type: 'withdrawal',
+      },
+    };
+
+    const url = `${process.env.PAYMENT_POINT_API_URL}/api/v1/initiateWithdrawal`;
+    console.log('Calling PaymentPoint initiateWithdrawal:', { url, payload });
+
+    let response;
+    try {
+      response = await axios.post(url, payload, {
+        headers,
+        timeout: 15000,
+      });
+      console.log('PaymentPoint initiateWithdrawal response:', JSON.stringify(response.data, null, 2));
+    } catch (error) {
+      console.error('PaymentPoint initiateWithdrawal error:', {
+        endpoint: url,
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+        code: error.code,
+      });
+
+      let errorMessage = 'Failed to initiate withdrawal';
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Payment provider is currently unavailable due to a timeout. Please try again later.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid API credentials. Please contact support.';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many requests to the payment provider. Please try again later.';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Invalid withdrawal details. Please check and try again.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      const transaction = {
+        type: 'withdrawal',
+        amount: parseFloat(amount),
+        reference,
+        status: 'failed',
+        metadata: {
+          paymentGateway: 'PaymentPoint',
+          bankCode,
+          accountNumber,
+          accountName,
+          error: errorMessage,
+          errorDetails: error.response?.data || error.message,
+        },
+        createdAt: new Date(),
+      };
+
+      wallet.transactions.push(transaction);
+
+      const notification = new Notification({
+        userId,
+        title: 'Withdrawal Failed',
+        message: `Your withdrawal of ${amount} NGN failed: ${errorMessage}`,
+        transactionId: reference,
+        type: 'withdrawal',
+        status: 'failed',
+      });
+      await notification.save();
+      console.log('Failure notification created:', { userId, reference, errorMessage });
+
+      await wallet.save();
+      console.log('Failed withdrawal transaction saved:', { reference, walletId: wallet._id });
+
+      return res.status(error.response?.status || 502).json({
+        success: false,
+        message: errorMessage,
+        error: error.message,
+      });
+    }
+
+    if (response.data?.status === 'success') {
+      wallet.balance -= parseFloat(amount);
+      const transaction = {
+        type: 'withdrawal',
+        amount: parseFloat(amount),
+        reference,
+        status: 'completed',
+        metadata: {
+          paymentGateway: 'PaymentPoint',
+          bankCode,
+          accountNumber,
+          accountName,
+          withdrawalId: response.data.data?.withdrawalId || reference,
+        },
+        createdAt: new Date(),
+      };
+
+      wallet.transactions.push(transaction);
+
+      const notification = new Notification({
+        userId,
+        title: 'Withdrawal Successful',
+        message: `Your withdrawal of ${amount} NGN to ${accountName} (${accountNumber}) has been processed. Transaction reference: ${reference}.`,
+        transactionId: reference,
+        type: 'withdrawal',
+        status: 'completed',
+      });
+      await notification.save();
+      console.log('Success notification created:', { userId, reference });
+
+      await wallet.save();
+      console.log('Withdrawal transaction saved:', { reference, walletId: wallet._id, newBalance: wallet.balance });
+
+      const io = req.app.get('io');
+      io.to(userId.toString()).emit('balanceUpdate', {
+        balance: wallet.balance,
+        transaction: {
+          amount: parseFloat(amount),
+          reference,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Withdrawal processed successfully',
+        data: {
+          reference,
+          newBalance: wallet.balance,
+        },
+      });
+    }
+
+    console.warn('PaymentPoint initiateWithdrawal failed:', response.data);
+    const transaction = {
+      type: 'withdrawal',
+      amount: parseFloat(amount),
+      reference,
+      status: 'failed',
+      metadata: {
+        paymentGateway: 'PaymentPoint',
+        bankCode,
+        accountNumber,
+        accountName,
+        error: response.data.message || 'Withdrawal failed',
+      },
+      createdAt: new Date(),
+    };
+
+    wallet.transactions.push(transaction);
+
+    const notification = new Notification({
+      userId,
+      title: 'Withdrawal Failed',
+      message: `Your withdrawal of ${amount} NGN failed: ${response.data.message || 'Unknown error'}`,
+      transactionId: reference,
+      type: 'withdrawal',
+      status: 'failed',
+    });
+    await notification.save();
+    console.log('Failure notification created:', { userId, reference });
+
+    await wallet.save();
+    console.log('Failed withdrawal transaction saved:', { reference, walletId: wallet._id });
+
+    return res.status(400).json({
+      success: false,
+      message: 'Withdrawal failed',
+      error: response.data.message || 'Unknown error',
+    });
+  } catch (error) {
+    console.error('Withdraw funds error:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+
+    const notification = new Notification({
+      userId: req.user.id,
+      title: 'Withdrawal Error',
+      message: 'An error occurred while processing your withdrawal. Please try again or contact support.',
+      transactionId: `WD-ERROR-${Date.now()}`,
+      type: 'withdrawal',
+      status: 'failed',
+    });
+    await notification.save();
+    console.log('General error notification created:', { userId: req.user.id });
+
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
+    });
   }
 };
 
 exports.getWalletTransactions = async (req, res) => {
   try {
-    const wallet = await Wallet.findOne({ userId: req.user.id });
+    console.log('Fetching wallet transactions for user:', req.user.id);
+    let wallet = await Wallet.findOne({ userId: req.user.id });
+
     if (!wallet) {
-      return res.status(404).json({ success: false, error: 'Wallet not found' });
+      console.warn('Wallet not found for user, recreating:', req.user.id);
+      const user = await User.findById(req.user.id);
+      if (!user) {
+        console.error('User not found during wallet recreation:', req.user.id);
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      wallet = new Wallet({
+        userId: req.user.id,
+        balance: 0,
+        totalDeposits: 0,
+        currency: 'NGN',
+        transactions: [],
+      });
+      await wallet.save();
+      console.log('Wallet recreated for user:', { userId: req.user.id, walletId: wallet._id });
     }
+
+    // Sort transactions by createdAt in descending order (most recent first)
+    const transactions = wallet.transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
     res.status(200).json({
       success: true,
-      transactions: wallet.transactions,
+      transactions,
     });
   } catch (error) {
-    console.error('Get wallet transactions error:', error);
+    console.error('Get transactions error:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
