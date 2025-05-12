@@ -168,6 +168,11 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    // Validate new password format
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters and include uppercase, number, and special character' });
+    }
+
     console.log('Updating password for user:', email);
     user.password = newPassword; // Let pre('save') hook handle hashing
     await user.save();
@@ -190,11 +195,49 @@ exports.register = async (req, res) => {
     const { firstName, lastName, email, password, dateOfBirth } = req.body;
     console.log('Register attempt:', { firstName, lastName, email, dateOfBirth });
 
+    // Validate inputs
     if (!firstName || !lastName || !email || !password || !dateOfBirth) {
       console.log('Missing required fields');
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      console.log('Invalid email format:', email);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Validate dateOfBirth
+    const dob = new Date(dateOfBirth);
+    if (isNaN(dob.getTime())) {
+      console.log('Invalid date of birth:', dateOfBirth);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Invalid date of birth' });
+    }
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    if (age < 18) {
+      console.log('User is under 18:', { dateOfBirth, age });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'You must be at least 18 years old' });
+    }
+
+    // Validate password format
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      console.log('Invalid password format:', email);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Password must be at least 8 characters and include uppercase, number, and special character' });
     }
 
     console.log('Checking for existing user');
@@ -211,8 +254,8 @@ exports.register = async (req, res) => {
       firstName,
       lastName,
       email,
-      password, // Let pre('save') hook handle hashing
-      dateOfBirth: new Date(dateOfBirth),
+      password,
+      dateOfBirth: dob,
     });
     const savedUser = await user.save({ session });
     console.log('User saved:', { userId: savedUser._id, email: savedUser.email });
@@ -274,75 +317,25 @@ exports.register = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'Email or wallet already in use', details: error.keyValue });
+      if (error.keyPattern?.email) {
+        return res.status(400).json({ error: 'Email already in use', details: error.keyValue });
+      }
+      if (error.keyPattern?.userId) {
+        return res.status(400).json({ error: 'Wallet already exists for this user', details: error.keyValue });
+      }
+      if (error.keyPattern?.['transactions.reference']) {
+        return res.status(400).json({
+          error: 'Database error: Duplicate transaction reference',
+          details: error.keyValue,
+          message: 'Please contact support or try again later.',
+        });
+      }
+      return res.status(400).json({ error: 'Database error: Duplicate key', details: error.keyValue });
     }
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
-// exports.login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-//     console.log('Login attempt:', { email, password: '[REDACTED]' });
-
-//     if (!email || !password) {
-//       console.log('Missing email or password');
-//       return res.status(400).json({ error: 'Email and password are required' });
-//     }
-
-//     const user = await User.findOne({ email }).select('+password');
-//     if (!user) {
-//       console.log('User not found:', email);
-//       return res.status(404).json({ error: 'User not found' });
-//     }
-
-//     console.log('User found:', { userId: user._id, email: user.email });
-
-//     const isMatch = await user.comparePassword(password);
-//     console.log('Password match:', isMatch);
-
-//     if (!isMatch) {
-//       console.log('Invalid password attempt for user:', email);
-//       return res.status(401).json({ error: 'Invalid credentials' });
-//     }
-
-//     let wallet = await Wallet.findOne({ userId: user._id });
-//     if (!wallet) {
-//       console.warn('Wallet not found during login, recreating:', user._id);
-//       wallet = new Wallet({
-//         userId: user._id.toString(),
-//         balance: 0,
-//         totalDeposits: 0,
-//         currency: 'NGN',
-//         transactions: [],
-//       });
-//       await wallet.save();
-//       console.log('Wallet recreated during login:', { userId: user._id, walletId: wallet._id });
-//     }
-
-//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-//     res.status(200).json({
-//       success: true,
-//       message: 'Login successful',
-//       token,
-//       user: {
-//         id: user._id,
-//         firstName: user.firstName,
-//         lastName: user.lastName,
-//         email: user.email,
-//       },
-//       walletId: wallet._id,
-//     });
-//   } catch (error) {
-//     console.error('Login error:', {
-//       message: error.message,
-//       stack: error.stack,
-//       email,
-//     });
-//     res.status(500).json({ error: 'Internal server error', details: error.message });
-//   }
-// };
 
 exports.login = async (req, res) => {
   try {

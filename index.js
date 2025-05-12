@@ -13,20 +13,25 @@ const mongoose = require('mongoose');
 async function manageIndexes() {
   try {
     const db = mongoose.connection.db;
-    await db.collection('wallets').createIndex({ userId: 1 }, { unique: true, name: 'userId_1' });
-    console.log('Ensured userId_1 index on wallets collection');
+    // Drop problematic index
+    try {
+      await db.collection('wallets').dropIndex('transactions.reference_1');
+      console.log('Dropped transactions.reference_1 index');
+    } catch (error) {
+      if (error.codeName === 'IndexNotFound') {
+        console.log('transactions.reference_1 index not found, no need to drop');
+      } else {
+        throw error;
+      }
+    }
+    // Ensure new compound index (already defined in wallet.js)
     const walletIndexes = await db.collection('wallets').indexes();
     console.log('Current wallet indexes:', JSON.stringify(walletIndexes, null, 2));
   } catch (error) {
     console.error('Index management error:', error.message);
-    if (process.env.NODE_ENV === 'production') {
-      console.warn('Continuing server startup despite index management error');
-      return;
-    }
     throw error;
   }
 }
-
 console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 

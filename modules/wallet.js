@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-
 const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
@@ -34,8 +33,8 @@ const walletSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true, // Ensure one wallet per user
-    index: true, // Single index definition
+    unique: true,
+    index: true,
   },
   balance: {
     type: Number,
@@ -58,17 +57,28 @@ const walletSchema = new mongoose.Schema({
   },
 });
 
-// Prevent wallet deletion entirely
+// Prevent wallet deletion
 walletSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
   throw new Error('Wallet deletion is not allowed. Wallets are permanent.');
 });
 
-// Prevent wallet deletion via query (e.g., deleteMany)
 walletSchema.pre('deleteMany', async function (next) {
   throw new Error('Bulk wallet deletion is not allowed. Wallets are permanent.');
 });
 
-// Recalculate balance based on completed transactions
+// Validate transaction references
+walletSchema.pre('save', function (next) {
+  if (this.isModified('transactions')) {
+    this.transactions.forEach((tx, index) => {
+      if (!tx.reference) {
+        throw new Error(`Transaction at index ${index} has an invalid or missing reference`);
+      }
+    });
+  }
+  next();
+});
+
+// Recalculate balance
 walletSchema.methods.recalculateBalance = async function () {
   const completedDeposits = this.transactions
     .filter((t) => t.type === 'deposit' && t.status === 'completed')
@@ -85,5 +95,11 @@ walletSchema.methods.recalculateBalance = async function () {
     throw new Error('Balance cannot be negative');
   }
 };
+
+// Optional: Add compound index for unique references within a wallet
+walletSchema.index(
+  { "_id": 1, "transactions.reference": 1 },
+  { unique: true, sparse: true, partialFilterExpression: { "transactions.reference": { $exists: true, $ne: null } } }
+);
 
 module.exports = mongoose.model('Wallet', walletSchema);

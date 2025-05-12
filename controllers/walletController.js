@@ -415,7 +415,24 @@ exports.verifyFunding = async (req, res) => {
       });
     }
 
+    // Check for duplicate webhook by transaction_id
     let wallet = await Wallet.findOne({
+      'transactions.metadata.paymentId': transaction_id,
+    });
+    if (wallet) {
+      const existingTransaction = wallet.transactions.find(
+        (t) => t.metadata.paymentId === transaction_id && t.status === 'completed'
+      );
+      if (existingTransaction) {
+        console.log('Duplicate webhook received, transaction already completed:', {
+          transaction_id,
+          reference: existingTransaction.reference,
+        });
+        return res.status(200).json({ status: 'success' });
+      }
+    }
+
+    wallet = await Wallet.findOne({
       $or: [
         { 'transactions.metadata.virtualAccountId': customer_id },
         { 'transactions.reference': transaction_reference },
