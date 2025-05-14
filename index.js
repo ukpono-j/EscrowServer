@@ -46,9 +46,12 @@ const corsOptions = {
       'https://api.multiavatar.com',
       'https://mymiddleman.ng',
     ];
+    console.log('Checking origin:', origin); // Debug log
     if (!origin || allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin); // Debug log
       callback(null, true);
     } else {
+      console.log('Origin denied:', origin); // Debug log
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -57,7 +60,6 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'Paymentpoint-Signature'],
   optionsSuccessStatus: 204,
 };
-
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
 
@@ -184,7 +186,7 @@ app.get('/api/avatar/:seed', async (req, res) => {
       stack: error.stack,
     });
 
-  
+
     if (error.response?.status === 429) {
       res.status(429).send('Multiavatar rate limit exceeded. Please try again later.');
     } else if (error.code === 'ECONNABORTED' || error.response?.status === 408) {
@@ -211,7 +213,8 @@ async function startServer() {
     await manageIndexes();
     console.log('Index management completed');
     initializeRoutes();
-    server.setTimeout(600000); // Increase to 10 minutes
+    server.setTimeout(600000);
+    console.log('Server timeout set to:', server.timeout / 1000, 'seconds');
     const PORT = process.env.PORT || 3001;
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
