@@ -7,6 +7,7 @@ const path = require('path');
 const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const fs = require('fs'); // Add this
 require('dotenv').config();
 const mongoose = require('mongoose');
 
@@ -151,6 +152,7 @@ const initializeRoutes = () => {
   app.use('/api/wallet', walletRoutes);
 };
 
+
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.message);
   res.status(500).json({
@@ -158,6 +160,47 @@ app.use((err, req, res, next) => {
     message: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
+});
+
+// Proxy endpoint for MultiAvatar
+app.get('/api/avatar/:seed', async (req, res) => {
+  try {
+    const seed = req.params.seed;
+    const multiavatarUrl = `https://api.multiavatar.com/${encodeURIComponent(seed)}.svg`;
+
+    const response = await axios.get(multiavatarUrl, {
+      responseType: 'stream',
+      timeout: 10000, // 10-second timeout
+    });
+
+    res.set('Content-Type', 'image/svg+xml');
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Avatar proxy error:', {
+      seed: req.params.seed,
+      message: error.message,
+      status: error.response?.status,
+      code: error.code,
+      stack: error.stack,
+    });
+
+  
+    if (error.response?.status === 429) {
+      res.status(429).send('Multiavatar rate limit exceeded. Please try again later.');
+    } else if (error.code === 'ECONNABORTED' || error.response?.status === 408) {
+      res.status(504).send('Avatar request timed out. Using fallback.');
+    } else {
+      // Fallback: Generate a simple SVG circle as a placeholder
+      const fallbackSvg = `
+        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="15" fill="#B38939" />
+          <text x="50%" y="50%" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">${seed.slice(0, 2)}</text>
+        </svg>
+      `;
+      res.set('Content-Type', 'image/svg+xml');
+      res.status(200).send(fallbackSvg);
+    }
+  }
 });
 
 require('./cronJobs');

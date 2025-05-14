@@ -16,12 +16,12 @@ const validateInput = (req, res, next) => {
 router.post('/create-transaction',
   authenticateUser,
   [
-    body('paymentName').notEmpty().withMessage('name is required'),
     body('email').notEmpty().withMessage('email is required'),
     body('paymentAmount').notEmpty().isNumeric().withMessage('Amount must be a number'),
-    body('paymentBank').notEmpty().withMessage('Payment Bank Name is required'),
-    body('paymentAccountNumber').notEmpty().isNumeric().withMessage('bank number must be a number'),
-    body('paymentDescription').notEmpty().withMessage('Description is required'),
+    body('paymentDescription').notEmpty().withMessage('Product description is required'),
+    body('selectedUserType').notEmpty().isIn(['buyer', 'seller']).withMessage('Invalid user type'),
+    body('paymentBank').if(body('selectedUserType').equals('seller')).notEmpty().withMessage('Payment Bank Name is required for sellers'),
+    body('paymentAccountNumber').if(body('selectedUserType').equals('seller')).notEmpty().isNumeric().withMessage('Bank number must be a number for sellers'),
   ],
   validateInput,
   transactionController.createTransaction
@@ -34,6 +34,14 @@ router.get('/complete-transaction', authenticateUser, transactionController.getC
 router.put("/cancel/:transactionId", authenticateUser, transactionController.cancelTransaction);
 
 router.post('/join-transaction', authenticateUser, transactionController.joinTransaction);
+
+router.post('/accept-and-update', authenticateUser, [
+  body('transactionId').notEmpty().withMessage('Transaction ID is required'),
+  body('description').notEmpty().withMessage('Description is required'),
+  body('price').notEmpty().isNumeric().withMessage('Price must be a number'),
+], validateInput, transactionController.acceptAndUpdateTransaction);
+
+router.post('/reject-transaction', authenticateUser, transactionController.rejectTransaction);
 
 router.post('/update-payment-status', authenticateUser, transactionController.updatePaymentStatus);
 

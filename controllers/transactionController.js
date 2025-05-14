@@ -16,7 +16,6 @@ exports.createTransaction = async (req, res) => {
     paymentAmount,
     paymentDescription,
     selectedUserType,
-    willUseCourier,
     paymentBankCode,
   } = req.body;
   const userId = req.user.id;
@@ -42,27 +41,38 @@ exports.createTransaction = async (req, res) => {
     const transaction = new Transaction({
       userId,
       paymentName,
-      paymentBank,
-      paymentAccountNumber,
+      paymentBank: selectedUserType === "buyer" ? "Pending" : paymentBank,
+      paymentAccountNumber: selectedUserType === "buyer" ? 0 : paymentAccountNumber,
       email,
       paymentAmount,
-      paymentDescription,
+      productDetails: {
+        description: paymentDescription,
+        amount: parseFloat(paymentAmount),
+      },
       selectedUserType,
-      willUseCourier,
-      paymentBankCode,
+      paymentBankCode: selectedUserType === "buyer" ? "000" : paymentBankCode,
       buyerWalletId: selectedUserType === "buyer" ? wallet._id : null,
       sellerWalletId: selectedUserType === "seller" ? wallet._id : null,
       status: "pending",
     });
 
     await transaction.save();
-    return res.status(201).json({ message: "Transaction created successfully", transaction });
+
+    // Emit Socket.IO event for transaction creation
+    const io = req.app.get("io");
+    io.to(userId).emit("transactionCreated", {
+      transactionId: transaction._id,
+      message: "Transaction created successfully",
+    });
+
+    return res.status(201).json({ message: "Transaction created successfully", transactionId: transaction._id });
   } catch (error) {
     console.error("Error creating transaction:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
+// Other endpoints remain unchanged
 exports.getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -211,15 +221,143 @@ exports.joinTransaction = async (req, res) => {
     transaction.participants.push(userId);
     await transaction.save();
 
+    // Notify the creator
+    const creatorId = transaction.userId.toString();
+    const notification = new Notification({
+      userId: creatorId,
+      title: "User Joined Transaction",
+      message: `A user has joined your transaction ${transaction._id}.`,
+      transactionId: transaction._id.toString(),
+      type: "transaction",
+      status: "accepted",
+    });
+    await notification.save();
+
     const io = req.app.get("io");
-    io.to(transaction.userId.toString()).emit("transactionUpdated", {
+    io.to(creatorId).emit("transactionUpdated", {
       transactionId: transaction._id,
       message: "A user has joined your transaction.",
     });
 
-    return res.status(200).json({ message: "Joined transaction successfully" });
+    return res.status(200).json({ message: "Joined transaction successfully", role: transaction.selectedUserType === "buyer" ? "seller" : "buyer" });
   } catch (error) {
     console.error("Error joining transaction:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.acceptAndUpdateTransaction = async (req, res) => {
+  try {
+    const { transactionId, description, price } = req.body;
+    const userId = req.user.id;
+
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (transaction.userId.toString() === userId) {
+      return res.status(400).json({ message: "You cannot join your own transaction" });
+    }
+
+    if (transaction.participants.includes(userId)) {
+      return res.status(400).json({ message: "You are already a participant" });
+    }
+
+    if (transaction.status !== "pending") {
+      return res.status(400).json({ message: "Only pending transactions can be joined" });
+    }
+
+    // Update transaction details
+    transaction.productDetails.description = description;
+    transaction.productDetails.amount = parseFloat(price);
+    transaction.paymentAmount = parseFloat(price);
+
+    let wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+      wallet = new Wallet({
+        userId,
+        balance: 0,
+        totalDeposits: 0,
+        currency: "NGN",
+        transactions: [],
+      });
+      await wallet.save();
+    }
+
+    if (transaction.selectedUserType === "buyer") {
+      transaction.sellerWalletId = wallet._id;
+    } else {
+      transaction.buyerWalletId = wallet._id;
+    }
+
+    transaction.participants.push(userId);
+    await transaction.save();
+
+    // Notify the creator
+    const creatorId = transaction.userId.toString();
+    const notification = new Notification({
+      userId: creatorId,
+      title: "User Joined and Updated Transaction",
+      message: `A user has joined and updated your transaction ${transaction._id}.`,
+      transactionId: transaction._id.toString(),
+      type: "transaction",
+      status: "accepted",
+    });
+    await notification.save();
+
+    const io = req.app.get("io");
+    io.to(creatorId).emit("transactionUpdated", {
+      transactionId: transaction._id,
+      message: "A user has joined and updated your transaction.",
+    });
+
+    return res.status(200).json({ message: "Joined transaction successfully", role: transaction.selectedUserType === "buyer" ? "seller" : "buyer" });
+  } catch (error) {
+    console.error("Error accepting and updating transaction:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.rejectTransaction = async (req, res) => {
+  try {
+    const { transactionId } = req.body;
+    const userId = req.user.id;
+
+    const transaction = await Transaction.findById(transactionId);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (transaction.userId.toString() === userId) {
+      return res.status(400).json({ message: "You cannot reject your own transaction" });
+    }
+
+    if (transaction.participants.includes(userId)) {
+      return res.status(400).json({ message: "You are already a participant" });
+    }
+
+    // Notify the creator
+    const creatorId = transaction.userId.toString();
+    const notification = new Notification({
+      userId: creatorId,
+      title: "User Rejected Transaction",
+      message: `A user has rejected your transaction ${transaction._id}.`,
+      transactionId: transaction._id.toString(),
+      type: "transaction",
+      status: "declined",
+    });
+    await notification.save();
+
+    const io = req.app.get("io");
+    io.to(creatorId).emit("transactionUpdated", {
+      transactionId: transaction._id,
+      message: "A user has rejected your transaction.",
+    });
+
+    return res.status(200).json({ message: "Transaction rejected" });
+  } catch (error) {
+    console.error("Error rejecting transaction:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -286,6 +424,35 @@ exports.createChatRoom = async (req, res) => {
   }
 };
 
+// exports.getTransactionById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user.id;
+
+//     const transaction = await Transaction.findById(id)
+//       .populate("userId", "firstName lastName email")
+//       .populate("participants", "firstName lastName email");
+
+//     if (!transaction) {
+//       return res.status(404).json({ message: "Transaction not found" });
+//     }
+
+//     const isCreator = transaction.userId._id.toString() === userId;
+//     const isParticipant = transaction.participants.some(
+//       (p) => p._id.toString() === userId
+//     );
+
+//     if (!isCreator && !isParticipant) {
+//       return res.status(403).json({ message: "Unauthorized to view this transaction" });
+//     }
+
+//     return res.status(200).json(transaction);
+//   } catch (error) {
+//     console.error("Error fetching transaction by ID:", error);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
 exports.getTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -304,16 +471,40 @@ exports.getTransactionById = async (req, res) => {
       (p) => p._id.toString() === userId
     );
 
-    if (!isCreator && !isParticipant) {
+    // Allow preview for authenticated users if the transaction is pending and has no participants
+    const canPreview = transaction.status === "pending" && transaction.participants.length === 0;
+
+    if (!isCreator && !isParticipant && !canPreview) {
       return res.status(403).json({ message: "Unauthorized to view this transaction" });
     }
 
+    // If the user can only preview (not a creator or participant), return limited fields
+    if (!isCreator && !isParticipant && canPreview) {
+      const limitedTransaction = {
+        _id: transaction._id,
+        userId: {
+          firstName: transaction.userId.firstName,
+          lastName: transaction.userId.lastName,
+          email: transaction.userId.email,
+        },
+        productDetails: {
+          description: transaction.productDetails.description,
+        },
+        paymentAmount: transaction.paymentAmount,
+        status: transaction.status,
+        selectedUserType: transaction.selectedUserType,
+      };
+      return res.status(200).json(limitedTransaction);
+    }
+
+    // Otherwise, return the full transaction details for creators and participants
     return res.status(200).json(transaction);
   } catch (error) {
     console.error("Error fetching transaction by ID:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 exports.submitWaybillDetails = async (req, res) => {
   try {
@@ -333,7 +524,7 @@ exports.submitWaybillDetails = async (req, res) => {
     }
 
     const isSeller = (isCreator && transaction.selectedUserType === "seller") ||
-                    (isParticipant && transaction.selectedUserType === "buyer");
+      (isParticipant && transaction.selectedUserType === "buyer");
     if (!isSeller) {
       return res.status(403).json({ message: "Only the seller can submit waybill details" });
     }
@@ -437,7 +628,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
     }
 
     const isBuyer = (isCreator && transaction.selectedUserType === "buyer") ||
-                    (isParticipant && transaction.selectedUserType === "seller");
+      (isParticipant && transaction.selectedUserType === "seller");
     if (!isBuyer) {
       return res.status(403).json({ message: "Only the buyer can fund the transaction" });
     }
@@ -510,7 +701,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
 exports.updatePaymentDetails = async (req, res) => {
   try {
     const { transactionId } = req.params;
-    const { paymentBank, paymentAccountNumber, selectedBankCode, paymentAmount } = req.body;
+    const { paymentBank, paymentAccountNumber, selectedBankCode, paymentAmount, paymentDescription } = req.body;
     const userId = req.user.id;
 
     const transaction = await Transaction.findById(transactionId);
@@ -535,6 +726,10 @@ exports.updatePaymentDetails = async (req, res) => {
     transaction.paymentAccountNumber = paymentAccountNumber;
     transaction.paymentBankCode = selectedBankCode;
     transaction.paymentAmount = paymentAmount;
+    transaction.productDetails = {
+      description: paymentDescription,
+      amount: parseFloat(paymentAmount),
+    };
     await transaction.save();
 
     const io = req.app.get("io");
@@ -581,7 +776,7 @@ exports.confirmTransaction = async (req, res) => {
     }
 
     const isBuyer = (isCreator && transaction.selectedUserType === "buyer") ||
-                    (isParticipant && transaction.selectedUserType === "seller");
+      (isParticipant && transaction.selectedUserType === "seller");
     console.log('User role:', { isBuyer, isCreator, isParticipant, selectedUserType: transaction.selectedUserType });
 
     if (transaction.status !== "pending") {

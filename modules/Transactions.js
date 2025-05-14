@@ -18,7 +18,7 @@ const transactionSchema = new mongoose.Schema({
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    default: mongoose.Types.ObjectId,
+    default: () => new mongoose.Types.ObjectId(), // Fix: Proper instantiation
   },
   paymentName: {
     type: String,
@@ -57,17 +57,20 @@ const transactionSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  paymentDescription: {
-    type: String,
-    required: true,
+  productDetails: {
+    description: {
+      type: String,
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
   },
   selectedUserType: {
     type: String,
     required: true,
     enum: ['buyer', 'seller'],
-  },
-  willUseCourier: {
-    type: Boolean,
   },
   proofOfWaybill: {
     type: String,
@@ -89,7 +92,7 @@ const transactionSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ["active", "cancelled", "completed", "pending"],
-    default: "active",
+    default: "pending",
   },
   paymentStatus: {
     type: String,
@@ -124,7 +127,7 @@ const transactionSchema = new mongoose.Schema({
     required: [function () { return this.status === 'completed' || this.funded; }, 'Buyer wallet is required for funded or completed transactions'],
     validate: {
       validator: async function (value) {
-        if (!value) return false;
+        if (!value) return true; // Allow null during creation
         const wallet = await mongoose.model('Wallet').findById(value);
         return !!wallet;
       },
@@ -137,7 +140,7 @@ const transactionSchema = new mongoose.Schema({
     required: [function () { return this.status === 'completed' || this.funded; }, 'Seller wallet is required for funded or completed transactions'],
     validate: {
       validator: async function (value) {
-        if (!value) return false;
+        if (!value) return true; // Allow null during creation
         const wallet = await mongoose.model('Wallet').findById(value);
         return !!wallet;
       },

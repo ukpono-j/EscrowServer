@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
+// Utility function to generate a random seed
+const generateRandomSeed = () => {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`; // Timestamp + random string
+};
+
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
@@ -38,9 +43,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
-  avatarImage: {
+  avatarSeed: {
     type: String,
-    default: '',
+    default: function () {
+      return generateRandomSeed(); // Generate on creation
+    },
+    unique: true, // Ensure uniqueness
   },
   createdAt: {
     type: Date,
@@ -53,6 +61,11 @@ userSchema.pre('save', async function (next) {
     console.log('Hashing password for user:', this.email);
     this.password = await bcrypt.hash(this.password, 10);
     console.log('Password hashed successfully for user:', this.email);
+    if (this.isNew) {
+      // Ensure avatarSeed is unique
+      const existingUser = await this.constructor.findOne({ avatarSeed: this.avatarSeed });
+      if (existingUser) this.avatarSeed = generateRandomSeed(); // Regenerate if conflict
+    }
   }
   next();
 });
