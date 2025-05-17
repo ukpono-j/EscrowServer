@@ -5,16 +5,20 @@ exports.getUserDetails = async (req, res) => {
     const { id: userId } = req.user;
     const user = await UserModel.findById(userId).select('-password');
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: 'User not found' });
     }
     const userWithAvatar = {
       ...user.toObject(),
       avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
     };
-    res.status(200).json(userWithAvatar);
+    res.status(200).json({ user: userWithAvatar });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error in getUserDetails:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -23,16 +27,20 @@ exports.getAllUserDetails = async (req, res) => {
     const { id: userId } = req.user;
     const users = await UserModel.find({ _id: { $ne: userId } }).select(['email', 'firstName', '_id', 'avatarSeed']);
     if (!users || users.length === 0) {
-      return res.status(404).json({ error: "No other users found" });
+      return res.status(404).json({ error: 'No other users found' });
     }
     const usersWithAvatars = users.map(user => ({
       ...user.toObject(),
       avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
     }));
-    res.status(200).json(usersWithAvatars);
+    res.status(200).json({ users: usersWithAvatars });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error in getAllUserDetails:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -42,7 +50,7 @@ exports.updateUserDetails = async (req, res) => {
     const { firstName, lastName, dateOfBirth, bank, accountNumber } = req.body;
     const user = await UserModel.findById(userId);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: 'User not found' });
     }
     user.firstName = firstName || user.firstName;
     user.lastName = lastName || user.lastName;
@@ -55,9 +63,13 @@ exports.updateUserDetails = async (req, res) => {
       ...user.toObject(),
       avatarImage: `/api/avatar/${avatarIdentifier}`,
     };
-    res.status(200).json({ message: "User details updated successfully!", user: userWithAvatar });
+    res.status(200).json({ message: 'User details updated successfully!', user: userWithAvatar });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error('Error in updateUserDetails:', {
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 };

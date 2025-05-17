@@ -9,7 +9,29 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const fs = require('fs'); // Add this
 require('dotenv').config();
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'MONGODB_URI',
+  process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY' : 'PAYSTACK_TEST_SECRET_KEY',
+  'PAYSTACK_API_URL',
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+];
+
+const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.error('Missing required environment variables:', missingEnvVars);
+  process.exit(1);
+}
+
+console.log('Environment variables loaded successfully.');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY set' : 'PAYSTACK_TEST_SECRET_KEY set');
+
 const mongoose = require('mongoose');
+const responseFormatter = require('./middlewares/responseFormatter');
 
 async function manageIndexes() {
   try {
@@ -40,6 +62,7 @@ const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
       'http://localhost:5173',
+      'http://localhost:5174',
       'https://escrow-app.onrender.com',
       'https://escrow-app-delta.vercel.app',
       'https://escrowserver.onrender.com',
@@ -135,6 +158,7 @@ app.use('/uploads/images', express.static(path.join(__dirname, 'Uploads/images')
 app.use('/api/wallet/verify-funding', express.raw({ type: 'application/json' }));
 app.use(bodyParser.json());
 app.use(express.json());
+app.use(responseFormatter);
 
 const initializeRoutes = () => {
   const authRoutes = require('./routes/authRoutes');
