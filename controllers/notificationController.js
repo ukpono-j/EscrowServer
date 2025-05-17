@@ -42,7 +42,7 @@ exports.getNotifications = async (req, res) => {
     const { id: userId } = req.user;
 
     // Fetch notifications where the user is the creator
-    const creatorNotifications = await Notification.find({ userId: userId });
+    const creatorNotifications = await Notification.find({ userId });
 
     // Fetch notifications where the user is a participant
     const participantNotifications = await Notification.find({
@@ -61,16 +61,17 @@ exports.getNotifications = async (req, res) => {
       },
     });
 
-    // Combine and return both creator and participant notifications to the client
+    // Combine notifications
     const allNotifications = [
       ...creatorNotifications,
       ...participantNotifications,
       ...joinedTransactionNotifications,
     ];
 
-    res.status(200).json(allNotifications);
+    console.log('Notifications fetched:', allNotifications.length); // Debug log
+    res.status(200).json({ data: allNotifications });
   } catch (error) {
-    console.error(error);
+    console.error('Error fetching notifications:', error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -84,7 +85,6 @@ exports.createNotification = async (req, res) => {
       return res.status(400).json({ error: "Title, message, and transactionId are required" });
     }
 
-    // Create a new notification object using the schema
     const newNotification = new Notification({
       userId,
       title,
@@ -92,11 +92,8 @@ exports.createNotification = async (req, res) => {
       transactionId,
     });
 
-    // Save the notification to the database
     await newNotification.save();
-
-    // Return success response to the client
-    res.status(200).json(newNotification);
+    res.status(200).json({ data: newNotification });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -130,7 +127,7 @@ exports.updateNotificationStatus = async (req, res) => {
     }
     notification.status = status;
     await notification.save();
-    res.status(200).json(notification);
+    res.status(200).json({ data: notification });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
