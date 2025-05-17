@@ -82,6 +82,7 @@ const corsOptions = {
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'Paymentpoint-Signature'],
   optionsSuccessStatus: 204,
+  preflightContinue: false,
 };
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
