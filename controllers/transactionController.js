@@ -58,21 +58,20 @@ exports.createTransaction = async (req, res) => {
 
     await transaction.save();
 
-    // Emit Socket.IO event for transaction creation
     const io = req.app.get("io");
     io.to(userId).emit("transactionCreated", {
       transactionId: transaction._id,
       message: "Transaction created successfully",
     });
 
-    return res.status(201).json({ message: "Transaction created successfully", transactionId: transaction._id });
+    return res.status(201).json({ data: { message: "Transaction created successfully", transactionId: transaction._id } });
   } catch (error) {
     console.error("Error creating transaction:", error);
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// Other endpoints remain unchanged
+
 exports.getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -81,7 +80,8 @@ exports.getUserTransactions = async (req, res) => {
     })
       .populate("userId", "firstName lastName email")
       .populate("participants", "firstName lastName email");
-    return res.status(200).json(transactions);
+    console.log('Transactions fetched:', transactions.length); // Debug log
+    return res.status(200).json({ data: transactions });
   } catch (error) {
     console.error("Error fetching transactions:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -97,9 +97,58 @@ exports.getCompletedTransactions = async (req, res) => {
     })
       .populate("userId", "firstName lastName email")
       .populate("participants", "firstName lastName email");
-    return res.status(200).json(transactions);
+    console.log('Completed transactions fetched:', transactions.length);
+    return res.status(200).json({ data: transactions });
   } catch (error) {
     console.error("Error fetching completed transactions:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+exports.getTransactionById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const transaction = await Transaction.findById(id)
+      .populate("userId", "firstName lastName email")
+      .populate("participants", "firstName lastName email");
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    const isCreator = transaction.userId._id.toString() === userId;
+    const isParticipant = transaction.participants.some(
+      (p) => p._id.toString() === userId
+    );
+    const canPreview = transaction.status === "pending" && transaction.participants.length === 0;
+
+    if (!isCreator && !isParticipant && !canPreview) {
+      return res.status(403).json({ message: "Unauthorized to view this transaction" });
+    }
+
+    if (!isCreator && !isParticipant && canPreview) {
+      const limitedTransaction = {
+        _id: transaction._id,
+        userId: {
+          firstName: transaction.userId.firstName,
+          lastName: transaction.userId.lastName,
+          email: transaction.userId.email,
+        },
+        productDetails: {
+          description: transaction.productDetails.description,
+        },
+        paymentAmount: transaction.paymentAmount,
+        status: transaction.status,
+        selectedUserType: transaction.selectedUserType,
+      };
+      return res.status(200).json({ data: limitedTransaction });
+    }
+
+    return res.status(200).json({ data: transaction });
+  } catch (error) {
+    console.error("Error fetching transaction by ID:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
