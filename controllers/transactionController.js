@@ -6,6 +6,8 @@ const Notification = require("../modules/Notification");
 const mongoose = require("mongoose");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const nigeriaBanks = require("../data/banksList");
+
 
 exports.createTransaction = async (req, res) => {
   const {
@@ -21,13 +23,37 @@ exports.createTransaction = async (req, res) => {
   const userId = req.user.id;
 
   try {
+    console.log("Creating transaction with data:", {
+      userId,
+      paymentName,
+      paymentBank,
+      paymentAccountNumber,
+      email,
+      paymentAmount,
+      paymentDescription,
+      selectedUserType,
+      paymentBankCode,
+    });
+
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      console.log("User not found:", userId);
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    // Validate paymentBankCode for sellers
+    if (selectedUserType === "seller") {
+      const apiBanks = JSON.parse(localStorage.getItem("apiBanks") || "[]");
+      const bankValid = apiBanks.some((bank) => bank.code === paymentBankCode) || nigeriaBanks.some((bank) => bank.code === paymentBankCode);
+      if (!bankValid) {
+        console.log("Invalid bank code:", paymentBankCode);
+        return res.status(400).json({ success: false, error: "Invalid bank code" });
+      }
     }
 
     let wallet = await Wallet.findOne({ userId });
     if (!wallet) {
+      console.log("Wallet not found, creating new wallet for user:", userId);
       wallet = new Wallet({
         userId,
         balance: 0,
@@ -36,15 +62,16 @@ exports.createTransaction = async (req, res) => {
         transactions: [],
       });
       await wallet.save();
+      console.log("New wallet created:", wallet._id);
     }
 
     const transaction = new Transaction({
       userId,
       paymentName,
       paymentBank: selectedUserType === "buyer" ? "Pending" : paymentBank,
-      paymentAccountNumber: selectedUserType === "buyer" ? 0 : paymentAccountNumber,
+      paymentAccountNumber: selectedUserType === "buyer" ? "0" : paymentAccountNumber,
       email,
-      paymentAmount,
+      paymentAmount: parseFloat(paymentAmount),
       productDetails: {
         description: paymentDescription,
         amount: parseFloat(paymentAmount),
@@ -56,18 +83,40 @@ exports.createTransaction = async (req, res) => {
       status: "pending",
     });
 
+    console.log("Transaction object before save:", transaction.toObject());
     await transaction.save();
+    console.log("Transaction saved successfully:", transaction._id);
+
+    // Create notification for the creator
+    const creatorNotification = new Notification({
+      userId,
+      title: "Transaction Created",
+      message: `You have successfully created a transaction ${transaction._id}.`,
+      transactionId: transaction._id.toString(),
+      type: "transaction",
+      status: "pending",
+    });
+    await creatorNotification.save();
+    console.log("Notification created for creator:", creatorNotification._id);
 
     const io = req.app.get("io");
     io.to(userId).emit("transactionCreated", {
-      transactionId: transaction._id,
+      transactionId: transaction._id.toString(),
       message: "Transaction created successfully",
     });
+    console.log("Emitted transactionCreated event to user:", userId);
 
-    return res.status(201).json({ data: { message: "Transaction created successfully", transactionId: transaction._id } });
+    return res.status(201).json({
+      success: true,
+      data: { message: "Transaction created successfully", transactionId: transaction._id.toString() },
+    });
   } catch (error) {
-    console.error("Error creating transaction:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    console.error("Error creating transaction:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -75,12 +124,19 @@ exports.createTransaction = async (req, res) => {
 exports.getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log("Fetching transactions for user:", userId);
     const transactions = await Transaction.find({
       $or: [{ userId }, { participants: userId }],
     })
       .populate("userId", "firstName lastName email")
       .populate("participants", "firstName lastName email");
-    console.log('Transactions fetched:', transactions.length); // Debug log
+    console.log('Transactions fetched:', transactions.map(t => ({
+      _id: t._id,
+      userId: t.userId._id.toString(),
+      participants: t.participants.map(p => p._id.toString()),
+      status: t.status,
+      createdAt: t.createdAt,
+    })));
     return res.status(200).json({ data: transactions });
   } catch (error) {
     console.error("Error fetching transactions:", error);
@@ -155,10 +211,10 @@ exports.getTransactionById = async (req, res) => {
 
 exports.cancelTransaction = async (req, res) => {
   try {
-    const { transactionId } = req.params;
+    const { id } = req.params;
     const userId = req.user.id;
 
-    const transaction = await Transaction.findById(transactionId);
+    const transaction = await Transaction.findById(id);
     if (!transaction) {
       return res.status(404).json({ message: "Transaction not found" });
     }
@@ -229,24 +285,24 @@ exports.cancelTransaction = async (req, res) => {
 
 exports.joinTransaction = async (req, res) => {
   try {
-    const { transactionId } = req.body;
+    const { id } = req.body; // Changed from transactionId
     const userId = req.user.id;
 
-    const transaction = await Transaction.findById(transactionId);
+    const transaction = await Transaction.findById(id);
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ success: false, error: "Transaction not found" });
     }
 
     if (transaction.userId.toString() === userId) {
-      return res.status(400).json({ message: "You cannot join your own transaction" });
+      return res.status(400).json({ success: false, error: "You cannot join your own transaction" });
     }
 
     if (transaction.participants.includes(userId)) {
-      return res.status(400).json({ message: "You are already a participant" });
+      return res.status(400).json({ success: false, error: "You are already a participant" });
     }
 
     if (transaction.status !== "pending") {
-      return res.status(400).json({ message: "Only pending transactions can be joined" });
+      return res.status(400).json({ success: false, error: "Only pending transactions can be joined" });
     }
 
     let wallet = await Wallet.findOne({ userId });
@@ -284,14 +340,14 @@ exports.joinTransaction = async (req, res) => {
 
     const io = req.app.get("io");
     io.to(creatorId).emit("transactionUpdated", {
-      transactionId: transaction._id,
+      transactionId: transaction._id.toString(),
       message: "A user has joined your transaction.",
     });
 
-    return res.status(200).json({ message: "Joined transaction successfully", role: transaction.selectedUserType === "buyer" ? "seller" : "buyer" });
+    return res.status(200).json({ success: true, data: { message: "Joined transaction successfully", role: transaction.selectedUserType === "buyer" ? "seller" : "buyer" } });
   } catch (error) {
     console.error("Error joining transaction:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
 };
 
@@ -981,5 +1037,47 @@ exports.confirmTransaction = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+exports.getBanks = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split("Bearer ")[1];
+    if (!token) {
+      return res.status(401).json({ success: false, error: "Authorization token required" });
+    }
+
+    // Try fetching from Paystack (replace with your Paystack secret key)
+    const paystackResponse = await axios.get("https://api.paystack.co/bank?country=nigeria", {
+      headers: {
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      },
+      timeout: 10000,
+    });
+
+    if (paystackResponse.data.status && paystackResponse.data.data?.length > 0) {
+      const banks = paystackResponse.data.data.map((bank) => ({
+        name: bank.name,
+        code: bank.code,
+      }));
+      return res.status(200).json({ success: true, data: banks });
+    }
+
+    // Fallback to static list if Paystack fails
+    console.warn("Paystack API failed, using static bank list");
+    return res.status(200).json({ success: true, data: nigeriaBanks });
+  } catch (error) {
+    console.error("Error fetching banks:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    // Return static list as a fallback
+    return res.status(200).json({
+      success: true,
+      data: nigeriaBanks,
+      warning: "Failed to fetch banks from external API, using default list",
+    });
+  }
+};
+
 
 module.exports = exports;

@@ -154,6 +154,9 @@ io.on('connection', (socket) => {
 
 app.set('io', io);
 
+// Set server timeout to 60 seconds
+app.set('timeout', 60000);
+
 app.use(express.urlencoded({ extended: false }));
 app.use('/uploads/images', express.static(path.join(__dirname, 'Uploads/images')));
 app.use('/api/wallet/verify-funding', express.raw({ type: 'application/json' }));

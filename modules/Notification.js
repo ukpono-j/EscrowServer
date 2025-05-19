@@ -4,23 +4,20 @@ const notificationSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true,
+    // required: true, // Keep userId required
+    index: true
   },
   title: {
     type: String,
-    required: true,
+    default: "Notification", // Provide a default value
   },
   message: {
     type: String,
-    required: true,
-  },
-  transactionId: {
-    type: String,
-    required: true,
+    default: "No message provided", // Provide a default value
   },
   type: {
     type: String,
-    enum: ["transaction", "waybill", "funding", "confirmation", "payment"],
+    enum: ["transaction", "waybill", "funding", "confirmation", "payment", "registration"],
     default: "transaction",
   },
   timestamp: {
@@ -28,8 +25,8 @@ const notificationSchema = new mongoose.Schema({
     default: Date.now,
   },
   status: {
-    type: String, // "pending", "accepted", "declined"
-    enum: ["pending", "accepted", "declined", "completed", "cancelled"],
+    type: String,
+    enum: ["pending", "accepted", "declined", "completed", "cancelled", "failed"],
     default: "pending",
   },
   isRead: {
@@ -45,5 +42,4 @@ const notificationSchema = new mongoose.Schema({
 });
 
 const Notification = mongoose.model("Notification", notificationSchema);
-
 module.exports = Notification;

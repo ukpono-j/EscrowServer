@@ -14,12 +14,9 @@ const transactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+    index: true
   },
-  transactionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    default: () => new mongoose.Types.ObjectId(), // Fix: Proper instantiation
-  },
+  // Removed transactionId field to avoid conflict with _id
   paymentName: {
     type: String,
     required: true,
@@ -43,11 +40,13 @@ const transactionSchema = new mongoose.Schema({
   ],
   paymentBank: {
     type: String,
-    required: true,
+    required: [function () { return this.selectedUserType === "seller"; }, "Payment bank is required for sellers"],
+    default: "Pending",
   },
   paymentAccountNumber: {
-    type: Number,
-    required: true,
+    type: String,
+    required: [function () { return this.selectedUserType === "seller"; }, "Payment account number is required for sellers"],
+    default: "0",
   },
   email: {
     type: String,
@@ -70,7 +69,7 @@ const transactionSchema = new mongoose.Schema({
   selectedUserType: {
     type: String,
     required: true,
-    enum: ['buyer', 'seller'],
+    enum: ["buyer", "seller"],
   },
   proofOfWaybill: {
     type: String,
@@ -79,7 +78,8 @@ const transactionSchema = new mongoose.Schema({
   },
   participants: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+    ref: "User",
+    index: true
   }],
   chatroomId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -117,34 +117,32 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentBankCode: {
     type: String,
-    required: true,
+    required: [function () { return this.selectedUserType === "seller"; }, "Payment bank code is required for sellers"],
     default: "000",
   },
   waybillDetails: { type: waybillSchema },
   buyerWalletId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Wallet',
-    required: [function () { return this.status === 'completed' || this.funded; }, 'Buyer wallet is required for funded or completed transactions'],
+    ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null during creation
-        const wallet = await mongoose.model('Wallet').findById(value);
+        if (!value) return true; // Allow null/undefined
+        const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
-      message: 'Invalid or missing buyer wallet',
+      message: "Invalid or missing buyer wallet",
     },
   },
   sellerWalletId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Wallet',
-    required: [function () { return this.status === 'completed' || this.funded; }, 'Seller wallet is required for funded or completed transactions'],
+    ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null during creation
-        const wallet = await mongoose.model('Wallet').findById(value);
+        if (!value) return true; // Allow null/undefined
+        const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
-      message: 'Invalid or missing seller wallet',
+      message: "Invalid or missing seller wallet",
     },
   },
   locked: {
@@ -157,12 +155,14 @@ const transactionSchema = new mongoose.Schema({
   },
 });
 
-transactionSchema.index({ transactionId: 1 }, { unique: true });
-
+// Removed the unique index on transactionId since it's removed
 transactionSchema.pre('save', async function (next) {
   if (this.status === 'completed' || this.funded) {
-    if (!this.buyerWalletId || !this.sellerWalletId) {
-      return next(new Error('Buyer and seller wallets are required for funded or completed transactions'));
+    if (!this.buyerWalletId && this.selectedUserType === "buyer") {
+      return next(new Error('Buyer wallet is required for funded or completed transactions'));
+    }
+    if (!this.sellerWalletId && this.selectedUserType === "seller") {
+      return next(new Error('Seller wallet is required for funded or completed transactions'));
     }
   }
   if (this.buyerConfirmed && this.sellerConfirmed && this.status !== 'completed') {
