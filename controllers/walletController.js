@@ -95,24 +95,30 @@ exports.initiateFunding = async (req, res) => {
     const { amount, email, phoneNumber } = req.body;
     const userId = req.user.id;
 
+    console.log('Initiating funding with inputs:', { userId, amount, email, phoneNumber });
+
     // Validate input
     if (!amount || amount <= 0) {
+      console.warn('Invalid amount provided:', amount);
       return res.status(400).json({ success: false, message: 'Invalid amount' });
     }
 
     if (!email || !phoneNumber) {
+      console.warn('Missing email or phone number:', { email, phoneNumber });
       return res.status(400).json({ success: false, message: 'Email and phone number are required' });
     }
 
     // Find user
     const user = await User.findById(userId);
     if (!user) {
+      console.error('User not found:', userId);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Find or create wallet
     let wallet = await Wallet.findOne({ userId });
     if (!wallet) {
+      console.log('Creating new wallet for user:', userId);
       wallet = new Wallet({
         userId,
         balance: 0,
@@ -122,6 +128,7 @@ exports.initiateFunding = async (req, res) => {
         virtualAccount: null,
       });
       await wallet.save();
+      console.log('Wallet created:', wallet._id);
     }
 
     let virtualAccount = wallet.virtualAccount;
@@ -129,6 +136,7 @@ exports.initiateFunding = async (req, res) => {
 
     // Create or fetch Paystack customer
     if (!virtualAccount) {
+      console.log('Creating Paystack customer for:', email);
       try {
         const customerResponse = await axios.post(
           'https://api.paystack.co/customer',
@@ -148,10 +156,12 @@ exports.initiateFunding = async (req, res) => {
         );
 
         if (!customerResponse.data.status) {
+          console.error('Paystack customer creation failed:', customerResponse.data);
           throw new Error(customerResponse.data.message || 'Failed to create customer');
         }
 
         customerCode = customerResponse.data.data.customer_code;
+        console.log('Paystack customer created:', customerCode);
       } catch (error) {
         console.error('Error creating Paystack customer:', {
           message: error.message,
@@ -179,10 +189,10 @@ exports.initiateFunding = async (req, res) => {
       }
 
       // Create dedicated virtual account
+      console.log('Creating dedicated virtual account for customer:', customerCode);
       try {
         let accountResponse;
         if (process.env.NODE_ENV === 'production') {
-          // In production, try each fallback bank
           for (const bank of FALLBACK_BANKS) {
             try {
               accountResponse = await axios.post(
@@ -216,7 +226,6 @@ exports.initiateFunding = async (req, res) => {
             }
           }
         } else {
-          // In test mode, omit preferred_bank to let Paystack assign a default test bank
           accountResponse = await axios.post(
             'https://api.paystack.co/dedicated_account',
             {
@@ -232,6 +241,7 @@ exports.initiateFunding = async (req, res) => {
         }
 
         if (!accountResponse.data.status) {
+          console.error('Failed to create virtual account:', accountResponse.data);
           throw new Error(accountResponse.data.message || 'Failed to create virtual account');
         }
 
@@ -245,6 +255,7 @@ exports.initiateFunding = async (req, res) => {
 
         wallet.virtualAccount = virtualAccount;
         await wallet.save();
+        console.log('Virtual account saved to wallet:', virtualAccount);
       } catch (error) {
         console.error('Error creating virtual account:', {
           message: error.message,
@@ -274,6 +285,7 @@ exports.initiateFunding = async (req, res) => {
 
     // Initiate funding transaction
     const reference = `FUND_${userId}_${uuidv4()}`;
+    console.log('Initiating Paystack transaction with reference:', reference);
     const fundingResponse = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       {
@@ -291,10 +303,12 @@ exports.initiateFunding = async (req, res) => {
     );
 
     if (!fundingResponse.data.status) {
+      console.error('Paystack transaction initialization failed:', fundingResponse.data);
       throw new Error(fundingResponse.data.message || 'Failed to initiate funding');
     }
 
     const fundingData = fundingResponse.data.data;
+    console.log('Paystack transaction initialized:', fundingData);
 
     // Save transaction to wallet
     wallet.transactions.push({
@@ -309,6 +323,7 @@ exports.initiateFunding = async (req, res) => {
       createdAt: new Date(),
     });
     await wallet.save();
+    console.log('Transaction saved to wallet:', reference);
 
     // Create notification
     await Notification.create({
@@ -319,6 +334,7 @@ exports.initiateFunding = async (req, res) => {
       type: 'funding',
       status: 'pending',
     });
+    console.log('Funding notification created:', reference);
 
     return res.status(200).json({
       success: true,
@@ -330,13 +346,14 @@ exports.initiateFunding = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in initiateFunding:', {
-      userId: req.user.id,
+      userId: req.user?.id || 'unknown',
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
+      stack: error.stack,
     });
     await Notification.create({
-      userId: req.user.id,
+      userId: req.user?.id || 'unknown',
       title: 'Funding Request Error',
       message: 'An unexpected error occurred while initiating funding. Please try again.',
       transactionId: `FUND_${Date.now()}`,
@@ -349,9 +366,9 @@ exports.initiateFunding = async (req, res) => {
         message: 'Invalid Paystack API key. Please contact support.',
       });
     }
-    return res.status(error.response?.status || 500).json({
+    return res.status(500).json({
       success: false,
-      message: error.response?.data?.message || 'Unable to initiate funding. Please try again.',
+      message: error.message || 'Unable to initiate funding. Please try again.',
     });
   }
 };
@@ -362,10 +379,11 @@ exports.verifyFunding = async (req, res) => {
     console.log('Webhook received at:', new Date().toISOString(), {
       headers: req.headers,
       body: req.body,
+      remoteAddress: req.ip,
     });
 
     const hash = crypto
-      .createHmac('sha512', process.env.PAYSTACK_LIVE_SECRET_KEY)
+      .createHmac('sha512', PAYSTACK_SECRET_KEY) // Use PAYSTACK_SECRET_KEY directly
       .update(JSON.stringify(req.body))
       .digest('hex');
 
@@ -398,7 +416,6 @@ exports.verifyFunding = async (req, res) => {
       if (user) {
         wallet = await Wallet.findOne({ userId: user._id }) || new Wallet({ userId: user._id, balance: 0, totalDeposits: 0, currency: 'NGN', transactions: [] });
         await wallet.save();
-        console.log('Wallet created/found for user:', { userId: user._id, walletId: wallet._id });
       }
     }
     if (!wallet) {
@@ -410,7 +427,6 @@ exports.verifyFunding = async (req, res) => {
     if (!transaction) {
       transaction = { type: 'deposit', amount: parseFloat(amount) / 100, reference, status: 'pending', metadata: {}, createdAt: new Date() };
       wallet.transactions.push(transaction);
-      console.log('New transaction created:', reference);
     }
     transaction.status = status === 'success' ? 'completed' : 'failed';
     transaction.metadata = { ...transaction.metadata, customerEmail: customer.email };
@@ -444,10 +460,11 @@ exports.verifyFunding = async (req, res) => {
     await wallet.save();
     console.log('Wallet saved:', { walletId: wallet._id, balance: wallet.balance, reference });
 
-    return res.status(200).json({ status: 'success' });
+    // Ensure response is sent quickly to avoid Render timeout
+    res.status(200).json({ status: 'success' });
   } catch (error) {
     console.error('Webhook error:', { message: error.message, stack: error.stack, body: req.body });
-    return res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 
