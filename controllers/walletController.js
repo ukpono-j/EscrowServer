@@ -376,10 +376,12 @@ exports.initiateFunding = async (req, res) => {
 // Update other Paystack-dependent functions to use PAYSTACK_SECRET_KEY
 exports.verifyFunding = async (req, res) => {
   try {
-    console.log('Webhook received at:', new Date().toISOString(), {
+    console.log('Webhook received:', {
+      timestamp: new Date().toISOString(),
       headers: req.headers,
       body: req.body,
       remoteAddress: req.ip,
+      url: req.originalUrl,
     });
 
     const hash = crypto
@@ -391,6 +393,7 @@ exports.verifyFunding = async (req, res) => {
       console.error('Invalid Paystack webhook signature:', {
         computedHash: hash,
         receivedSignature: req.headers['x-paystack-signature'],
+        body: req.body,
       });
       return res.status(401).json({ success: false, error: 'Invalid webhook signature' });
     }
@@ -399,8 +402,8 @@ exports.verifyFunding = async (req, res) => {
     console.log('Parsed webhook data:', JSON.stringify(webhookData, null, 2));
 
     const { event, data } = webhookData;
-    if (event !== 'dedicatedaccount.credit') {
-      console.log('Ignoring non-credit webhook event:', event);
+    if (!['dedicatedaccount.credit', 'charge.success'].includes(event)) {
+      console.log('Ignoring webhook event:', event);
       return res.status(200).json({ status: 'success' });
     }
 
@@ -414,7 +417,13 @@ exports.verifyFunding = async (req, res) => {
     if (!wallet) {
       const user = await User.findOne({ email: customer.email });
       if (user) {
-        wallet = await Wallet.findOne({ userId: user._id }) || new Wallet({ userId: user._id, balance: 0, totalDeposits: 0, currency: 'NGN', transactions: [] });
+        wallet = await Wallet.findOne({ userId: user._id }) || new Wallet({
+          userId: user._id,
+          balance: 0,
+          totalDeposits: 0,
+          currency: 'NGN',
+          transactions: [],
+        });
         await wallet.save();
       }
     }
@@ -425,18 +434,17 @@ exports.verifyFunding = async (req, res) => {
 
     let transaction = wallet.transactions.find((t) => t.reference === reference);
     if (!transaction) {
-      transaction = { 
-        type: 'deposit', 
-        amount: parseFloat(amount) / 100, 
-        reference, 
-        status: 'pending', 
-        metadata: { customerEmail: customer.email }, 
-        createdAt: new Date() 
+      transaction = {
+        type: 'deposit',
+        amount: parseFloat(amount) / 100,
+        reference,
+        status: 'pending',
+        metadata: { customerEmail: customer.email },
+        createdAt: new Date(),
       };
       wallet.transactions.push(transaction);
     }
 
-    // Update transaction status
     transaction.status = status === 'success' ? 'completed' : 'failed';
     if (status === 'success') {
       const amountInNaira = parseFloat(amount) / 100;
@@ -463,11 +471,10 @@ exports.verifyFunding = async (req, res) => {
       console.log('Funding failed notification created:', reference);
     }
 
-    await wallet.recalculateBalance(); // Ensure balance is recalculated
+    await wallet.recalculateBalance();
     await wallet.save();
     console.log('Wallet saved:', { walletId: wallet._id, balance: wallet.balance, reference });
 
-    // Notify frontend via WebSocket if available
     const io = req.app.get('io');
     if (io) {
       io.to(wallet.userId.toString()).emit('balanceUpdate', {
@@ -478,11 +485,17 @@ exports.verifyFunding = async (req, res) => {
           status: transaction.status,
         },
       });
+      console.log('WebSocket balance update emitted to:', wallet.userId);
     }
 
     res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error('Webhook error:', { message: error.message, stack: error.stack, body: req.body });
+    console.error('Webhook error:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      headers: req.headers,
+    });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
@@ -549,7 +562,7 @@ exports.checkFundingStatus = async (req, res) => {
           await wallet.recalculateBalance();
           await wallet.save();
 
-          const notification = new Notification({
+          await Notification.create({
             userId: wallet.userId,
             title: 'Wallet Funded Successfully',
             message: `Your wallet has been funded with ${(amount / 100)} NGN. Transaction reference: ${reference}.`,
@@ -557,22 +570,37 @@ exports.checkFundingStatus = async (req, res) => {
             type: 'funding',
             status: 'completed',
           });
-          await notification.save();
           console.log('Success notification created for checkFundingStatus:', {
             userId: wallet.userId,
             reference,
             amount: amount / 100,
           });
 
-          console.log('Transaction verified via API:', {
-            reference,
-            amount: amount / 100,
-            newBalance: wallet.balance,
+          const io = req.app.get('io');
+          if (io) {
+            io.to(wallet.userId.toString()).emit('balanceUpdate', {
+              balance: wallet.balance,
+              transaction: {
+                amount: parseFloat(amount) / 100,
+                reference,
+                status: 'completed',
+              },
+            });
+            console.log('WebSocket balance update emitted to:', wallet.userId);
+          }
+
+          return res.status(200).json({
+            success: true,
+            message: 'Payment confirmed',
+            data: {
+              transaction,
+              newBalance: wallet.balance,
+            },
           });
         } else {
           console.log('Paystack verification failed or pending:', response.data);
           return res.status(200).json({
-            success: true, // Changed to true for valid response
+            success: true,
             message: 'Payment not confirmed',
             data: { status: response.data.data?.status || 'pending' },
           });
@@ -617,14 +645,19 @@ exports.checkFundingStatus = async (req, res) => {
       await wallet.save();
     }
 
+    // Fixed message logic
+    let message;
+    if (transaction.status === 'completed') {
+      message = 'Payment confirmed';
+    } else if (transaction.status === 'failed') {
+      message = 'Payment failed';
+    } else {
+      message = 'Payment pending';
+    }
+
     return res.status(200).json({
-      success: true, // Changed to true for valid response
-      message:
-        transaction.status === 'completed'
-          ? 'Payment confirmed'
-          : transaction.status === 'failed'
-          ? 'Payment failed'
-          : 'Payment pending',
+      success: true,
+      message,
       data: {
         transaction,
         newBalance: wallet.balance,

@@ -68,19 +68,20 @@ const corsOptions = {
       'https://escrowserver.onrender.com',
       'https://api.multiavatar.com',
       'https://mymiddleman.ng',
+      undefined, // Allow server-to-server requests (e.g., Paystack webhooks)
     ];
-    console.log('Checking origin:', origin); // Debug log
-    if (!origin || allowedOrigins.includes(origin)) {
-      console.log('Origin allowed:', origin); // Debug log
+    console.log('Checking origin:', origin);
+    if (allowedOrigins.includes(origin) || !origin) {
+      console.log('Origin allowed:', origin || 'No origin (e.g., webhook)');
       callback(null, true);
     } else {
-      console.log('Origin denied:', origin); // Debug log
+      console.log('Origin denied:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'Paymentpoint-Signature'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'x-paystack-signature'],
   optionsSuccessStatus: 204,
   preflightContinue: false,
 };
