@@ -107,15 +107,18 @@ const io = socketIo(server, {
 // Socket.IO Authentication Middleware
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
+  console.log('Socket.IO auth attempt:', { token: token ? '[REDACTED]' : 'No token', origin: socket.handshake.headers.origin });
   if (!token) {
+    console.error('Socket.IO authentication failed: No token provided');
     return next(new Error('Authentication error: No token provided'));
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Socket.IO authentication success:', { userId: decoded.id });
     socket.userId = decoded.id;
     next();
   } catch (error) {
-    console.error('Socket.IO authentication error:', error.message);
+    console.error('Socket.IO authentication error:', { message: error.message, token: token ? '[REDACTED]' : 'No token' });
     next(new Error('Authentication error: Invalid token'));
   }
 });

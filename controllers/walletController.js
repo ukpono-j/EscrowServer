@@ -383,7 +383,7 @@ exports.verifyFunding = async (req, res) => {
     });
 
     const hash = crypto
-      .createHmac('sha512', PAYSTACK_SECRET_KEY) // Use PAYSTACK_SECRET_KEY directly
+      .createHmac('sha512', PAYSTACK_SECRET_KEY)
       .update(JSON.stringify(req.body))
       .digest('hex');
 
@@ -425,12 +425,19 @@ exports.verifyFunding = async (req, res) => {
 
     let transaction = wallet.transactions.find((t) => t.reference === reference);
     if (!transaction) {
-      transaction = { type: 'deposit', amount: parseFloat(amount) / 100, reference, status: 'pending', metadata: {}, createdAt: new Date() };
+      transaction = { 
+        type: 'deposit', 
+        amount: parseFloat(amount) / 100, 
+        reference, 
+        status: 'pending', 
+        metadata: { customerEmail: customer.email }, 
+        createdAt: new Date() 
+      };
       wallet.transactions.push(transaction);
     }
-    transaction.status = status === 'success' ? 'completed' : 'failed';
-    transaction.metadata = { ...transaction.metadata, customerEmail: customer.email };
 
+    // Update transaction status
+    transaction.status = status === 'success' ? 'completed' : 'failed';
     if (status === 'success') {
       const amountInNaira = parseFloat(amount) / 100;
       wallet.balance += amountInNaira;
@@ -456,11 +463,23 @@ exports.verifyFunding = async (req, res) => {
       console.log('Funding failed notification created:', reference);
     }
 
-    await wallet.recalculateBalance();
+    await wallet.recalculateBalance(); // Ensure balance is recalculated
     await wallet.save();
     console.log('Wallet saved:', { walletId: wallet._id, balance: wallet.balance, reference });
 
-    // Ensure response is sent quickly to avoid Render timeout
+    // Notify frontend via WebSocket if available
+    const io = req.app.get('io');
+    if (io) {
+      io.to(wallet.userId.toString()).emit('balanceUpdate', {
+        balance: wallet.balance,
+        transaction: {
+          amount: parseFloat(amount) / 100,
+          reference,
+          status: transaction.status,
+        },
+      });
+    }
+
     res.status(200).json({ status: 'success' });
   } catch (error) {
     console.error('Webhook error:', { message: error.message, stack: error.stack, body: req.body });
