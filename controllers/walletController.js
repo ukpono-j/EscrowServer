@@ -359,19 +359,21 @@ exports.initiateFunding = async (req, res) => {
 // Update other Paystack-dependent functions to use PAYSTACK_SECRET_KEY
 exports.verifyFunding = async (req, res) => {
   try {
-    console.log('Webhook received:', {
+    console.log('Webhook received at:', new Date().toISOString(), {
       headers: req.headers,
       body: req.body,
-      timestamp: new Date().toISOString(),
     });
 
-    // Verify Paystack webhook signature
     const hash = crypto
-      .createHmac('sha512', PAYSTACK_SECRET_KEY)
+      .createHmac('sha512', process.env.PAYSTACK_LIVE_SECRET_KEY)
       .update(JSON.stringify(req.body))
       .digest('hex');
+
     if (hash !== req.headers['x-paystack-signature']) {
-      console.error('Invalid Paystack webhook signature');
+      console.error('Invalid Paystack webhook signature:', {
+        computedHash: hash,
+        receivedSignature: req.headers['x-paystack-signature'],
+      });
       return res.status(401).json({ success: false, error: 'Invalid webhook signature' });
     }
 
@@ -387,138 +389,64 @@ exports.verifyFunding = async (req, res) => {
     const { reference, amount, status, customer } = data;
     if (!reference || !amount || !status || !customer?.email) {
       console.error('Invalid webhook payload:', webhookData);
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields in webhook payload',
-      });
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    let wallet = await Wallet.findOne({
-      'transactions.reference': reference,
-    });
-
+    let wallet = await Wallet.findOne({ 'transactions.reference': reference });
     if (!wallet) {
-      console.warn('Wallet not found for reference:', reference);
+      const user = await User.findOne({ email: customer.email });
+      if (user) {
+        wallet = await Wallet.findOne({ userId: user._id }) || new Wallet({ userId: user._id, balance: 0, totalDeposits: 0, currency: 'NGN', transactions: [] });
+        await wallet.save();
+        console.log('Wallet created/found for user:', { userId: user._id, walletId: wallet._id });
+      }
+    }
+    if (!wallet) {
+      console.error('No wallet found for reference or email:', reference);
       return res.status(404).json({ success: false, error: 'Wallet not found' });
     }
 
-    console.log('Wallet found:', {
-      walletId: wallet._id,
-      userId: wallet.userId,
-      reference,
-    });
-
-    let transactionIndex = wallet.transactions.findIndex(
-      (t) => t.reference === reference && t.status === 'pending'
-    );
-
-    if (transactionIndex === -1) {
-      console.warn('No matching pending transaction found, creating new transaction:', reference);
-      const newTransaction = {
-        type: 'deposit',
-        amount: parseFloat(amount) / 100,
-        reference,
-        status: status === 'success' ? 'completed' : 'failed',
-        metadata: {
-          paymentGateway: 'Paystack',
-          paymentReference: reference,
-          customerEmail: customer.email,
-        },
-        createdAt: new Date(),
-      };
-      wallet.transactions.push(newTransaction);
-      transactionIndex = wallet.transactions.length - 1;
+    let transaction = wallet.transactions.find((t) => t.reference === reference);
+    if (!transaction) {
+      transaction = { type: 'deposit', amount: parseFloat(amount) / 100, reference, status: 'pending', metadata: {}, createdAt: new Date() };
+      wallet.transactions.push(transaction);
+      console.log('New transaction created:', reference);
     }
-
-    const transaction = wallet.transactions[transactionIndex];
-    console.log('Transaction before update:', {
-      reference: transaction.reference,
-      status: transaction.status,
-      amount: transaction.amount,
-      metadata: transaction.metadata,
-    });
-
-    if (transaction.status === 'completed') {
-      console.log('Transaction already completed:', transaction.reference);
-      return res.status(200).json({ status: 'success' });
-    }
-
     transaction.status = status === 'success' ? 'completed' : 'failed';
-    transaction.metadata.customerEmail = customer.email;
+    transaction.metadata = { ...transaction.metadata, customerEmail: customer.email };
 
     if (status === 'success') {
       const amountInNaira = parseFloat(amount) / 100;
-      if (!isNaN(amountInNaira)) {
-        wallet.balance += amountInNaira;
-        wallet.totalDeposits += amountInNaira;
-        console.log('Balance updated:', {
-          reference: transaction.reference,
-          amount: amountInNaira,
-          newBalance: wallet.balance,
-          totalDeposits: wallet.totalDeposits,
-        });
-
-        const notification = new Notification({
-          userId: wallet.userId,
-          title: 'Wallet Funded Successfully',
-          message: `Your wallet has been funded with ${amountInNaira} NGN. Transaction reference: ${transaction.reference}.`,
-          transactionId: transaction.reference,
-          type: 'funding',
-          status: 'completed',
-        });
-        await notification.save();
-        console.log('Success notification created:', {
-          userId: wallet.userId,
-          reference: transaction.reference,
-          amount: amountInNaira,
-        });
-      } else {
-        console.error('Invalid amount in webhook:', amount);
-      }
+      wallet.balance += amountInNaira;
+      wallet.totalDeposits += amountInNaira;
+      await Notification.create({
+        userId: wallet.userId,
+        title: 'Wallet Funded Successfully',
+        message: `Your wallet has been funded with ${amountInNaira} NGN. Reference: ${reference}.`,
+        transactionId: reference,
+        type: 'funding',
+        status: 'completed',
+      });
+      console.log('Balance updated:', { reference, amount: amountInNaira, newBalance: wallet.balance });
     } else {
-      const notification = new Notification({
+      await Notification.create({
         userId: wallet.userId,
         title: 'Wallet Funding Failed',
-        message: `Your wallet funding of ${(amount / 100)} NGN failed. Transaction reference: ${transaction.reference}.`,
-        transactionId: transaction.reference,
+        message: `Funding of ${amount / 100} NGN failed. Reference: ${reference}.`,
+        transactionId: reference,
         type: 'funding',
         status: 'failed',
       });
-      await notification.save();
-      console.log('Failure notification created:', {
-        userId: wallet.userId,
-        reference: transaction.reference,
-        amount: amount / 100,
-      });
+      console.log('Funding failed notification created:', reference);
     }
 
     await wallet.recalculateBalance();
     await wallet.save();
-    console.log('Wallet saved successfully:', {
-      walletId: wallet._id,
-      transactionStatus: status,
-      balance: wallet.balance,
-      totalDeposits: wallet.totalDeposits,
-      transactionReference: transaction.reference,
-    });
-
-    const io = req.app.get('io');
-    io.to(wallet.userId.toString()).emit('balanceUpdate', {
-      balance: wallet.balance,
-      transaction: {
-        amount: parseFloat(amount) / 100,
-        reference: transaction.reference,
-      },
-    });
+    console.log('Wallet saved:', { walletId: wallet._id, balance: wallet.balance, reference });
 
     return res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error('Webhook processing error:', {
-      message: error.message,
-      stack: error.stack,
-      headers: req.headers,
-      body: req.body,
-    });
+    console.error('Webhook error:', { message: error.message, stack: error.stack, body: req.body });
     return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };

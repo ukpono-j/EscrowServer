@@ -13,6 +13,6 @@ router.post('/withdraw', authenticateUser, walletController.withdrawFunds);
 router.get('/transactions', authenticateUser, walletController.getWalletTransactions);
 
 // Add Paystack webhook route
-router.post('/transactions/webhook/paystack', walletController.verifyFunding);
+router.post('/api/transactions/webhook/paystack', walletController.verifyFunding);
 
 module.exports = router;
