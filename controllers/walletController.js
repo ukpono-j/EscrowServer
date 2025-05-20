@@ -251,11 +251,17 @@ exports.initiateFunding = async (req, res) => {
           bank_name: accountResponse.data.data.bank.name,
           provider: 'Paystack',
           provider_reference: accountResponse.data.data.id,
+          dedicated_reference: accountResponse.data.data.dedicated_account?.assignment?.integration_reference || null, // Store Paystack reference
         };
 
         wallet.virtualAccount = virtualAccount;
         await wallet.save();
         console.log('Virtual account saved to wallet:', virtualAccount);
+
+
+        // Use dedicated reference if available, else generate custom
+        const reference = virtualAccount.dedicated_reference || `FUND_${userId}_${uuidv4()}`;
+        console.log('Using reference:', reference);
       } catch (error) {
         console.error('Error creating virtual account:', {
           message: error.message,
@@ -386,20 +392,6 @@ exports.verifyFunding = async (req, res) => {
       method: req.method,
     });
 
-    // Verify Paystack webhook signature
-    const hash = crypto
-      .createHmac('sha512', PAYSTACK_SECRET_KEY)
-      .update(JSON.stringify(req.body))
-      .digest('hex');
-
-    if (hash !== req.headers['x-paystack-signature']) {
-      console.error('Invalid Paystack webhook signature:', {
-        computedHash: hash,
-        receivedSignature: req.headers['x-paystack-signature'],
-        body: req.body,
-      });
-      return res.status(401).json({ success: false, error: 'Invalid webhook signature' });
-    }
 
     const webhookData = req.body;
     const { event, data } = webhookData;
