@@ -5,7 +5,6 @@ const authenticateUser = require('../middlewares/authenticateUser');
 
 router.get('/balance', authenticateUser, walletController.getWalletBalance);
 router.post('/fund', authenticateUser, walletController.initiateFunding);
-router.post('/verify', walletController.verifyFunding);
 router.get('/funding-status/:reference', authenticateUser, walletController.checkFundingStatus);
 router.post('/reconcile', authenticateUser, walletController.reconcileTransactions);
 router.post('/verify-account', authenticateUser, walletController.verifyAccount);

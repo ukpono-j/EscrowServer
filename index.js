@@ -58,6 +58,16 @@ async function manageIndexes() {
 console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
+});
+
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
@@ -250,6 +260,7 @@ async function startServer() {
     const PORT = process.env.PORT || 3001;
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
+      console.log('Paystack Secret Key Mode:', process.env.NODE_ENV === 'production' ? 'Live' : 'Test');
     });
   } catch (error) {
     console.error('Failed to start server:', error.message);

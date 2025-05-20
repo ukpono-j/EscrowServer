@@ -376,14 +376,17 @@ exports.initiateFunding = async (req, res) => {
 // Update other Paystack-dependent functions to use PAYSTACK_SECRET_KEY
 exports.verifyFunding = async (req, res) => {
   try {
+    // Log webhook receipt with detailed metadata
     console.log('Webhook received:', {
       timestamp: new Date().toISOString(),
       headers: req.headers,
-      body: req.body,
+      body: JSON.stringify(req.body, null, 2),
       remoteAddress: req.ip,
       url: req.originalUrl,
+      method: req.method,
     });
 
+    // Verify Paystack webhook signature
     const hash = crypto
       .createHmac('sha512', PAYSTACK_SECRET_KEY)
       .update(JSON.stringify(req.body))
@@ -399,20 +402,28 @@ exports.verifyFunding = async (req, res) => {
     }
 
     const webhookData = req.body;
-    console.log('Parsed webhook data:', JSON.stringify(webhookData, null, 2));
-
     const { event, data } = webhookData;
+
+    // Handle only relevant Paystack events
     if (!['dedicatedaccount.credit', 'charge.success'].includes(event)) {
-      console.log('Ignoring webhook event:', event);
+      console.log('Ignoring webhook event:', { event, reference: data?.reference });
       return res.status(200).json({ status: 'success' });
     }
 
+    // Validate webhook payload
     const { reference, amount, status, customer } = data;
     if (!reference || !amount || !status || !customer?.email) {
-      console.error('Invalid webhook payload:', webhookData);
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
+      console.error('Invalid webhook payload:', {
+        reference,
+        amount,
+        status,
+        customerEmail: customer?.email,
+        webhookData,
+      });
+      return res.status(400).json({ success: false, error: 'Missing required fields in webhook payload' });
     }
 
+    // Find wallet by reference or user email
     let wallet = await Wallet.findOne({ 'transactions.reference': reference });
     if (!wallet) {
       const user = await User.findOne({ email: customer.email });
@@ -425,56 +436,122 @@ exports.verifyFunding = async (req, res) => {
           transactions: [],
         });
         await wallet.save();
+        console.log('Wallet created or fetched for webhook:', { userId: user._id, walletId: wallet._id });
+      } else {
+        console.error('No user found for webhook email:', { email: customer.email, reference });
+        return res.status(404).json({ success: false, error: 'User not found for webhook email' });
       }
     }
-    if (!wallet) {
-      console.error('No wallet found for reference or email:', reference);
-      return res.status(404).json({ success: false, error: 'Wallet not found' });
+
+    // Check for existing transaction to ensure idempotency
+    let transaction = wallet.transactions.find((t) => t.reference === reference);
+    if (transaction && transaction.status === 'completed') {
+      console.log('Duplicate webhook ignored (already completed):', { reference, walletId: wallet._id });
+      return res.status(200).json({ status: 'success' });
     }
 
-    let transaction = wallet.transactions.find((t) => t.reference === reference);
+    // Create new transaction if none exists
     if (!transaction) {
       transaction = {
         type: 'deposit',
-        amount: parseFloat(amount) / 100,
+        amount: parseFloat(amount) / 100, // Convert kobo to NGN
         reference,
         status: 'pending',
-        metadata: { customerEmail: customer.email },
+        metadata: {
+          paymentGateway: 'Paystack',
+          customerEmail: customer.email,
+          webhookEvent: event,
+        },
         createdAt: new Date(),
       };
       wallet.transactions.push(transaction);
     }
 
+    // Update transaction status
     transaction.status = status === 'success' ? 'completed' : 'failed';
+    let notification;
+
     if (status === 'success') {
       const amountInNaira = parseFloat(amount) / 100;
       wallet.balance += amountInNaira;
       wallet.totalDeposits += amountInNaira;
-      await Notification.create({
+
+      notification = {
         userId: wallet.userId,
         title: 'Wallet Funded Successfully',
         message: `Your wallet has been funded with ${amountInNaira} NGN. Reference: ${reference}.`,
         transactionId: reference,
         type: 'funding',
         status: 'completed',
+      };
+
+      console.log('Balance updated:', {
+        reference,
+        amount: amountInNaira,
+        newBalance: wallet.balance,
+        walletId: wallet._id,
       });
-      console.log('Balance updated:', { reference, amount: amountInNaira, newBalance: wallet.balance });
     } else {
-      await Notification.create({
+      notification = {
         userId: wallet.userId,
         title: 'Wallet Funding Failed',
         message: `Funding of ${amount / 100} NGN failed. Reference: ${reference}.`,
         transactionId: reference,
         type: 'funding',
         status: 'failed',
-      });
-      console.log('Funding failed notification created:', reference);
+      };
+
+      console.log('Funding failed:', { reference, walletId: wallet._id });
     }
 
-    await wallet.recalculateBalance();
-    await wallet.save();
-    console.log('Wallet saved:', { walletId: wallet._id, balance: wallet.balance, reference });
+    // Save wallet with retry logic for MongoDB
+    let saveAttempts = 0;
+    const maxSaveAttempts = 3;
+    while (saveAttempts < maxSaveAttempts) {
+      try {
+        await wallet.recalculateBalance();
+        await wallet.save();
+        console.log('Wallet saved successfully:', { walletId: wallet._id, balance: wallet.balance, reference });
+        break;
+      } catch (saveError) {
+        saveAttempts++;
+        console.error('Wallet save attempt failed:', {
+          attempt: saveAttempts,
+          reference,
+          message: saveError.message,
+          stack: saveError.stack,
+        });
+        if (saveAttempts === maxSaveAttempts) {
+          console.error('Max save attempts reached, aborting:', { reference, walletId: wallet._id });
+          return res.status(500).json({ success: false, error: 'Failed to save wallet after webhook processing' });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * saveAttempts)); // Exponential backoff
+      }
+    }
 
+    // Save notification with retry logic
+    saveAttempts = 0;
+    while (saveAttempts < maxSaveAttempts) {
+      try {
+        await Notification.create(notification);
+        console.log('Notification created:', { reference, userId: wallet.userId, status: notification.status });
+        break;
+      } catch (notifError) {
+        saveAttempts++;
+        console.error('Notification save attempt failed:', {
+          attempt: saveAttempts,
+          reference,
+          message: notifError.message,
+          stack: notifError.stack,
+        });
+        if (saveAttempts === maxSaveAttempts) {
+          console.warn('Max notification save attempts reached, continuing without notification:', { reference });
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000 * saveAttempts));
+      }
+    }
+
+    // Emit WebSocket update
     const io = req.app.get('io');
     if (io) {
       io.to(wallet.userId.toString()).emit('balanceUpdate', {
@@ -485,20 +562,258 @@ exports.verifyFunding = async (req, res) => {
           status: transaction.status,
         },
       });
-      console.log('WebSocket balance update emitted to:', wallet.userId);
+      console.log('WebSocket balance update emitted:', { userId: wallet.userId, reference });
+    } else {
+      console.warn('Socket.io instance not found for webhook:', { reference });
     }
 
-    res.status(200).json({ status: 'success' });
+    return res.status(200).json({ status: 'success' });
   } catch (error) {
-    console.error('Webhook error:', {
+    console.error('Webhook processing error:', {
       message: error.message,
       stack: error.stack,
       body: req.body,
       headers: req.headers,
     });
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    return res.status(500).json({ success: false, error: 'Internal server error during webhook processing' });
   }
 };
+
+exports.manualReconcileTransaction = async (req, res) => {
+  try {
+    const { reference } = req.body;
+    const userId = req.user.id;
+
+    if (!reference) {
+      console.warn('No reference provided for manual reconciliation');
+      return res.status(400).json({ success: false, error: 'Reference is required' });
+    }
+
+    console.log('Manual reconciliation started:', { reference, userId, timestamp: new Date().toISOString() });
+
+    // Find or create wallet
+    let wallet = await Wallet.findOne({ userId });
+    if (!wallet) {
+      console.warn('Wallet not found, creating new wallet:', { userId });
+      wallet = new Wallet({
+        userId,
+        balance: 0,
+        totalDeposits: 0,
+        currency: 'NGN',
+        transactions: [],
+      });
+      await wallet.save();
+      console.log('Wallet created:', { userId, walletId: wallet._id });
+    }
+
+    // Check for existing transaction
+    let transaction = wallet.transactions.find((t) => t.reference === reference);
+    if (transaction && transaction.status === 'completed') {
+      console.log('Transaction already completed:', { reference, walletId: wallet._id });
+      return res.status(200).json({
+        success: true,
+        message: 'Transaction already completed',
+        data: { transaction, newBalance: wallet.balance },
+      });
+    }
+
+    // Verify transaction with Paystack
+    try {
+      const response = await axios.get(
+        `https://api.paystack.co/transaction/verify/${reference}`,
+        {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 15000,
+        }
+      );
+
+      console.log('Paystack manual reconciliation response:', JSON.stringify(response.data, null, 2));
+
+      if (response.data.status && response.data.data?.status === 'success') {
+        const { amount, reference: paymentReference, customer } = response.data.data;
+
+        // Create or update transaction
+        if (!transaction) {
+          transaction = {
+            type: 'deposit',
+            amount: parseFloat(amount) / 100, // Convert kobo to NGN
+            reference: paymentReference,
+            status: 'completed',
+            metadata: {
+              paymentGateway: 'Paystack',
+              paymentReference,
+              customerEmail: customer.email,
+              reconciledManually: true,
+              reconciledAt: new Date(),
+            },
+            createdAt: new Date(),
+          };
+          wallet.transactions.push(transaction);
+        } else {
+          transaction.status = 'completed';
+          transaction.metadata.reconciledManually = true;
+          transaction.metadata.reconciledAt = new Date();
+        }
+
+        // Update wallet balance
+        const amountInNaira = parseFloat(amount) / 100;
+        wallet.balance += amountInNaira;
+        wallet.totalDeposits += amountInNaira;
+
+        // Save wallet with retry logic
+        let saveAttempts = 0;
+        const maxSaveAttempts = 3;
+        while (saveAttempts < maxSaveAttempts) {
+          try {
+            await wallet.recalculateBalance();
+            await wallet.save();
+            console.log('Wallet saved successfully:', {
+              walletId: wallet._id,
+              balance: wallet.balance,
+              reference,
+            });
+            break;
+          } catch (saveError) {
+            saveAttempts++;
+            console.error('Wallet save attempt failed:', {
+              attempt: saveAttempts,
+              reference,
+              message: saveError.message,
+              stack: saveError.stack,
+            });
+            if (saveAttempts === maxSaveAttempts) {
+              console.error('Max save attempts reached:', { reference, walletId: wallet._id });
+              return res.status(500).json({
+                success: false,
+                error: 'Failed to save wallet after reconciliation',
+              });
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000 * saveAttempts));
+          }
+        }
+
+        // Create notification
+        let notificationAttempts = 0;
+        const maxNotificationAttempts = 3;
+        const notification = {
+          userId: wallet.userId,
+          title: 'Wallet Funded Successfully',
+          message: `Your wallet has been funded with ${amountInNaira} NGN via manual reconciliation. Reference: ${reference}.`,
+          transactionId: reference,
+          type: 'funding',
+          status: 'completed',
+        };
+
+        while (notificationAttempts < maxNotificationAttempts) {
+          try {
+            await Notification.create(notification);
+            console.log('Notification created:', {
+              reference,
+              userId: wallet.userId,
+              status: notification.status,
+            });
+            break;
+          } catch (notifError) {
+            notificationAttempts++;
+            console.error('Notification save attempt failed:', {
+              attempt: notificationAttempts,
+              reference,
+              message: notifError.message,
+              stack: notifError.stack,
+            });
+            if (notificationAttempts === maxNotificationAttempts) {
+              console.warn('Max notification save attempts reached, continuing without notification:', {
+                reference,
+              });
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1000 * notificationAttempts));
+          }
+        }
+
+        // Emit WebSocket update
+        const io = req.app.get('io');
+        if (io) {
+          io.to(wallet.userId.toString()).emit('balanceUpdate', {
+            balance: wallet.balance,
+            transaction: {
+              amount: amountInNaira,
+              reference,
+              status: 'completed',
+            },
+          });
+          console.log('WebSocket balance update emitted:', { userId: wallet.userId, reference });
+        } else {
+          console.warn('Socket.io instance not found for reconciliation:', { reference });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Transaction reconciled successfully',
+          data: { transaction, newBalance: wallet.balance },
+        });
+      } else {
+        console.log('Paystack verification failed or pending:', response.data);
+        if (transaction) {
+          transaction.status = 'failed';
+          await wallet.save();
+        }
+        return res.status(200).json({
+          success: false,
+          message: 'Transaction not confirmed by Paystack',
+          data: { status: response.data.data?.status || 'pending' },
+        });
+      }
+    } catch (error) {
+      console.error('Paystack manual reconciliation error:', {
+        reference,
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      let errorMessage = 'Failed to verify transaction with Paystack';
+      let statusCode = 502;
+
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = 'Payment provider is currently unavailable due to a timeout. Please try again later.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Invalid Paystack API key. Please contact support.';
+        statusCode = 401;
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many requests to the payment provider. Please try again later.';
+        statusCode = 429;
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Payment provider encountered an internal server error. Please try again later or contact support.';
+        statusCode = 502;
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Transaction not found in Paystack';
+        statusCode = 404;
+      }
+
+      return res.status(statusCode).json({
+        success: false,
+        error: errorMessage,
+        details: error.response?.data?.message || error.message,
+      });
+    }
+  } catch (error) {
+    console.error('Manual reconciliation error:', {
+      reference: req.body.reference,
+      userId: req.user.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error during manual reconciliation',
+    });
+  }
+};
+
 
 exports.checkFundingStatus = async (req, res) => {
   try {
