@@ -319,20 +319,26 @@ exports.initiateFunding = async (req, res) => {
     const transaction = {
       type: 'deposit',
       amount: parseFloat(amount),
-      reference,
-      paystackReference: accountData.id,
+      reference, // Your unique FUND_... reference
+      paystackReference: null, // No transaction reference available yet
       status: 'pending',
       metadata: {
         paymentGateway: 'Paystack',
         customerEmail: email,
         virtualAccount,
+        virtualAccountId: accountData.id, // Store virtual account ID in metadata for reference
       },
       createdAt: new Date(),
     };
     wallet.transactions.push(transaction);
 
     await wallet.save();
-    console.log('Virtual account and transaction saved:', { userId, reference, virtualAccount });
+    console.log('Virtual account and transaction saved:', {
+      userId,
+      reference,
+      virtualAccountId: accountData.id,
+      amount: transaction.amount,
+    });
 
     return res.status(200).json({
       success: true,
@@ -390,6 +396,7 @@ exports.verifyFunding = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing required fields in webhook payload' });
     }
 
+    // Find wallet by Paystack reference or user email
     let wallet = await Wallet.findOne({
       $or: [
         { 'transactions.reference': reference },
@@ -416,6 +423,7 @@ exports.verifyFunding = async (req, res) => {
       }
     }
 
+    // Update virtual account if provided
     if (event === 'dedicatedaccount.credit' && data.account_details) {
       const accountData = data.account_details;
       if (!wallet.virtualAccount && accountData.account_name && accountData.account_number && accountData.bank_name) {
@@ -432,6 +440,7 @@ exports.verifyFunding = async (req, res) => {
       }
     }
 
+    // Find existing transaction by reference or paystackReference
     let transaction = wallet.transactions.find(
       (t) => t.reference === reference || t.paystackReference === reference
     );
@@ -443,31 +452,52 @@ exports.verifyFunding = async (req, res) => {
 
     const amountInNaira = parseFloat(amount) / 100;
 
+    // Create or update transaction
     if (!transaction) {
-      transaction = {
-        type: 'deposit',
-        amount: amountInNaira,
-        reference: `FUND_${wallet.userId}_${uuidv4()}`,
-        paystackReference: reference,
-        status: 'pending',
-        metadata: {
-          paymentGateway: 'Paystack',
-          customerEmail: customer.email,
-          virtualAccount: wallet.virtualAccount,
-          webhookEvent: event,
-        },
-        createdAt: new Date(),
-      };
-      wallet.transactions.push(transaction);
+      // Try to find transaction by metadata or userId to match the original FUND_ reference
+      const user = await User.findOne({ email: customer.email });
+      if (user) {
+        const existingWallet = await Wallet.findOne({ userId: user._id });
+        transaction = existingWallet.transactions.find(
+          (t) =>
+            t.type === 'deposit' &&
+            t.status === 'pending' &&
+            t.metadata?.virtualAccountId === data.account_details?.id // Match by virtual account ID
+        );
+      }
+
+      if (!transaction) {
+        transaction = {
+          type: 'deposit',
+          amount: amountInNaira,
+          reference: `FUND_${wallet.userId}_${uuidv4()}`,
+          paystackReference: reference, // Set Paystack transaction reference from webhook
+          status: 'pending',
+          metadata: {
+            paymentGateway: 'Paystack',
+            customerEmail: customer.email,
+            virtualAccount: wallet.virtualAccount,
+            virtualAccountId: data.account_details?.id,
+            webhookEvent: event,
+          },
+          createdAt: new Date(),
+        };
+        wallet.transactions.push(transaction);
+      }
+      else {
+        // Update existing transaction with Paystack reference
+        transaction.paystackReference = reference;
+        transaction.amount = amountInNaira;
+        transaction.metadata.webhookEvent = event;
+      }
     }
 
+    // Update transaction status
     transaction.status = status === 'success' ? 'completed' : 'failed';
     let notification;
 
     if (status === 'success') {
-      wallet.balance += amountInNaira;
       wallet.totalDeposits += amountInNaira;
-
       notification = {
         userId: wallet.userId,
         title: 'Wallet Funded Successfully',
@@ -477,11 +507,11 @@ exports.verifyFunding = async (req, res) => {
         status: 'completed',
       };
 
-      console.log('Balance updated:', {
-        reference,
+      console.log('Transaction updated:', {
+        reference: transaction.reference,
+        paystackReference: reference,
         amount: amountInNaira,
-        newBalance: wallet.balance,
-        walletId: wallet._id,
+        status: transaction.status,
       });
     } else {
       notification = {
@@ -494,17 +524,39 @@ exports.verifyFunding = async (req, res) => {
       };
     }
 
+    // Mark transactions array as modified
+    wallet.markModified('transactions');
+
+    // Save wallet with updated transaction before recalculation
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        await wallet.recalculateBalance();
+        // Save wallet to persist transaction changes
         await wallet.save({ session });
+        console.log('Wallet saved with updated transaction:', {
+          walletId: wallet._id,
+          transactionReference: transaction.reference,
+          transactionStatus: transaction.status,
+        });
+
+        // Recalculate balance after saving
+        await wallet.recalculateBalance();
+        console.log('Balance after recalculation:', {
+          walletId: wallet._id,
+          balance: wallet.balance,
+        });
+
+        // Save wallet again with updated balance
+        await wallet.save({ session });
+
+        // Create notification
         await Notification.create([notification], { session });
       });
+
       console.log('Wallet and notification saved successfully:', {
         walletId: wallet._id,
         balance: wallet.balance,
-        reference,
+        reference: transaction.reference,
       });
     } catch (saveError) {
       console.error('Transaction save failed:', {
@@ -517,6 +569,7 @@ exports.verifyFunding = async (req, res) => {
       session.endSession();
     }
 
+    // Emit WebSocket update
     const io = req.app.get('io');
     if (io) {
       io.to(wallet.userId.toString()).emit('balanceUpdate', {
