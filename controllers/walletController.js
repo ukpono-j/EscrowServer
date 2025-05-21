@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Wallet = require('../modules/wallet');
 const User = require('../modules/Users');
 const Notification = require('../modules/Notification');
