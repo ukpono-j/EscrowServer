@@ -16,7 +16,6 @@ const transactionSchema = new mongoose.Schema({
   },
   paystackReference: { 
     type: String, 
-    sparse: true // Sparse index defined here, no inline index: true
   },
   status: {
     type: String,
