@@ -14,7 +14,7 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  paystackReference: { type: String, sparse: true }, // Already included as proposed for Paystack reference mapping
+  paystackReference: { type: String, sparse: true },
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
@@ -29,9 +29,6 @@ const transactionSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
-
-// Add index for paystackReference to optimize webhook queries
-transactionSchema.index({ paystackReference: 1 }, { sparse: true });
 
 const walletSchema = new mongoose.Schema({
   userId: {
@@ -59,7 +56,6 @@ const walletSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  // New field to store virtual account details (optional, for dedicated_nuban)
   virtualAccount: {
     account_name: { type: String },
     account_number: { type: String },
@@ -104,7 +100,6 @@ walletSchema.methods.recalculateBalance = async function () {
 
     const newBalance = completedDeposits - completedWithdrawals;
 
-    // Detailed logging for debugging
     console.log('Recalculated balance:', {
       walletId: this._id,
       completedDeposits,
