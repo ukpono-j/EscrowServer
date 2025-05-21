@@ -5,7 +5,7 @@ const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const FALLBACK_BANKS = ['wema-bank', 'titan-paystack', 'providus-bank'];
+// const FALLBACK_BANKS = ['wema-bank', 'titan-paystack', 'providus-bank'];
 
 
 // Determine Paystack secret key based on environment
@@ -19,12 +19,12 @@ if (!PAYSTACK_SECRET_KEY) {
   process.exit(1);
 }
 // List of fallback banks for production mode
-// const FALLBACK_BANKS = [
-//   'wema-bank',
-//   'zenith-bank',
-//   'uba', // United Bank for Africa
-//   'access-bank',
-// ];
+const FALLBACK_BANKS = [
+  'wema-bank',
+  'zenith-bank',
+  'uba', // United Bank for Africa
+  'access-bank',
+];
 
 axiosRetry(axios, {
   retries: 3,
@@ -137,34 +137,75 @@ exports.initiateFunding = async (req, res) => {
     }
 
     if (!user.paystackCustomerCode) {
-      const customerResponse = await axios.post(
-        'https://api.paystack.co/customer',
-        {
-          email: user.email,
-          first_name: user.firstName,
-          last_name: user.lastName,
-          phone: phoneNumber,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json',
+      try {
+        const customerResponse = await axios.post(
+          'https://api.paystack.co/customer',
+          {
+            email: user.email,
+            first_name: user.firstName || 'Unknown',
+            last_name: user.lastName || 'Unknown',
+            phone: phoneNumber,
           },
-          timeout: 30000,
+          {
+            headers: {
+              Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 30000,
+          }
+        );
+
+        if (!customerResponse.data.status || !customerResponse.data.data?.customer_code) {
+          console.error('Failed to create Paystack customer:', customerResponse.data);
+          throw new Error('Failed to create Paystack customer');
         }
-      );
 
-      if (!customerResponse.data.status || !customerResponse.data.data?.customer_code) {
-        console.error('Failed to create Paystack customer:', customerResponse.data);
-        throw new Error('Failed to create Paystack customer');
+        customerCode = customerResponse.data.data.customer_code;
+        user.paystackCustomerCode = customerCode;
+        await user.save();
+        console.log('Paystack customer created and saved:', { userId, customerCode });
+      } catch (error) {
+        console.error('Error creating Paystack customer:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create Paystack customer. Please try again or contact support.',
+        });
       }
-
-      customerCode = customerResponse.data.data.customer_code;
-      user.paystackCustomerCode = customerCode;
-      await user.save();
-      console.log('Paystack customer created:', { userId, customerCode });
     } else {
       customerCode = user.paystackCustomerCode;
+      // Verify customer exists in Paystack
+      try {
+        const customerVerification = await axios.get(
+          `https://api.paystack.co/customer/${customerCode}`,
+          {
+            headers: {
+              Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 15000,
+          }
+        );
+        if (!customerVerification.data.status || !customerVerification.data.data) {
+          console.warn('Customer code invalid, clearing and retrying:', customerCode);
+          user.paystackCustomerCode = null;
+          await user.save();
+          return exports.initiateFunding(req, res); // Retry the function
+        }
+        console.log('Customer verified:', { customerCode, email: customerVerification.data.data.email });
+      } catch (error) {
+        console.error('Error verifying Paystack customer:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+        });
+        user.paystackCustomerCode = null;
+        await user.save();
+        return exports.initiateFunding(req, res); // Retry after clearing invalid code
+      }
     }
 
     // Create virtual account
@@ -172,6 +213,7 @@ exports.initiateFunding = async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
       for (const bank of FALLBACK_BANKS) {
         try {
+          console.log(`Attempting to create virtual account with bank: ${bank}`);
           accountResponse = await axios.post(
             'https://api.paystack.co/dedicated_account',
             {
@@ -188,7 +230,7 @@ exports.initiateFunding = async (req, res) => {
           );
 
           if (accountResponse.data.status) {
-            console.log(`Successfully created virtual account with bank: ${bank}`, accountResponse.data);
+            console.log(`Successfully created virtual account with bank: ${bank}`, accountResponse.data.data);
             break;
           }
         } catch (bankError) {
@@ -198,12 +240,42 @@ exports.initiateFunding = async (req, res) => {
             status: bankError.response?.status,
           });
           if (bank === FALLBACK_BANKS[FALLBACK_BANKS.length - 1]) {
-            throw new Error('All fallback banks failed to create virtual account');
+            // Fallback to default bank (e.g., wema-bank) as a last resort
+            try {
+              console.log('All fallback banks failed, attempting default bank: wema-bank');
+              accountResponse = await axios.post(
+                'https://api.paystack.co/dedicated_account',
+                {
+                  customer: customerCode,
+                  preferred_bank: 'wema-bank',
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  timeout: 30000,
+                }
+              );
+              if (accountResponse.data.status) {
+                console.log('Virtual account created with default bank: wema-bank');
+              } else {
+                throw new Error('All banks, including default, failed to create virtual account');
+              }
+            } catch (defaultError) {
+              console.error('Default bank fallback failed:', {
+                message: defaultError.message,
+                response: defaultError.response?.data,
+                status: defaultError.response?.status,
+              });
+              throw new Error('All banks, including default, failed to create virtual account');
+            }
           }
           continue;
         }
       }
     } else {
+      console.log('Creating virtual account in test mode (no preferred bank)');
       accountResponse = await axios.post(
         'https://api.paystack.co/dedicated_account',
         {
@@ -290,6 +362,8 @@ exports.initiateFunding = async (req, res) => {
     });
   }
 };
+
+
 exports.verifyFunding = async (req, res) => {
   try {
     console.log('Webhook received:', {
