@@ -66,16 +66,14 @@ const walletSchema = new mongoose.Schema({
   },
 });
 
-// Prevent wallet deletion
 walletSchema.pre('deleteOne', { document: true, query: false }, async function (next) {
-  throw new Error('Wallet deletion is not allowed. Wallets are permanent.');
+  throw new Error('Wallet deletion is not allowed.');
 });
 
 walletSchema.pre('deleteMany', async function (next) {
-  throw new Error('Bulk wallet deletion is not allowed. Wallets are permanent.');
+  throw new Error('Bulk wallet deletion is not allowed.');
 });
 
-// Validate transaction references
 walletSchema.pre('save', function (next) {
   if (this.isModified('transactions')) {
     this.transactions.forEach((tx, index) => {
@@ -87,16 +85,29 @@ walletSchema.pre('save', function (next) {
   next();
 });
 
-// Recalculate balance with detailed logging
 walletSchema.methods.recalculateBalance = async function () {
   try {
     const completedDeposits = this.transactions
       .filter((t) => t.type === 'deposit' && t.status === 'completed')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => {
+        console.log('Processing deposit:', {
+          reference: t.reference,
+          amount: t.amount,
+          status: t.status,
+        });
+        return sum + t.amount;
+      }, 0);
 
     const completedWithdrawals = this.transactions
       .filter((t) => t.type === 'withdrawal' && t.status === 'completed')
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => {
+        console.log('Processing withdrawal:', {
+          reference: t.reference,
+          amount: t.amount,
+          status: t.status,
+        });
+        return sum + t.amount;
+      }, 0);
 
     const newBalance = completedDeposits - completedWithdrawals;
 
@@ -109,30 +120,25 @@ walletSchema.methods.recalculateBalance = async function () {
       transactionCount: this.transactions.length,
     });
 
-    this.balance = newBalance >= 0 ? newBalance : 0;
-    this.totalDeposits = completedDeposits;
-
     if (newBalance < 0) {
       throw new Error('Balance cannot be negative');
     }
+
+    this.balance = newBalance;
+    this.totalDeposits = completedDeposits;
   } catch (error) {
     console.error('Error recalculating balance:', {
       walletId: this._id,
       message: error.message,
-      stack: error.stack,
     });
     throw error;
   }
 };
 
-// Optimize queries for webhook processing
-walletSchema.index(
-  { "_id": 1, "transactions.reference": 1 },
-  { unique: true, sparse: true, partialFilterExpression: { "transactions.reference": { $exists: true, $ne: null } } }
-);
-walletSchema.index(
-  { "_id": 1, "transactions.paystackReference": 1 },
-  { unique: true, sparse: true, partialFilterExpression: { "transactions.paystackReference": { $exists: true, $ne: null } } }
-);
+// Add indexes for faster transaction lookups
+walletSchema.index({ userId: 1 });
+walletSchema.index({ 'transactions.reference': 1 }, { sparse: true });
+walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true });
+walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
 
 module.exports = mongoose.model('Wallet', walletSchema);
