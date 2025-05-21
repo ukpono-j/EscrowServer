@@ -9,6 +9,9 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const fs = require('fs'); // Add this
 require('dotenv').config();
+const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_TEST_SECRET_KEY;
+console.log('Paystack Secret Key:', PAYSTACK_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
+
 const requiredEnvVars = [
   'JWT_SECRET',
   'MONGODB_URI',
@@ -115,28 +118,55 @@ const io = socketIo(server, {
   },
 });
 
-// Socket.IO Authentication Middleware
+// Socket.io
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
-  console.log('Socket.IO auth attempt:', { token: token ? '[REDACTED]' : 'No token', origin: socket.handshake.headers.origin });
+  const origin = socket.handshake.headers.origin;
+  console.log('Socket.IO auth attempt:', {
+    token: token ? '[REDACTED]' : 'No token',
+    origin,
+    query: socket.handshake.query,
+    clientIp: socket.handshake.address,
+    time: new Date().toISOString(),
+  });
+
   if (!token) {
-    console.error('Socket.IO authentication failed: No token provided');
+    console.error('Socket.IO authentication failed: No token provided', {
+      origin,
+      clientIp: socket.handshake.address,
+      headers: socket.handshake.headers,
+    });
     return next(new Error('Authentication error: No token provided'));
   }
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Socket.IO authentication success:', { userId: decoded.id });
+    console.log('Socket.IO authentication success:', {
+      userId: decoded.id,
+      email: decoded.email,
+      origin,
+      time: new Date().toISOString(),
+    });
     socket.userId = decoded.id;
     next();
   } catch (error) {
-    console.error('Socket.IO authentication error:', { message: error.message, token: token ? '[REDACTED]' : 'No token' });
-    next(new Error('Authentication error: Invalid token'));
+    console.error('Socket.IO authentication error:', {
+      message: error.message,
+      token: token ? '[REDACTED]' : 'No token',
+      origin,
+      clientIp: socket.handshake.address,
+      stack: error.stack,
+    });
+    return next(new Error(`Authentication error: ${error.message}`));
   }
 });
 
-// Socket.IO Connection Handling
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.userId);
+  console.log('User connected:', {
+    userId: socket.userId,
+    socketId: socket.id,
+    time: new Date().toISOString(),
+  });
 
   socket.on('join-room', (userId) => {
     if (userId === socket.userId) {
@@ -147,22 +177,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join-room', (roomId, userId) => {
-    if (userId === socket.userId) {
-      socket.join(roomId);
-      console.log(`User ${userId} joined chat room ${roomId}`);
-      socket.on('message', (message) => {
-        io.to(roomId).emit('message', message);
-      });
-      socket.on('disconnect', () => {
-        io.to(roomId).emit('user-disconnected', userId);
-        console.log(`User ${userId} disconnected from chat room ${roomId}`);
-      });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.userId);
+  socket.on('disconnect', (reason) => {
+    console.log('User disconnected:', {
+      userId: socket.userId,
+      socketId: socket.id,
+      reason,
+      time: new Date().toISOString(),
+    });
   });
 });
 

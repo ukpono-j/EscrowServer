@@ -55,6 +55,7 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  paystackCustomerCode: { type: String, sparse: true },
 });
 
 userSchema.pre('save', async function (next) {

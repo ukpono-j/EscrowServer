@@ -14,6 +14,7 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  paystackReference: { type: String, sparse: true }, // Already included as proposed for Paystack reference mapping
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
@@ -28,6 +29,9 @@ const transactionSchema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// Add index for paystackReference to optimize webhook queries
+transactionSchema.index({ paystackReference: 1 }, { sparse: true });
 
 const walletSchema = new mongoose.Schema({
   userId: {
@@ -55,6 +59,15 @@ const walletSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // New field to store virtual account details (optional, for dedicated_nuban)
+  virtualAccount: {
+    account_name: { type: String },
+    account_number: { type: String },
+    bank_name: { type: String },
+    provider: { type: String, default: 'Paystack' },
+    provider_reference: { type: String },
+    dedicated_reference: { type: String },
+  },
 });
 
 // Prevent wallet deletion
@@ -78,28 +91,53 @@ walletSchema.pre('save', function (next) {
   next();
 });
 
-// Recalculate balance
+// Recalculate balance with detailed logging
 walletSchema.methods.recalculateBalance = async function () {
-  const completedDeposits = this.transactions
-    .filter((t) => t.type === 'deposit' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
+  try {
+    const completedDeposits = this.transactions
+      .filter((t) => t.type === 'deposit' && t.status === 'completed')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-  const completedWithdrawals = this.transactions
-    .filter((t) => t.type === 'withdrawal' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
+    const completedWithdrawals = this.transactions
+      .filter((t) => t.type === 'withdrawal' && t.status === 'completed')
+      .reduce((sum, t) => sum + t.amount, 0);
 
-  this.balance = completedDeposits - completedWithdrawals;
-  this.totalDeposits = completedDeposits;
+    const newBalance = completedDeposits - completedWithdrawals;
 
-  if (this.balance < 0) {
-    throw new Error('Balance cannot be negative');
+    // Detailed logging for debugging
+    console.log('Recalculated balance:', {
+      walletId: this._id,
+      completedDeposits,
+      completedWithdrawals,
+      newBalance,
+      oldBalance: this.balance,
+      transactionCount: this.transactions.length,
+    });
+
+    this.balance = newBalance >= 0 ? newBalance : 0;
+    this.totalDeposits = completedDeposits;
+
+    if (newBalance < 0) {
+      throw new Error('Balance cannot be negative');
+    }
+  } catch (error) {
+    console.error('Error recalculating balance:', {
+      walletId: this._id,
+      message: error.message,
+      stack: error.stack,
+    });
+    throw error;
   }
 };
 
-// Optional: Add compound index for unique references within a wallet
+// Optimize queries for webhook processing
 walletSchema.index(
   { "_id": 1, "transactions.reference": 1 },
   { unique: true, sparse: true, partialFilterExpression: { "transactions.reference": { $exists: true, $ne: null } } }
+);
+walletSchema.index(
+  { "_id": 1, "transactions.paystackReference": 1 },
+  { unique: true, sparse: true, partialFilterExpression: { "transactions.paystackReference": { $exists: true, $ne: null } } }
 );
 
 module.exports = mongoose.model('Wallet', walletSchema);
