@@ -14,7 +14,10 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  paystackReference: { type: String, sparse: true },
+  paystackReference: { 
+    type: String, 
+    sparse: true // Sparse index defined here, no inline index: true
+  },
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
@@ -34,8 +37,7 @@ const walletSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true,
-    index: true,
+    unique: true, // Implicitly creates an index, no need for index: true
   },
   balance: {
     type: Number,
@@ -135,8 +137,7 @@ walletSchema.methods.recalculateBalance = async function () {
   }
 };
 
-// Add indexes for faster transaction lookups
-walletSchema.index({ userId: 1 });
+// Define indexes explicitly
 walletSchema.index({ 'transactions.reference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
