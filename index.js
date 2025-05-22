@@ -7,7 +7,9 @@ const path = require('path');
 const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-const fs = require('fs'); // Add this
+const cron = require('node-cron');
+const { reconcileStuckTransactions } = require('./reconciliation');
+const fs = require('fs');
 require('dotenv').config();
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_TEST_SECRET_KEY;
 console.log('Paystack Secret Key:', PAYSTACK_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
@@ -217,7 +219,6 @@ const initializeRoutes = () => {
   app.use('/api/wallet', walletRoutes);
 };
 
-
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.message);
   res.status(500).json({
@@ -249,7 +250,6 @@ app.get('/api/avatar/:seed', async (req, res) => {
       stack: error.stack,
     });
 
-
     if (error.response?.status === 429) {
       res.status(429).send('Multiavatar rate limit exceeded. Please try again later.');
     } else if (error.code === 'ECONNABORTED' || error.response?.status === 408) {
@@ -268,7 +268,9 @@ app.get('/api/avatar/:seed', async (req, res) => {
   }
 });
 
-require('./cronJobs');
+// Initialize cron jobs after database connection
+const cronJobs = require('./cronJobs');
+cronJobs();
 
 async function startServer() {
   try {

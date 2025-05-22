@@ -16,7 +16,6 @@ const transactionSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  // Removed transactionId field to avoid conflict with _id
   paymentName: {
     type: String,
     required: true,

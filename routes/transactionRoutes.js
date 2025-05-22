@@ -70,6 +70,8 @@ router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getT
 router.post('/confirm', authenticateUser, transactionController.confirmTransaction);
 router.get('/banks', authenticateUser, transactionController.getBanks);
 
+router.get('/wallet/paystack-callback', authenticateUser, transactionController.handlePaystackCallback);
+
 router.post('/fund-transaction', authenticateUser, async (req, res) => {
   const { transactionId, amount } = req.body;
   if (!transactionId || !amount) {
