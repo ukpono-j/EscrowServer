@@ -272,9 +272,11 @@
         return res.status(400).json({ message: "Only pending transactions can be cancelled" });
       }
   
-      if (transaction.locked && transaction.buyerWalletId) {
+      let refundedAmount = 0;
+      if (transaction.locked && transaction.buyerWalletId && transaction.lockedAmount > 0) {
         const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
         if (buyerWallet) {
+          refundedAmount = transaction.lockedAmount;
           buyerWallet.balance += transaction.lockedAmount;
           buyerWallet.transactions.push({
             type: "deposit",
@@ -288,6 +290,16 @@
             createdAt: new Date(),
           });
           await buyerWallet.save({ session });
+  
+          const refundNotification = new Notification({
+            userId: buyerWallet.userId.toString(),
+            title: "Transaction Refund",
+            message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
+            transactionId: transaction._id.toString(),
+            type: "transaction",
+            status: "completed",
+          });
+          await refundNotification.save({ session });
   
           const io = req.app.get("io");
           io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
@@ -321,7 +333,10 @@
       await session.commitTransaction();
       session.endSession();
   
-      return res.status(200).json({ message: "Transaction cancelled successfully" });
+      return res.status(200).json({ 
+        message: "Transaction cancelled successfully",
+        refunded: refundedAmount
+      });
     } catch (error) {
       console.error("Error cancelling transaction:", error);
       await session.abortTransaction();
@@ -330,6 +345,7 @@
     }
   };
 
+  
   exports.joinTransaction = async (req, res) => {
     try {
       const { id } = req.body;
@@ -914,31 +930,38 @@
 
   // New Paystack callback handler
   exports.handlePaystackCallback = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const { reference, transactionId } = req.query;
       const userId = req.user.id;
-
+  
       if (!reference || !transactionId) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: 'Reference and transaction ID required' });
       }
-
-      // Verify Paystack payment
+  
       const paystackResponse = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
         },
       });
-
+  
       if (!paystackResponse.data.status || paystackResponse.data.data.status !== 'success') {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ message: 'Payment verification failed' });
       }
-
+  
       const amount = paystackResponse.data.data.amount / 100; // Paystack returns amount in kobo
-      const wallet = await Wallet.findOne({ userId });
+      const wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(404).json({ message: 'Wallet not found' });
       }
-
+  
       wallet.transactions.push({
         type: 'deposit',
         amount,
@@ -951,40 +974,46 @@
         },
         createdAt: new Date(),
       });
-
+  
       await wallet.recalculateBalance();
-      await wallet.save();
-
-      // Attempt to fund the transaction automatically
-      const transaction = await Transaction.findById(transactionId);
+      await wallet.save({ session });
+  
+      const transaction = await Transaction.findById(transactionId).session(session);
       if (!transaction) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(404).json({ message: 'Transaction not found' });
       }
-
+  
       if (wallet.balance >= transaction.paymentAmount) {
         await exports.fundTransactionWithWallet({
           body: { transactionId, amount: transaction.paymentAmount },
           user: { id: userId },
           app: req.app,
-        }, res);
+        }, null, session); // Pass session to fundTransactionWithWallet
       } else {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({ 
           message: 'Insufficient wallet balance after funding',
           balance: wallet.balance,
           required: transaction.paymentAmount,
         });
       }
-
+  
       const io = req.app.get('io');
       io.to(userId).emit('balanceUpdate', {
         balance: wallet.balance,
         transaction: { amount, reference },
       });
-
-      // Redirect to transaction page with success message
+  
+      await session.commitTransaction();
+      session.endSession();
       res.redirect(`/transactions?success=true&transactionId=${transactionId}`);
     } catch (error) {
       console.error('Error handling Paystack callback:', error);
+      await session.abortTransaction();
+      session.endSession();
       res.redirect(`/transactions?success=false&error=${encodeURIComponent(error.message)}`);
     }
   };
