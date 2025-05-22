@@ -83,6 +83,7 @@ const corsOptions = {
       'https://escrowserver.onrender.com',
       'https://api.multiavatar.com',
       'https://mymiddleman.ng',
+      'http://paywithsylo.com/',
       undefined, // Allow server-to-server requests (e.g., Paystack webhooks)
     ];
     console.log('Checking origin:', origin);
