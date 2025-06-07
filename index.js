@@ -11,13 +11,13 @@ const cron = require('node-cron');
 const { reconcileStuckTransactions } = require('./reconciliation');
 const fs = require('fs');
 require('dotenv').config();
-const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_TEST_SECRET_KEY;
+const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_SECRET_KEY;
 console.log('Paystack Secret Key:', PAYSTACK_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 
 const requiredEnvVars = [
   'JWT_SECRET',
   'MONGODB_URI',
-  process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY' : 'PAYSTACK_TEST_SECRET_KEY',
+  process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY' : 'PAYSTACK_SECRET_KEY',
   'PAYSTACK_API_URL',
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
@@ -33,7 +33,7 @@ if (missingEnvVars.length > 0) {
 
 console.log('Environment variables loaded successfully.');
 console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY set' : 'PAYSTACK_TEST_SECRET_KEY set');
+console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY set' : 'PAYSPAYSTACK_TEST_SECRET_KEYTACK_SECRET_KEY set');
 
 const mongoose = require('mongoose');
 const responseFormatter = require('./middlewares/responseFormatter');
@@ -119,6 +119,8 @@ const io = socketIo(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
+  pingTimeout: 60000, // Increase ping timeout to 60 seconds
+  pingInterval: 25000,
 });
 
 // Socket.io
@@ -168,6 +170,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', {
     userId: socket.userId,
     socketId: socket.id,
+    clientIp: socket.handshake.address,
     time: new Date().toISOString(),
   });
 
@@ -279,7 +282,7 @@ async function startServer() {
     await manageIndexes();
     console.log('Index management completed');
     initializeRoutes();
-    server.setTimeout(600000);
+    server.setTimeout(120000);
     console.log('Server timeout set to:', server.timeout / 1000, 'seconds');
     const PORT = process.env.PORT || 3001;
     server.listen(PORT, '0.0.0.0', () => {

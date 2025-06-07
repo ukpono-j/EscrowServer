@@ -23,7 +23,27 @@ const transactionSchema = new mongoose.Schema({
     default: 'pending',
   },
   metadata: {
-    type: mongoose.Schema.Types.Mixed,
+    type: {
+      paymentGateway: { type: String },
+      customerEmail: { type: String },
+      virtualAccount: {
+        account_name: { type: String },
+        account_number: { type: String },
+        bank_name: { type: String },
+        provider: { type: String },
+        provider_reference: { type: String },
+        dedicated_reference: { type: String },
+      },
+      virtualAccountId: { type: String },
+      webhookEvent: { type: String },
+      bankCode: { type: String }, // Added for withdrawals
+      accountNumber: { type: String }, // Added for withdrawals
+      accountName: { type: String }, // Added for withdrawals
+      transferCode: { type: String }, // Added for withdrawals
+      error: { type: String }, // Added for error details
+      reconciledManually: { type: Boolean }, // Optional, for manual reconciliation
+      reconciledAt: { type: Date }, // Optional, for manual reconciliation
+    },
     default: {},
   },
   createdAt: {
@@ -92,7 +112,7 @@ walletSchema.methods.recalculateBalance = async function () {
       .filter((t) => t.type === 'deposit' && t.status === 'completed')
       .reduce((sum, t) => {
         console.log('Processing deposit:', {
-          reference: t.reference,
+          reference: t.transaction,
           amount: t.amount,
           status: t.status,
         });
