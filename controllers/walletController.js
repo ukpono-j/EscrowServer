@@ -1038,6 +1038,23 @@ exports.reconcileTransactions = async (req, res) => {
   }
 };
 ////changed
+
+// Helper function to get the appropriate Paystack secret key
+const getPaystackSecretKey = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const secretKey = isProduction
+    ? process.env.PAYSTACK_LIVE_SECRET_KEY
+    : process.env.PAYSTACK_SECRET_KEY;
+
+  if (!secretKey) {
+    console.error(`PAYSTACK_${isProduction ? 'LIVE_' : ''}SECRET_KEY is not set in environment variables`);
+    throw new Error(`PAYSTACK_${isProduction ? 'LIVE_' : ''}SECRET_KEY not configured`);
+  }
+
+  return secretKey;
+};
+
+
 exports.verifyAccount = async (req, res) => {
   try {
     const { bankCode, accountNumber } = req.body;
@@ -1054,13 +1071,15 @@ exports.verifyAccount = async (req, res) => {
       });
     }
 
-    // Validate Paystack secret key
-    if (!process.env.PAYSTACK_SECRET_KEY) {
-      console.error('PAYSTACK_SECRET_KEY is not set in environment variables');
+    // Get Paystack secret key
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
       return res.status(500).json({
         success: false,
         message: 'Server configuration error: Payment gateway key is missing',
-        error: 'PAYSTACK_SECRET_KEY not configured',
+        error: error.message,
       });
     }
 
@@ -1069,7 +1088,7 @@ exports.verifyAccount = async (req, res) => {
         `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+            Authorization: `Bearer ${secretKey}`,
             'Content-Type': 'application/json',
           },
           timeout: 15000,
@@ -1161,13 +1180,15 @@ exports.withdrawFunds = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid bank code, 10-digit account number, and account name are required' });
     }
 
-    // Validate Paystack secret key
-    if (!process.env.PAYSTACK_SECRET_KEY) {
-      console.error('PAYSTACK_SECRET_KEY is not set in environment variables');
+    // Get Paystack secret key
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
       return res.status(500).json({
         success: false,
         message: 'Server configuration error: Payment gateway key is missing',
-        error: 'PAYSTACK_SECRET_KEY not configured',
+        error: error.message,
       });
     }
 
@@ -1198,7 +1219,7 @@ exports.withdrawFunds = async (req, res) => {
     try {
       balanceResponse = await axios.get('https://api.paystack.co/balance', {
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+          Authorization: `Bearer ${secretKey}`,
           'Content-Type': 'application/json',
         },
         timeout: 10000,
@@ -1229,7 +1250,7 @@ exports.withdrawFunds = async (req, res) => {
         `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
         {
           headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            Authorization: `Bearer ${secretKey}`,
             'Content-Type': 'application/json',
           },
           timeout: 20000,
@@ -1262,7 +1283,7 @@ exports.withdrawFunds = async (req, res) => {
         recipientPayload,
         {
           headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            Authorization: `Bearer ${secretKey}`,
             'Content-Type': 'application/json',
           },
           timeout: 15000,
@@ -1327,7 +1348,7 @@ exports.withdrawFunds = async (req, res) => {
         transferPayload,
         {
           headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
+            Authorization: `Bearer ${secretKey}`,
             'Content-Type': 'application/json',
           },
           timeout: 15000,
@@ -1545,12 +1566,15 @@ exports.getPaystackBanks = async (req, res) => {
   try {
     console.log('Fetching Paystack banks...');
 
-    if (!process.env.PAYSTACK_SECRET_KEY) {
-      console.error('PAYSTACK_SECRET_KEY is not set in environment variables');
+    // Get Paystack secret key
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
       return res.status(500).json({
         success: false,
         message: 'Server configuration error: Payment gateway key is missing',
-        error: 'PAYSTACK_SECRET_KEY not configured',
+        error: error.message,
       });
     }
 
@@ -1562,7 +1586,7 @@ exports.getPaystackBanks = async (req, res) => {
         try {
           const response = await axios.get('https://api.paystack.co/bank', {
             headers: {
-              Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+              Authorization: `Bearer ${secretKey}`,
               'Content-Type': 'application/json',
             },
             params: { country: 'nigeria', use_cursor: true, perPage: 100, next: nextCursor },
@@ -1629,7 +1653,7 @@ exports.getPaystackBanks = async (req, res) => {
 
     const FALLBACK_BANKS = [
       { name: "Access Bank", code: "044" },
-      { name: "Wema Bank", code: "035" }, // Consolidated
+      { name: "Wema Bank", code: "035" },
       { name: "Citibank Nigeria", code: "023" },
       { name: "Ecobank Nigeria", code: "050" },
       { name: "Fidelity Bank", code: "070" },
@@ -1665,7 +1689,6 @@ exports.getPaystackBanks = async (req, res) => {
     });
   }
 };
-
 
 exports.getWalletTransactions = async (req, res) => {
   try {
