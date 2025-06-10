@@ -7,12 +7,16 @@ const axiosRetry = require('axios-retry').default;
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 // const FALLBACK_BANKS = ['wema-bank', 'titan-paystack', 'providus-bank'];
+
+
 // Critical banks to ensure are always included
 const CRITICAL_BANKS = [
-  { name: "Opay", code: "50211" },
-  { name: "Kuda Bank", code: "400001" },
+  { name: "Access Bank", code: "044" },
+  { name: "Opay", code: "100004" },
+  { name: "Kuda Bank", code: "090267" },
+  { name: "Zenith Bank", code: "057" },
   { name: "Moniepoint Microfinance Bank", code: "50515" },
-  { name: "Palmpay", code: "50126" },
+  { name: "Palmpay", code: "999992" },
 ];
 
 
@@ -1214,30 +1218,35 @@ exports.withdrawFunds = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Insufficient wallet balance' });
     }
 
-    // Check Paystack balance
-    let balanceResponse;
-    try {
-      balanceResponse = await axios.get('https://api.paystack.co/balance', {
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      });
-      const availableBalance = balanceResponse.data.data[0]?.balance / 100; // Convert from kobo to NGN
-      if (availableBalance < amount) {
-        console.warn('Insufficient Paystack balance:', { availableBalance, requestedAmount: amount });
-        return res.status(400).json({
+    // Skip Paystack balance check in development mode
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Skipping Paystack balance check in development mode');
+    } else {
+      // Check Paystack balance in production
+      let balanceResponse;
+      try {
+        balanceResponse = await axios.get('https://api.paystack.co/balance', {
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        });
+        const availableBalance = balanceResponse.data.data[0]?.balance / 100; // Convert from kobo to NGN
+        if (availableBalance < amount) {
+          console.warn('Insufficient Paystack balance:', { availableBalance, requestedAmount: amount });
+          return res.status(400).json({
+            success: false,
+            error: 'Insufficient funds in payment gateway. Please contact support to fund the platform account.',
+          });
+        }
+      } catch (error) {
+        console.error('Paystack balance check failed:', error.message);
+        return res.status(502).json({
           success: false,
-          error: 'Insufficient funds in payment gateway. Please contact support.',
+          error: 'Unable to verify payment gateway balance. Please try again later or contact support.',
         });
       }
-    } catch (error) {
-      console.error('Paystack balance check failed:', error.message);
-      return res.status(502).json({
-        success: false,
-        error: 'Unable to verify payment gateway balance. Please try again later.',
-      });
     }
 
     const reference = `WD-${crypto.randomBytes(4).toString('hex')}-${Date.now()}`;
@@ -1397,7 +1406,6 @@ exports.withdrawFunds = async (req, res) => {
 
     await session.withTransaction(async () => {
       if (transferResponse.data.status) {
-        wallet.balance -= parseFloat(amount);
         const transaction = {
           type: 'withdrawal',
           amount: parseFloat(amount),
@@ -1615,7 +1623,7 @@ exports.getPaystackBanks = async (req, res) => {
       return allBanks;
     };
 
-    const banks = await fetchBanksWithRetry();
+    let banks = await fetchBanksWithRetry();
 
     const normalizedBanks = banks
       .map((bank) => ({
@@ -1624,8 +1632,12 @@ exports.getPaystackBanks = async (req, res) => {
       }))
       .filter((bank) => bank.name && bank.code);
 
-    // Deduplicate by code
+    // Merge with CRITICAL_BANKS to ensure they are always included
     const banksMap = new Map(normalizedBanks.map((bank) => [bank.code, bank]));
+    CRITICAL_BANKS.forEach((bank) => {
+      banksMap.set(bank.code, bank);
+    });
+
     const finalBanks = Array.from(banksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
     console.log(`Fetched ${finalBanks.length} banks from Paystack:`, finalBanks.map((b) => b.name));
@@ -1651,33 +1663,8 @@ exports.getPaystackBanks = async (req, res) => {
       data: error.response?.data,
     });
 
-    const FALLBACK_BANKS = [
-      { name: "Access Bank", code: "044" },
-      { name: "Wema Bank", code: "035" },
-      { name: "Citibank Nigeria", code: "023" },
-      { name: "Ecobank Nigeria", code: "050" },
-      { name: "Fidelity Bank", code: "070" },
-      { name: "First Bank of Nigeria", code: "011" },
-      { name: "First City Monument Bank (FCMB)", code: "214" },
-      { name: "Guaranty Trust Bank (GTBank)", code: "058" },
-      { name: "Heritage Bank", code: "030" },
-      { name: "Keystone Bank", code: "082" },
-      { name: "Kuda Bank", code: "090267" },
-      { name: "Moniepoint Microfinance Bank", code: "50515" },
-      { name: "Opay", code: "100004" }, // Verify with Paystack
-      { name: "Palmpay", code: "999992" },
-      { name: "Polaris Bank", code: "076" },
-      { name: "Providus Bank", code: "101" },
-      { name: "Stanbic IBTC Bank", code: "221" },
-      { name: "Standard Chartered Bank", code: "068" },
-      { name: "Sterling Bank", code: "232" },
-      { name: "Union Bank of Nigeria", code: "032" },
-      { name: "United Bank for Africa (UBA)", code: "033" },
-      { name: "Unity Bank", code: "215" },
-      { name: "Zenith Bank", code: "057" },
-    ];
-
-    const banksMap = new Map(FALLBACK_BANKS.map((bank) => [bank.code, bank]));
+    // Use CRITICAL_BANKS as fallback
+    const banksMap = new Map(CRITICAL_BANKS.map((bank) => [bank.code, bank]));
     const finalFallbackBanks = Array.from(banksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
 
     console.warn(`Using fallback bank list (${finalFallbackBanks.length} banks):`, finalFallbackBanks.map((b) => b.name));
