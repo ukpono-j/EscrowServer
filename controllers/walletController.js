@@ -1196,33 +1196,43 @@ exports.withdrawFunds = async (req, res) => {
       });
     }
 
-    // Fetch wallet
+    // Fetch existing wallet (don't create new one during withdrawal)
     let wallet = await Wallet.findOne({ userId }).session(session);
     if (!wallet) {
-      console.warn('Wallet not found, creating:', userId);
-      wallet = new Wallet({
-        userId,
-        balance: 0,
-        totalDeposits: 0,
-        currency: 'NGN',
-        transactions: [],
+      console.error('No wallet found for withdrawal:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Wallet not found. Please fund your account first.' 
       });
-      await wallet.save({ session });
-      console.log('Wallet created for withdrawal:', { userId, walletId: wallet._id });
     }
 
-    // Recalculate balance
+    // Recalculate balance to ensure accuracy
     await wallet.recalculateBalance();
+    console.log('Wallet balance before withdrawal:', { 
+      userId, 
+      balance: wallet.balance, 
+      requestedAmount: amount 
+    });
+
+    // Check user's wallet balance (not Paystack balance)
     if (wallet.balance < amount) {
-      console.warn('Insufficient balance:', { userId, balance: wallet.balance, requestedAmount: amount });
-      return res.status(400).json({ success: false, error: 'Insufficient wallet balance' });
+      console.warn('Insufficient wallet balance:', { 
+        userId, 
+        balance: wallet.balance, 
+        requestedAmount: amount 
+      });
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Insufficient wallet balance' 
+      });
     }
 
-    // Skip Paystack balance check in development mode
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Skipping Paystack balance check in development mode');
-    } else {
-      // Check Paystack balance in production
+    // Check if bypass is enabled for development/testing
+    const bypassPaystackCheck = process.env.BYPASS_PAYSTACK_BALANCE_CHECK === 'true' || 
+                               process.env.NODE_ENV === 'development';
+
+    if (!bypassPaystackCheck) {
+      // Only check Paystack balance in production when not bypassed
       let balanceResponse;
       try {
         balanceResponse = await axios.get('https://api.paystack.co/balance', {
@@ -1233,6 +1243,8 @@ exports.withdrawFunds = async (req, res) => {
           timeout: 10000,
         });
         const availableBalance = balanceResponse.data.data[0]?.balance / 100; // Convert from kobo to NGN
+        console.log('Paystack available balance:', availableBalance);
+        
         if (availableBalance < amount) {
           console.warn('Insufficient Paystack balance:', { availableBalance, requestedAmount: amount });
           return res.status(400).json({
@@ -1247,6 +1259,8 @@ exports.withdrawFunds = async (req, res) => {
           error: 'Unable to verify payment gateway balance. Please try again later or contact support.',
         });
       }
+    } else {
+      console.log('Bypassing Paystack balance check (development mode or bypass enabled)');
     }
 
     const reference = `WD-${crypto.randomBytes(4).toString('hex')}-${Date.now()}`;
@@ -1268,6 +1282,10 @@ exports.withdrawFunds = async (req, res) => {
       if (!verifyResponse.data.status || verifyResponse.data.data.account_name.toLowerCase() !== accountName.toLowerCase()) {
         throw new Error('Account name does not match');
       }
+      console.log('Account verification successful:', {
+        providedName: accountName,
+        resolvedName: verifyResponse.data.data.account_name
+      });
     } catch (error) {
       console.error('Account verification failed:', error.message);
       return res.status(400).json({
@@ -1305,12 +1323,14 @@ exports.withdrawFunds = async (req, res) => {
         data: error.response?.data,
         message: error.message,
       });
+      
       let errorMessage = 'Failed to create transfer recipient';
       if (error.code === 'ECONNABORTED') errorMessage = 'Payment provider timeout';
       else if (error.response?.status === 401) errorMessage = 'Invalid payment gateway key';
       else if (error.response?.status === 429) errorMessage = 'Too many requests';
       else if (error.response?.data?.message) errorMessage = error.response.data.message;
 
+      // Log failed transaction
       const transaction = {
         type: 'withdrawal',
         amount: parseFloat(amount),
@@ -1320,6 +1340,7 @@ exports.withdrawFunds = async (req, res) => {
         createdAt: new Date(),
       };
       wallet.transactions.push(transaction);
+      wallet.markModified('transactions');
       await wallet.save({ session });
 
       await Notification.create(
@@ -1370,12 +1391,14 @@ exports.withdrawFunds = async (req, res) => {
         data: error.response?.data,
         message: error.message,
       });
+      
       let errorMessage = 'Failed to initiate withdrawal';
       if (error.code === 'ECONNABORTED') errorMessage = 'Payment provider timeout';
       else if (error.response?.status === 401) errorMessage = 'Invalid payment gateway key';
       else if (error.response?.status === 429) errorMessage = 'Too many requests';
       else if (error.response?.data?.message) errorMessage = error.response.data.message;
 
+      // Log failed transaction
       const transaction = {
         type: 'withdrawal',
         amount: parseFloat(amount),
@@ -1385,6 +1408,7 @@ exports.withdrawFunds = async (req, res) => {
         createdAt: new Date(),
       };
       wallet.transactions.push(transaction);
+      wallet.markModified('transactions');
       await wallet.save({ session });
 
       await Notification.create(
@@ -1404,13 +1428,17 @@ exports.withdrawFunds = async (req, res) => {
       return res.status(error.response?.status || 502).json({ success: false, message: errorMessage });
     }
 
+    // Process the withdrawal transaction
     await session.withTransaction(async () => {
       if (transferResponse.data.status) {
+        // Deduct amount immediately since we're using our own balance logic
+        wallet.balance -= parseFloat(amount);
+        
         const transaction = {
           type: 'withdrawal',
           amount: parseFloat(amount),
           reference,
-          status: 'pending', // Set to pending until webhook confirmation
+          status: 'pending', // Will be updated by webhook
           metadata: {
             paymentGateway: 'Paystack',
             bankCode,
@@ -1424,26 +1452,32 @@ exports.withdrawFunds = async (req, res) => {
         wallet.markModified('transactions');
 
         await wallet.save({ session });
+        console.log('Wallet balance updated:', { 
+          userId, 
+          newBalance: wallet.balance, 
+          withdrawnAmount: amount 
+        });
 
         await Notification.create(
-          {
+          [{
             userId,
             title: 'Withdrawal Initiated',
             message: `Your withdrawal of ${amount} NGN to ${accountName} (${accountNumber}) has been initiated. Reference: ${reference}.`,
             transactionId: reference,
             type: 'withdrawal',
             status: 'pending',
-          },
+          }],
           { session }
         );
 
+        // Emit real-time update
         const io = req.app.get('io');
         if (io) {
           io.to(userId.toString()).emit('balanceUpdate', {
             balance: wallet.balance,
             transaction: { amount: parseFloat(amount), reference, status: 'pending' },
           });
-          console.log('WebSocket balance update emitted:', { userId, reference });
+          console.log('WebSocket balance update emitted:', { userId, reference, newBalance: wallet.balance });
         }
       } else {
         throw new Error(transferResponse.data.message || 'Withdrawal initiation failed');
@@ -1456,21 +1490,33 @@ exports.withdrawFunds = async (req, res) => {
       data: { reference, newBalance: wallet.balance },
     });
   } catch (error) {
-    console.error('Withdraw funds error:', { userId: req.user.id, message: error.message });
-    await Notification.create({
-      userId: req.user.id,
-      title: 'Withdrawal Error',
-      message: 'An error occurred while processing your withdrawal. Please try again or contact support.',
-      transactionId: `WD-ERROR-${Date.now()}`,
-      type: 'withdrawal',
-      status: 'failed',
+    console.error('Withdraw funds error:', { userId: req.user?.id, message: error.message, stack: error.stack });
+    
+    // Create error notification
+    try {
+      await Notification.create({
+        userId: req.user.id,
+        title: 'Withdrawal Error',
+        message: 'An error occurred while processing your withdrawal. Please try again or contact support.',
+        transactionId: `WD-ERROR-${Date.now()}`,
+        type: 'withdrawal',
+        status: 'failed',
+      });
+    } catch (notificationError) {
+      console.error('Failed to create error notification:', notificationError.message);
+    }
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error', 
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later' 
     });
-    return res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   } finally {
     session.endSession();
   }
 };
 
+// Updated webhook handler with better balance management
 exports.verifyWithdrawal = async (req, res) => {
   try {
     const webhookData = req.body;
@@ -1516,47 +1562,63 @@ exports.verifyWithdrawal = async (req, res) => {
         }
 
         const amountInNaira = parseFloat(amount) / 100;
+        
+        // Update transaction status
         transaction.status = event === 'transfer.success' ? 'completed' : 'failed';
         transaction.metadata.webhookEvent = event;
 
         let notification;
         if (event === 'transfer.success') {
-          wallet.balance -= amountInNaira; // Deduct amount only on success
+          // Transaction successful - amount was already deducted, just update status
           notification = {
             userId: wallet.userId,
             title: 'Withdrawal Successful',
-            message: `Your withdrawal of ${amountInNaira} NGN has been completed. Reference: ${reference}.`,
+            message: `Your withdrawal of ${amountInNaira} NGN has been completed successfully. Reference: ${reference}.`,
             transactionId: reference,
             type: 'withdrawal',
             status: 'completed',
           };
+          console.log('Withdrawal completed successfully:', { reference, amount: amountInNaira });
         } else {
+          // Transaction failed - refund the amount back to wallet
+          wallet.balance += amountInNaira;
           notification = {
             userId: wallet.userId,
             title: 'Withdrawal Failed',
-            message: `Your withdrawal of ${amountInNaira} NGN failed. Reference: ${reference}.`,
+            message: `Your withdrawal of ${amountInNaira} NGN failed and has been refunded to your wallet. Reference: ${reference}.`,
             transactionId: reference,
             type: 'withdrawal',
             status: 'failed',
           };
+          console.log('Withdrawal failed, amount refunded:', { reference, amount: amountInNaira, newBalance: wallet.balance });
         }
 
         wallet.markModified('transactions');
-        await wallet.recalculateBalance();
         await wallet.save({ session });
         await Notification.create([notification], { session });
 
+        // Emit real-time update
         const io = req.app.get('io');
         if (io) {
           io.to(wallet.userId.toString()).emit('balanceUpdate', {
             balance: wallet.balance,
             transaction: { amount: amountInNaira, reference, status: transaction.status },
           });
-          console.log('WebSocket balance update emitted:', { userId: wallet.userId, reference });
+          console.log('WebSocket balance update emitted:', { 
+            userId: wallet.userId, 
+            reference, 
+            balance: wallet.balance,
+            status: transaction.status 
+          });
         }
 
-        console.log('Withdrawal processed:', { reference, status: transaction.status, balance: wallet.balance });
+        console.log('Withdrawal webhook processed:', { 
+          reference, 
+          status: transaction.status, 
+          balance: wallet.balance 
+        });
       });
+      
       return res.status(200).json({ status: 'success' });
     } catch (error) {
       console.error('Webhook processing error:', { reference: data.reference, message: error.message });
