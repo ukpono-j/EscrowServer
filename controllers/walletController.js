@@ -9,14 +9,18 @@ const { v4: uuidv4 } = require('uuid');
 // const FALLBACK_BANKS = ['wema-bank', 'titan-paystack', 'providus-bank'];
 
 
-// Critical banks to ensure are always included
+// Updated bank codes - using correct Paystack codes
 const CRITICAL_BANKS = [
   { name: "Access Bank", code: "044" },
-  { name: "Opay", code: "100004" },
+  { name: "Opay", code: "999992" }, // Fixed: Correct Opay code
   { name: "Kuda Bank", code: "090267" },
   { name: "Zenith Bank", code: "057" },
   { name: "Moniepoint Microfinance Bank", code: "50515" },
-  { name: "Palmpay", code: "999992" },
+  { name: "Palmpay", code: "999991" }, // Fixed: Correct Palmpay code
+  { name: "First Bank", code: "011" },
+  { name: "GTBank", code: "058" },
+  { name: "UBA", code: "033" },
+  { name: "Fidelity Bank", code: "070" },
 ];
 
 
@@ -1058,7 +1062,23 @@ const getPaystackSecretKey = () => {
   return secretKey;
 };
 
+// Enhanced bank code validation
+const validateBankCode = (bankCode) => {
+  // Check if bank code exists in critical banks or is a valid format
+  const isValidFormat = /^\d{3,6}$/.test(bankCode);
+  const isKnownBank = CRITICAL_BANKS.some(bank => bank.code === bankCode);
 
+  return {
+    isValid: isValidFormat,
+    isKnown: isKnownBank,
+    suggestion: isKnownBank ? null : CRITICAL_BANKS.find(bank =>
+      bank.name.toLowerCase().includes('opay') ||
+      bank.name.toLowerCase().includes('palmpay')
+    )
+  };
+};
+
+// Improved account verification with better error handling
 exports.verifyAccount = async (req, res) => {
   try {
     const { bankCode, accountNumber } = req.body;
@@ -1066,551 +1086,476 @@ exports.verifyAccount = async (req, res) => {
 
     console.log('Verifying account:', { userId, bankCode, accountNumber });
 
-    // Validate inputs
-    if (!bankCode || !accountNumber || !/^\d{10}$/.test(accountNumber)) {
-      console.warn('Invalid account details:', { bankCode, accountNumber });
+    // Enhanced input validation
+    if (!bankCode || !accountNumber) {
       return res.status(422).json({
         success: false,
-        error: 'Valid bank code and 10-digit account number are required',
+        error: 'Bank code and account number are required',
       });
+    }
+
+    if (!/^\d{10}$/.test(accountNumber)) {
+      return res.status(422).json({
+        success: false,
+        error: 'Account number must be exactly 10 digits',
+      });
+    }
+
+    // Validate bank code
+    const bankValidation = validateBankCode(bankCode);
+    if (!bankValidation.isValid) {
+      return res.status(422).json({
+        success: false,
+        error: 'Invalid bank code format',
+      });
+    }
+
+    if (!bankValidation.isKnown) {
+      console.warn(`Unknown bank code provided: ${bankCode}. Continuing with verification...`);
     }
 
     // Get Paystack secret key
-    const secretKey = process.env.NODE_ENV === 'production' 
-      ? process.env.PAYSTACK_LIVE_SECRET_KEY 
-      : process.env.PAYSTACK_SECRET_KEY;
-
-    if (!secretKey) {
-      console.error('Paystack secret key not found');
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
+      console.error('Paystack configuration error:', error.message);
       return res.status(500).json({
         success: false,
-        message: 'Server configuration error: Payment gateway key is missing',
+        message: 'Payment gateway configuration error',
       });
     }
 
-    // Enhanced headers to bypass Cloudflare protection
+    // Enhanced headers for better API compatibility
     const headers = {
       'Authorization': `Bearer ${secretKey}`,
       'Content-Type': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'empty',
-      'Sec-Fetch-Mode': 'cors',
-      'Sec-Fetch-Site': 'cross-site',
+      'User-Agent': 'Escrow-App/1.0',
+      'Accept': 'application/json',
       'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
     };
 
-    // Try multiple approaches to handle Cloudflare protection
-    const attempts = [
-      // Attempt 1: Standard endpoint with enhanced headers
-      async () => {
-        const url = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`;
-        console.log('Attempt 1: GET request to:', url);
-        
-        return await axios.get(url, {
-          headers,
-          timeout: 20000,
-          maxRedirects: 5,
-          validateStatus: function (status) {
-            return status < 500; // Resolve only if status is < 500
-          }
-        });
-      },
+    // Single, robust verification approach
+    try {
+      console.log('Attempting account verification with Paystack...');
 
-      // Attempt 2: POST request (some APIs prefer POST)
-      async () => {
-        const url = 'https://api.paystack.co/bank/resolve';
-        console.log('Attempt 2: POST request to:', url);
-        
-        return await axios.post(url, {
-          account_number: accountNumber,
-          bank_code: bankCode
-        }, {
-          headers,
-          timeout: 20000,
-          maxRedirects: 5,
-          validateStatus: function (status) {
-            return status < 500;
-          }
-        });
-      },
+      const verificationUrl = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`;
 
-      // Attempt 3: Fallback - return mock data for testing
-      async () => {
-        if (process.env.NODE_ENV === 'development' && process.env.ENABLE_MOCK_VERIFICATION === 'true') {
-          console.log('Attempt 3: Using mock verification');
-          return {
-            data: {
-              status: true,
-              data: {
-                account_name: 'Test Account Name'
-              }
-            }
-          };
+      const response = await axios.get(verificationUrl, {
+        headers,
+        timeout: 30000, // Increased timeout
+        maxRedirects: 3,
+        validateStatus: function (status) {
+          return status < 500; // Accept client errors but not server errors
         }
-        throw new Error('Mock verification not enabled');
-      }
-    ];
+      });
 
-    let lastError = null;
+      console.log('Paystack verification response:', {
+        status: response.status,
+        success: response.data?.status,
+        hasData: !!response.data?.data,
+        accountName: response.data?.data?.account_name
+      });
 
-    for (let i = 0; i < attempts.length; i++) {
-      try {
-        const response = await attempts[i]();
-        
-        console.log(`Attempt ${i + 1} response:`, {
-          status: response.status,
-          data: response.data,
-          headers: response.headers
-        });
+      // Handle successful response
+      if (response.status === 200 && response.data?.status === true) {
+        const accountName = response.data.data?.account_name;
 
-        // Check if we got HTML (Cloudflare challenge)
-        if (typeof response.data === 'string' && response.data.includes('<html>')) {
-          console.warn(`Attempt ${i + 1}: Received HTML response (likely Cloudflare challenge)`);
-          continue;
-        }
-
-        // Check if the response is successful
-        if (response.data && response.data.status === true && response.data.data) {
-          const accountName = response.data.data.account_name;
-          
-          if (!accountName) {
-            console.warn(`Attempt ${i + 1}: No account name in response`);
-            continue;
-          }
-
-          console.log(`Attempt ${i + 1}: Success - Account name found:`, accountName);
-          return res.status(200).json({
-            success: true,
-            accountName: accountName,
+        if (!accountName || accountName.trim() === '') {
+          return res.status(422).json({
+            success: false,
+            error: 'Account verification returned empty account name',
           });
-        } else {
-          console.warn(`Attempt ${i + 1}: Invalid response format:`, response.data);
-          continue;
         }
 
-      } catch (error) {
-        console.error(`Attempt ${i + 1} failed:`, {
-          message: error.message,
-          status: error.response?.status,
-          code: error.code
+        console.log('Account verification successful:', { accountNumber, accountName });
+
+        return res.status(200).json({
+          success: true,
+          accountName: accountName.trim(),
+          bankCode,
+          accountNumber
         });
-        lastError = error;
-        continue;
       }
-    }
 
-    // If all attempts failed
-    console.error('All verification attempts failed');
-    
-    // Handle the last error
-    let statusCode = 502;
-    let message = 'Failed to verify account';
+      // Handle known error responses
+      if (response.status === 400 || response.status === 422) {
+        const errorMessage = response.data?.message || 'Invalid account details';
 
-    if (lastError) {
-      if (lastError.code === 'ECONNABORTED' || lastError.code === 'ETIMEDOUT') {
-        message = 'Request timeout. Please try again.';
-        statusCode = 504;
-      } else if (lastError.response?.status === 401) {
-        message = 'Invalid payment gateway credentials';
-        statusCode = 500;
-      } else if (lastError.response?.status === 422 || lastError.response?.status === 400) {
-        message = 'Invalid account details. Please verify and try again.';
-        statusCode = 422;
-      } else if (lastError.response?.status === 429) {
-        message = 'Too many requests. Please wait and try again.';
-        statusCode = 429;
-      } else if (typeof lastError.response?.data === 'string' && lastError.response.data.includes('<html>')) {
-        message = 'Payment gateway is temporarily unavailable. Please try again later.';
-        statusCode = 503;
+        // Specific error handling for unknown bank codes
+        if (errorMessage.includes('Unknown bank code')) {
+          const suggestion = CRITICAL_BANKS.find(bank =>
+            bank.name.toLowerCase().includes('opay') ||
+            bank.name.toLowerCase().includes('palmpay')
+          );
+
+          return res.status(422).json({
+            success: false,
+            error: `Invalid bank code: ${bankCode}. Please verify the bank code.`,
+            suggestion: suggestion ? `Try ${suggestion.name} (${suggestion.code})` : null,
+            availableBanks: CRITICAL_BANKS.slice(0, 5) // Show first 5 banks as options
+          });
+        }
+
+        return res.status(422).json({
+          success: false,
+          error: errorMessage === 'Could not resolve account name'
+            ? 'Account number not found for this bank'
+            : errorMessage,
+        });
       }
-    }
 
-    return res.status(statusCode).json({
-      success: false,
-      message: message,
-      error: process.env.NODE_ENV === 'development' ? lastError?.message : undefined,
-    });
+      // Handle other error statuses
+      return res.status(502).json({
+        success: false,
+        error: 'Unable to verify account at this time. Please try again later.',
+      });
+
+    } catch (error) {
+      console.error('Account verification error:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      // Handle specific error types
+      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        return res.status(504).json({
+          success: false,
+          error: 'Verification request timed out. Please try again.',
+        });
+      }
+
+      if (error.response?.status === 401) {
+        return res.status(500).json({
+          success: false,
+          error: 'Payment gateway authentication failed. Please contact support.',
+        });
+      }
+
+      if (error.response?.status === 429) {
+        return res.status(429).json({
+          success: false,
+          error: 'Too many verification requests. Please wait a moment and try again.',
+        });
+      }
+
+      // Default error response
+      return res.status(502).json({
+        success: false,
+        error: 'Account verification service temporarily unavailable. Please try again later.',
+      });
+    }
 
   } catch (error) {
     console.error('Unexpected error in verifyAccount:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later',
     });
   }
 };
 
-// Fixed withdrawal function with proper error handling and retry logic
+// Enhanced withdrawal function with better error handling
 exports.withdrawFunds = async (req, res) => {
   const session = await mongoose.startSession();
+
   try {
+    await session.startTransaction();
+
     const { amount, bankCode, accountNumber, accountName } = req.body;
     const userId = req.user.id;
 
-    console.log('Initiating withdrawal:', { userId, amount, bankCode, accountNumber, accountName });
+    console.log('Processing withdrawal request:', {
+      userId,
+      amount,
+      bankCode,
+      accountNumber: accountNumber.slice(0, 4) + '******' // Mask account number in logs
+    });
 
-    // Input validation
-    if (!amount || isNaN(amount) || amount <= 0) {
-      console.warn('Invalid amount provided:', amount);
-      return res.status(400).json({ success: false, error: 'Valid amount is required' });
+    // Enhanced input validation
+    const amountNum = parseFloat(amount);
+    if (!amount || isNaN(amountNum) || amountNum <= 0) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'Please enter a valid amount greater than 0'
+      });
     }
-    if (!bankCode || !accountNumber || accountNumber.length !== 10 || !accountName) {
-      console.warn('Invalid account details:', { bankCode, accountNumber, accountName });
-      return res.status(400).json({ success: false, error: 'Valid bank code, 10-digit account number, and account name are required' });
+
+    if (amountNum < 100) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'Minimum withdrawal amount is ₦100'
+      });
+    }
+
+    if (!bankCode || !accountNumber || !accountName) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'All account details are required (bank code, account number, account name)'
+      });
+    }
+
+    if (!/^\d{10}$/.test(accountNumber)) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'Account number must be exactly 10 digits'
+      });
+    }
+
+    // Validate bank code
+    const bankValidation = validateBankCode(bankCode);
+    if (!bankValidation.isValid) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid bank code format'
+      });
     }
 
     // Get Paystack secret key
-    const secretKey = process.env.NODE_ENV === 'production' 
-      ? process.env.PAYSTACK_LIVE_SECRET_KEY 
-      : process.env.PAYSTACK_SECRET_KEY;
-
-    if (!secretKey) {
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
+      await session.abortTransaction();
       return res.status(500).json({
         success: false,
-        message: 'Server configuration error: Payment gateway key is missing',
+        error: 'Payment gateway configuration error',
       });
     }
 
-    // Fetch existing wallet
-    let wallet = await Wallet.findOne({ userId }).session(session);
+    // Find and validate wallet
+    const wallet = await Wallet.findOne({ userId }).session(session);
     if (!wallet) {
-      console.error('No wallet found for withdrawal:', userId);
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Wallet not found. Please fund your account first.' 
+      await session.abortTransaction();
+      return res.status(404).json({
+        success: false,
+        error: 'Wallet not found. Please fund your account first.'
       });
     }
 
-    // Recalculate balance to ensure accuracy
+    // Recalculate and check balance
     await wallet.recalculateBalance();
-    console.log('Wallet balance before withdrawal:', { 
-      userId, 
-      balance: wallet.balance, 
-      requestedAmount: amount 
-    });
 
-    // Check user's wallet balance
-    if (wallet.balance < amount) {
-      console.warn('Insufficient wallet balance:', { 
-        userId, 
-        balance: wallet.balance, 
-        requestedAmount: amount 
-      });
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Insufficient wallet balance' 
-      });
-    }
-
-    // Check Paystack balance (unless bypassed)
-    const bypassPaystackCheck = process.env.BYPASS_PAYSTACK_BALANCE_CHECK === 'true' || 
-                               process.env.NODE_ENV === 'development';
-
-    if (!bypassPaystackCheck) {
-      try {
-        const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000,
-        });
-        const availableBalance = balanceResponse.data.data[0]?.balance / 100;
-        console.log('Paystack available balance:', availableBalance);
-        
-        if (availableBalance < amount) {
-          console.warn('Insufficient Paystack balance:', { availableBalance, requestedAmount: amount });
-          return res.status(400).json({
-            success: false,
-            error: 'Insufficient funds in payment gateway. Please contact support.',
-          });
-        }
-      } catch (error) {
-        console.error('Paystack balance check failed:', error.message);
-        return res.status(502).json({
-          success: false,
-          error: 'Unable to verify payment gateway balance. Please try again later.',
-        });
-      }
-    }
-
-    const reference = `WD-${crypto.randomBytes(4).toString('hex')}-${Date.now()}`;
-    console.log('Generated withdrawal reference:', reference);
-
-    // Simplified account verification
-    try {
-      const verifyUrl = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`;
-      const verifyResponse = await axios.get(verifyUrl, {
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-      });
-
-      if (!verifyResponse.data.status || !verifyResponse.data.data?.account_name) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid account details. Please verify and try again.',
-        });
-      }
-
-      const resolvedAccountName = verifyResponse.data.data.account_name;
-      console.log('Account verification successful:', {
-        providedName: accountName,
-        resolvedName: resolvedAccountName
-      });
-    } catch (error) {
-      console.error('Account verification failed:', error.message);
+    if (wallet.balance < amountNum) {
+      await session.abortTransaction();
       return res.status(400).json({
         success: false,
-        error: 'Unable to verify account details. Please check and try again.',
+        error: `Insufficient balance. Available: ₦${wallet.balance.toFixed(2)}, Requested: ₦${amountNum.toFixed(2)}`
       });
     }
 
-    // Create transfer recipient with retry logic
-    const recipientPayload = {
-      type: 'nuban',
-      name: accountName,
-      account_number: accountNumber,
-      bank_code: bankCode,
-      currency: 'NGN',
+    // Generate reference
+    const reference = `WD-${crypto.randomBytes(6).toString('hex').toUpperCase()}-${Date.now()}`;
+
+    // Headers for Paystack requests
+    const headers = {
+      'Authorization': `Bearer ${secretKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Escrow-App/1.0',
     };
 
-    let recipientResponse;
-    const maxRetries = 3;
-    let recipientError = null;
+    // Step 1: Verify account again before withdrawal
+    try {
+      console.log('Re-verifying account before withdrawal...');
+      const verifyResponse = await axios.get(
+        `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`,
+        { headers, timeout: 15000 }
+      );
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Creating recipient - Attempt ${attempt}/${maxRetries}`);
-        recipientResponse = await axios.post(
-          'https://api.paystack.co/transferrecipient',
-          recipientPayload,
-          {
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 15000,
-          }
-        );
-        console.log('Paystack create recipient response:', recipientResponse.data);
-        break; // Success, exit retry loop
-      } catch (error) {
-        console.error(`Recipient creation attempt ${attempt} failed:`, error.message);
-        recipientError = error;
-        
-        if (attempt === maxRetries) {
-          // Log failed transaction
-          const transaction = {
-            type: 'withdrawal',
-            amount: parseFloat(amount),
-            reference,
-            status: 'failed',
-            metadata: { 
-              paymentGateway: 'Paystack', 
-              bankCode, 
-              accountNumber, 
-              error: 'Failed to create recipient',
-              attempts: maxRetries
-            },
-            createdAt: new Date(),
-          };
-          wallet.transactions.push(transaction);
-          wallet.markModified('transactions');
-          await wallet.save({ session });
-
-          return res.status(502).json({ 
-            success: false, 
-            error: 'Failed to create transfer recipient. Please try again later.' 
-          });
-        }
-        
-        // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
-    }
-
-    const recipientCode = recipientResponse.data.data.recipient_code;
-
-    // Initiate transfer with enhanced error handling
-    const transferPayload = {
-      source: 'balance',
-      amount: Math.round(amount * 100), // Convert to kobo
-      reference,
-      recipient: recipientCode,
-      reason: 'Wallet withdrawal',
-    };
-
-    console.log('Transfer payload:', transferPayload);
-
-    let transferResponse;
-    let transferError = null;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Initiating transfer - Attempt ${attempt}/${maxRetries}`);
-        transferResponse = await axios.post(
-          'https://api.paystack.co/transfer',
-          transferPayload,
-          {
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-              'Content-Type': 'application/json',
-            },
-            timeout: 20000,
-          }
-        );
-        console.log('Paystack initiate transfer response:', transferResponse.data);
-        break; // Success, exit retry loop
-      } catch (error) {
-        console.error(`Transfer initiation attempt ${attempt} failed:`, {
-          message: error.message,
-          status: error.response?.status,
-          data: error.response?.data,
-          code: error.code
+      if (!verifyResponse.data?.status || !verifyResponse.data?.data?.account_name) {
+        await session.abortTransaction();
+        return res.status(400).json({
+          success: false,
+          error: 'Unable to verify account details. Please check and try again.',
         });
-        transferError = error;
-        
-        // Check if it's a retryable error
-        const isRetryable = error.response?.status >= 500 || 
-                           error.code === 'ECONNABORTED' || 
-                           error.code === 'ETIMEDOUT' ||
-                           error.code === 'ENOTFOUND' ||
-                           error.code === 'ECONNRESET';
-        
-        if (!isRetryable || attempt === maxRetries) {
-          // Log failed transaction
-          const transaction = {
-            type: 'withdrawal',
-            amount: parseFloat(amount),
-            reference,
-            status: 'failed',
-            metadata: { 
-              paymentGateway: 'Paystack', 
-              bankCode, 
-              accountNumber, 
-              error: 'Failed to initiate transfer',
-              errorDetails: error.response?.data || error.message,
-              attempts: attempt
-            },
-            createdAt: new Date(),
-          };
-          wallet.transactions.push(transaction);
-          wallet.markModified('transactions');
-          await wallet.save({ session });
-
-          // Determine appropriate error message
-          let errorMessage = 'Failed to initiate withdrawal. Please try again later.';
-          if (error.response?.status === 400) {
-            errorMessage = 'Invalid transfer request. Please check your details and try again.';
-          } else if (error.response?.status === 401) {
-            errorMessage = 'Payment gateway authentication failed. Please contact support.';
-          } else if (error.response?.status === 403) {
-            errorMessage = 'Transfer not allowed. Please contact support.';
-          } else if (error.response?.status === 429) {
-            errorMessage = 'Too many requests. Please wait a moment and try again.';
-          }
-
-          return res.status(502).json({ 
-            success: false, 
-            error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
-          });
-        }
-        
-        // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
       }
+
+      const resolvedAccountName = verifyResponse.data.data.account_name.trim().toLowerCase();
+      const providedAccountName = accountName.trim().toLowerCase();
+
+      // Allow partial name matching
+      if (!resolvedAccountName.includes(providedAccountName.split(' ')[0]) &&
+        !providedAccountName.includes(resolvedAccountName.split(' ')[0])) {
+        console.warn('Account name mismatch:', { provided: accountName, resolved: verifyResponse.data.data.account_name });
+      }
+
+    } catch (error) {
+      console.error('Account re-verification failed:', error.message);
+      await session.abortTransaction();
+      return res.status(400).json({
+        success: false,
+        error: 'Unable to verify account details. Please check your account information.',
+      });
     }
 
-    // Process the withdrawal transaction
-    await session.withTransaction(async () => {
-      if (transferResponse.data.status) {
-        // Deduct amount immediately
-        wallet.balance -= parseFloat(amount);
-        
-        const transaction = {
-          type: 'withdrawal',
-          amount: parseFloat(amount),
+    // Step 2: Create transfer recipient
+    let recipientCode;
+    try {
+      console.log('Creating transfer recipient...');
+      const recipientResponse = await axios.post(
+        'https://api.paystack.co/transferrecipient',
+        {
+          type: 'nuban',
+          name: accountName.trim(),
+          account_number: accountNumber,
+          bank_code: bankCode,
+          currency: 'NGN',
+        },
+        { headers, timeout: 20000 }
+      );
+
+      if (!recipientResponse.data?.status || !recipientResponse.data?.data?.recipient_code) {
+        throw new Error(recipientResponse.data?.message || 'Failed to create recipient');
+      }
+
+      recipientCode = recipientResponse.data.data.recipient_code;
+      console.log('Recipient created successfully:', recipientCode);
+
+    } catch (error) {
+      console.error('Failed to create recipient:', error.message);
+      await session.abortTransaction();
+      return res.status(502).json({
+        success: false,
+        error: 'Unable to set up transfer recipient. Please try again later.',
+      });
+    }
+
+    // Step 3: Initiate transfer
+    try {
+      console.log('Initiating transfer...');
+      const transferResponse = await axios.post(
+        'https://api.paystack.co/transfer',
+        {
+          source: 'balance',
+          amount: Math.round(amountNum * 100), // Convert to kobo
           reference,
-          status: 'pending',
-          metadata: {
-            paymentGateway: 'Paystack',
-            bankCode,
-            accountNumber,
-            accountName,
-            transferCode: transferResponse.data.data.transfer_code,
-            recipientCode: recipientCode,
-          },
-          createdAt: new Date(),
-        };
-        wallet.transactions.push(transaction);
-        wallet.markModified('transactions');
+          recipient: recipientCode,
+          reason: `Wallet withdrawal - ${reference}`,
+        },
+        { headers, timeout: 30000 }
+      );
 
-        await wallet.save({ session });
-        console.log('Wallet balance updated:', { 
-          userId, 
-          newBalance: wallet.balance, 
-          withdrawnAmount: amount 
-        });
-
-        await Notification.create(
-          [{
-            userId,
-            title: 'Withdrawal Initiated',
-            message: `Your withdrawal of ₦${amount} to ${accountName} (${accountNumber}) has been initiated. Reference: ${reference}.`,
-            transactionId: reference,
-            type: 'withdrawal',
-            status: 'pending',
-          }],
-          { session }
-        );
-
-        // Emit real-time update
-        const io = req.app.get('io');
-        if (io) {
-          io.to(userId.toString()).emit('balanceUpdate', {
-            balance: wallet.balance,
-            transaction: { amount: parseFloat(amount), reference, status: 'pending' },
-          });
-        }
-      } else {
-        throw new Error(transferResponse.data.message || 'Withdrawal initiation failed');
+      if (!transferResponse.data?.status) {
+        throw new Error(transferResponse.data?.message || 'Transfer initiation failed');
       }
-    });
 
-    return res.status(200).json({
-      success: true,
-      message: 'Withdrawal initiated successfully',
-      data: { 
-        reference, 
-        newBalance: wallet.balance,
-        transferCode: transferResponse.data.data.transfer_code
-      },
-    });
+      // Step 4: Update wallet and create transaction record
+      wallet.balance -= amountNum;
+
+      const transaction = {
+        type: 'withdrawal',
+        amount: amountNum,
+        reference,
+        status: 'pending',
+        metadata: {
+          paymentGateway: 'Paystack',
+          bankCode,
+          accountNumber,
+          accountName: accountName.trim(),
+          transferCode: transferResponse.data.data.transfer_code,
+          recipientCode,
+        },
+        createdAt: new Date(),
+      };
+
+      wallet.transactions.push(transaction);
+      wallet.markModified('transactions');
+      await wallet.save({ session });
+
+      // Create notification
+      await Notification.create([{
+        userId,
+        title: 'Withdrawal Initiated',
+        message: `Your withdrawal of ₦${amountNum.toFixed(2)} has been initiated. Reference: ${reference}`,
+        transactionId: reference,
+        type: 'withdrawal',
+        status: 'pending',
+      }], { session });
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      console.log('Withdrawal processed successfully:', {
+        reference,
+        amount: amountNum,
+        newBalance: wallet.balance
+      });
+
+      // Emit real-time update
+      const io = req.app.get('io');
+      if (io) {
+        io.to(userId.toString()).emit('balanceUpdate', {
+          balance: wallet.balance,
+          transaction: {
+            amount: amountNum,
+            reference,
+            status: 'pending',
+            type: 'withdrawal'
+          },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Withdrawal initiated successfully',
+        data: {
+          reference,
+          amount: amountNum,
+          newBalance: wallet.balance,
+          transferCode: transferResponse.data.data.transfer_code,
+          estimatedTime: '5-10 minutes'
+        },
+      });
+
+    } catch (error) {
+      console.error('Transfer initiation failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+
+      await session.abortTransaction();
+
+      // Handle specific transfer errors
+      if (error.response?.status === 400) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid transfer details. Please verify your account information.',
+        });
+      }
+
+      if (error.response?.status === 402) {
+        return res.status(502).json({
+          success: false,
+          error: 'Insufficient funds in payment gateway. Please contact support.',
+        });
+      }
+
+      return res.status(502).json({
+        success: false,
+        error: 'Unable to process withdrawal at this time. Please try again later.',
+      });
+    }
+
   } catch (error) {
-    console.error('Withdraw funds error:', { 
-      userId: req.user?.id, 
-      message: error.message,
-      stack: error.stack 
-    });
-    
-    return res.status(500).json({ 
-      success: false, 
-      error: 'An error occurred while processing your withdrawal. Please try again.',
+    await session.abortTransaction();
+    console.error('Withdrawal error:', error);
+
+    return res.status(500).json({
+      success: false,
+      error: 'An unexpected error occurred. Please try again.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
 
@@ -1730,109 +1675,81 @@ exports.verifyWithdrawal = async (req, res) => {
   }
 };
 
+// Updated bank list fetcher with correct codes
 exports.getPaystackBanks = async (req, res) => {
   try {
-    console.log('Fetching Paystack banks...');
+    console.log('Fetching bank list...');
 
-    // Get Paystack secret key
     let secretKey;
     try {
       secretKey = getPaystackSecretKey();
     } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: 'Server configuration error: Payment gateway key is missing',
-        error: error.message,
+      // Return critical banks as fallback
+      return res.status(200).json({
+        success: true,
+        data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
+        message: 'Using cached bank list',
       });
     }
 
-    const fetchBanksWithRetry = async (retries = 3, delay = 2000) => {
-      let allBanks = [];
-      let nextCursor = null;
+    try {
+      const response = await axios.get('https://api.paystack.co/bank', {
+        headers: {
+          'Authorization': `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        params: {
+          country: 'nigeria',
+          use_cursor: false,
+          perPage: 100
+        },
+        timeout: 10000,
+      });
 
-      do {
-        try {
-          const response = await axios.get('https://api.paystack.co/bank', {
-            headers: {
-              Authorization: `Bearer ${secretKey}`,
-              'Content-Type': 'application/json',
-            },
-            params: { country: 'nigeria', use_cursor: true, perPage: 100, next: nextCursor },
-            timeout: 15000,
-          });
+      if (response.data?.status && Array.isArray(response.data.data)) {
+        const banks = response.data.data
+          .map(bank => ({
+            name: bank.name.trim(),
+            code: bank.code,
+          }))
+          .filter(bank => bank.name && bank.code);
 
-          if (!response.data.status || !Array.isArray(response.data.data)) {
-            throw new Error('Invalid response from Paystack');
-          }
+        // Merge with critical banks to ensure they're included
+        const banksMap = new Map();
 
-          allBanks = [...allBanks, ...response.data.data];
-          nextCursor = response.data.meta?.next_cursor || null;
-        } catch (error) {
-          console.error(`Paystack API attempt failed:`, {
-            message: error.message,
-            status: error.response?.status,
-          });
-          if (retries === 0 || error.response?.status === 401) {
-            throw error;
-          }
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          retries--;
-        }
-      } while (nextCursor);
+        // Add API banks
+        banks.forEach(bank => banksMap.set(bank.code, bank));
 
-      return allBanks;
-    };
+        // Ensure critical banks are included
+        CRITICAL_BANKS.forEach(bank => banksMap.set(bank.code, bank));
 
-    let banks = await fetchBanksWithRetry();
+        const finalBanks = Array.from(banksMap.values())
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-    const normalizedBanks = banks
-      .map((bank) => ({
-        name: bank.name.trim(),
-        code: bank.code,
-      }))
-      .filter((bank) => bank.name && bank.code);
+        console.log(`Successfully fetched ${finalBanks.length} banks`);
 
-    // Merge with CRITICAL_BANKS to ensure they are always included
-    const banksMap = new Map(normalizedBanks.map((bank) => [bank.code, bank]));
-    CRITICAL_BANKS.forEach((bank) => {
-      banksMap.set(bank.code, bank);
-    });
-
-    const finalBanks = Array.from(banksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    console.log(`Fetched ${finalBanks.length} banks from Paystack:`, finalBanks.map((b) => b.name));
-
-    const expectedBanks = ['Access Bank', 'Opay', 'Kuda Bank', 'Zenith Bank'];
-    const normalizeName = (name) => name.trim().toLowerCase();
-    const missingBanks = expectedBanks.filter(
-      (name) => !finalBanks.some((bank) => normalizeName(bank.name) === normalizeName(name))
-    );
-    if (missingBanks.length > 0) {
-      console.warn(`Missing expected banks: ${missingBanks.join(', ')}`);
+        return res.status(200).json({
+          success: true,
+          data: finalBanks,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch banks from Paystack:', error.message);
     }
 
+    // Fallback to critical banks
     return res.status(200).json({
       success: true,
-      data: finalBanks,
-      message: missingBanks.length > 0 ? `Some expected banks are missing: ${missingBanks.join(', ')}` : undefined,
+      data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
+      message: 'Using fallback bank list',
     });
+
   } catch (error) {
-    console.error('Error fetching Paystack banks:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-    });
-
-    // Use CRITICAL_BANKS as fallback
-    const banksMap = new Map(CRITICAL_BANKS.map((bank) => [bank.code, bank]));
-    const finalFallbackBanks = Array.from(banksMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-
-    console.warn(`Using fallback bank list (${finalFallbackBanks.length} banks):`, finalFallbackBanks.map((b) => b.name));
-
+    console.error('Get banks error:', error);
     return res.status(200).json({
       success: true,
-      data: finalFallbackBanks,
-      message: 'Unable to fetch bank list from Paystack, using fallback list',
+      data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
+      message: 'Using fallback bank list due to error',
     });
   }
 };
