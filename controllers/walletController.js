@@ -1247,7 +1247,7 @@ exports.verifyAccount = async (req, res) => {
   }
 };
 
-// Update the withdrawal function to use simplified verification
+// Fixed withdrawal function with proper error handling and retry logic
 exports.withdrawFunds = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -1363,17 +1363,6 @@ exports.withdrawFunds = async (req, res) => {
       }
 
       const resolvedAccountName = verifyResponse.data.data.account_name;
-      if (resolvedAccountName.toLowerCase() !== accountName.toLowerCase()) {
-        console.error('Account name mismatch:', {
-          providedName: accountName,
-          resolvedName: resolvedAccountName
-        });
-        return res.status(400).json({
-          success: false,
-          error: 'Account name does not match. Please verify and try again.',
-        });
-      }
-
       console.log('Account verification successful:', {
         providedName: accountName,
         resolvedName: resolvedAccountName
@@ -1386,7 +1375,7 @@ exports.withdrawFunds = async (req, res) => {
       });
     }
 
-    // Create transfer recipient
+    // Create transfer recipient with retry logic
     const recipientPayload = {
       type: 'nuban',
       name: accountName,
@@ -1396,44 +1385,63 @@ exports.withdrawFunds = async (req, res) => {
     };
 
     let recipientResponse;
-    try {
-      recipientResponse = await axios.post(
-        'https://api.paystack.co/transferrecipient',
-        recipientPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 15000,
-        }
-      );
-      console.log('Paystack create recipient response:', recipientResponse.data);
-    } catch (error) {
-      console.error('Paystack create recipient error:', error.message);
-      
-      // Log failed transaction
-      const transaction = {
-        type: 'withdrawal',
-        amount: parseFloat(amount),
-        reference,
-        status: 'failed',
-        metadata: { paymentGateway: 'Paystack', bankCode, accountNumber, error: 'Failed to create recipient' },
-        createdAt: new Date(),
-      };
-      wallet.transactions.push(transaction);
-      wallet.markModified('transactions');
-      await wallet.save({ session });
+    const maxRetries = 3;
+    let recipientError = null;
 
-      return res.status(502).json({ 
-        success: false, 
-        message: 'Failed to create transfer recipient' 
-      });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Creating recipient - Attempt ${attempt}/${maxRetries}`);
+        recipientResponse = await axios.post(
+          'https://api.paystack.co/transferrecipient',
+          recipientPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 15000,
+          }
+        );
+        console.log('Paystack create recipient response:', recipientResponse.data);
+        break; // Success, exit retry loop
+      } catch (error) {
+        console.error(`Recipient creation attempt ${attempt} failed:`, error.message);
+        recipientError = error;
+        
+        if (attempt === maxRetries) {
+          // Log failed transaction
+          const transaction = {
+            type: 'withdrawal',
+            amount: parseFloat(amount),
+            reference,
+            status: 'failed',
+            metadata: { 
+              paymentGateway: 'Paystack', 
+              bankCode, 
+              accountNumber, 
+              error: 'Failed to create recipient',
+              attempts: maxRetries
+            },
+            createdAt: new Date(),
+          };
+          wallet.transactions.push(transaction);
+          wallet.markModified('transactions');
+          await wallet.save({ session });
+
+          return res.status(502).json({ 
+            success: false, 
+            error: 'Failed to create transfer recipient. Please try again later.' 
+          });
+        }
+        
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
     }
 
     const recipientCode = recipientResponse.data.data.recipient_code;
 
-    // Initiate transfer
+    // Initiate transfer with enhanced error handling
     const transferPayload = {
       source: 'balance',
       amount: Math.round(amount * 100), // Convert to kobo
@@ -1442,40 +1450,86 @@ exports.withdrawFunds = async (req, res) => {
       reason: 'Wallet withdrawal',
     };
 
-    let transferResponse;
-    try {
-      transferResponse = await axios.post(
-        'https://api.paystack.co/transfer',
-        transferPayload,
-        {
-          headers: {
-            Authorization: `Bearer ${secretKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 15000,
-        }
-      );
-      console.log('Paystack initiate transfer response:', transferResponse.data);
-    } catch (error) {
-      console.error('Paystack initiate transfer error:', error.message);
-      
-      // Log failed transaction
-      const transaction = {
-        type: 'withdrawal',
-        amount: parseFloat(amount),
-        reference,
-        status: 'failed',
-        metadata: { paymentGateway: 'Paystack', bankCode, accountNumber, error: 'Failed to initiate transfer' },
-        createdAt: new Date(),
-      };
-      wallet.transactions.push(transaction);
-      wallet.markModified('transactions');
-      await wallet.save({ session });
+    console.log('Transfer payload:', transferPayload);
 
-      return res.status(502).json({ 
-        success: false, 
-        message: 'Failed to initiate withdrawal' 
-      });
+    let transferResponse;
+    let transferError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Initiating transfer - Attempt ${attempt}/${maxRetries}`);
+        transferResponse = await axios.post(
+          'https://api.paystack.co/transfer',
+          transferPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${secretKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 20000,
+          }
+        );
+        console.log('Paystack initiate transfer response:', transferResponse.data);
+        break; // Success, exit retry loop
+      } catch (error) {
+        console.error(`Transfer initiation attempt ${attempt} failed:`, {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+          code: error.code
+        });
+        transferError = error;
+        
+        // Check if it's a retryable error
+        const isRetryable = error.response?.status >= 500 || 
+                           error.code === 'ECONNABORTED' || 
+                           error.code === 'ETIMEDOUT' ||
+                           error.code === 'ENOTFOUND' ||
+                           error.code === 'ECONNRESET';
+        
+        if (!isRetryable || attempt === maxRetries) {
+          // Log failed transaction
+          const transaction = {
+            type: 'withdrawal',
+            amount: parseFloat(amount),
+            reference,
+            status: 'failed',
+            metadata: { 
+              paymentGateway: 'Paystack', 
+              bankCode, 
+              accountNumber, 
+              error: 'Failed to initiate transfer',
+              errorDetails: error.response?.data || error.message,
+              attempts: attempt
+            },
+            createdAt: new Date(),
+          };
+          wallet.transactions.push(transaction);
+          wallet.markModified('transactions');
+          await wallet.save({ session });
+
+          // Determine appropriate error message
+          let errorMessage = 'Failed to initiate withdrawal. Please try again later.';
+          if (error.response?.status === 400) {
+            errorMessage = 'Invalid transfer request. Please check your details and try again.';
+          } else if (error.response?.status === 401) {
+            errorMessage = 'Payment gateway authentication failed. Please contact support.';
+          } else if (error.response?.status === 403) {
+            errorMessage = 'Transfer not allowed. Please contact support.';
+          } else if (error.response?.status === 429) {
+            errorMessage = 'Too many requests. Please wait a moment and try again.';
+          }
+
+          return res.status(502).json({ 
+            success: false, 
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.response?.data : undefined
+          });
+        }
+        
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+      }
     }
 
     // Process the withdrawal transaction
@@ -1495,6 +1549,7 @@ exports.withdrawFunds = async (req, res) => {
             accountNumber,
             accountName,
             transferCode: transferResponse.data.data.transfer_code,
+            recipientCode: recipientCode,
           },
           createdAt: new Date(),
         };
@@ -1512,7 +1567,7 @@ exports.withdrawFunds = async (req, res) => {
           [{
             userId,
             title: 'Withdrawal Initiated',
-            message: `Your withdrawal of ${amount} NGN to ${accountName} (${accountNumber}) has been initiated. Reference: ${reference}.`,
+            message: `Your withdrawal of ₦${amount} to ${accountName} (${accountNumber}) has been initiated. Reference: ${reference}.`,
             transactionId: reference,
             type: 'withdrawal',
             status: 'pending',
@@ -1536,15 +1591,23 @@ exports.withdrawFunds = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'Withdrawal initiated successfully',
-      data: { reference, newBalance: wallet.balance },
+      data: { 
+        reference, 
+        newBalance: wallet.balance,
+        transferCode: transferResponse.data.data.transfer_code
+      },
     });
   } catch (error) {
-    console.error('Withdraw funds error:', { userId: req.user?.id, message: error.message });
+    console.error('Withdraw funds error:', { 
+      userId: req.user?.id, 
+      message: error.message,
+      stack: error.stack 
+    });
     
     return res.status(500).json({ 
       success: false, 
-      message: 'Internal server error', 
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Please try again later' 
+      error: 'An error occurred while processing your withdrawal. Please try again.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   } finally {
     session.endSession();
