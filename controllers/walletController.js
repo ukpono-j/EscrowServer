@@ -1644,130 +1644,6 @@ exports.withdrawFunds = async (req, res) => {
   }
 };
 
-// Updated bank list fetcher with correct codes and better error handling
-exports.getPaystackBanks = async (req, res) => {
-  try {
-    console.log('Fetching bank list...');
-
-    let secretKey;
-    try {
-      secretKey = getPaystackSecretKey();
-    } catch (error) {
-      console.warn('Unable to get Paystack secret key, using fallback bank list');
-      // Return critical banks as fallback
-      return res.status(200).json({
-        success: true,
-        data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
-        message: 'Using cached bank list - service temporarily limited',
-        fallback: true
-      });
-    }
-
-    try {
-      const response = await axios.get('https://api.paystack.co/bank', {
-        headers: {
-          'Authorization': `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        params: {
-          country: 'nigeria',
-          use_cursor: false,
-          perPage: 100
-        },
-        timeout: 10000,
-      });
-
-      if (response.data?.status && Array.isArray(response.data.data)) {
-        const banks = response.data.data
-          .map(bank => ({
-            name: bank.name.trim(),
-            code: bank.code,
-            active: bank.active !== false, // Default to true if not specified
-            type: bank.type || 'commercial'
-          }))
-          .filter(bank => bank.name && bank.code && bank.active);
-
-        // Merge with critical banks to ensure they're included
-        const banksMap = new Map();
-
-        // Add API banks first
-        banks.forEach(bank => banksMap.set(bank.code, bank));
-
-        // Ensure critical banks are included (they override API data if present)
-        CRITICAL_BANKS.forEach(bank => {
-          if (!banksMap.has(bank.code)) {
-            banksMap.set(bank.code, { ...bank, active: true, type: 'commercial' });
-          }
-        });
-
-        const finalBanks = Array.from(banksMap.values())
-          .filter(bank => bank.active) // Only return active banks
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        console.log(`Successfully fetched ${finalBanks.length} active banks from Paystack API`);
-
-        return res.status(200).json({
-          success: true,
-          data: finalBanks,
-          source: 'paystack_api',
-          count: finalBanks.length
-        });
-      } else {
-        throw new Error('Invalid response format from Paystack API');
-      }
-    } catch (apiError) {
-      console.error('Failed to fetch banks from Paystack API:', {
-        message: apiError.message,
-        status: apiError.response?.status,
-        statusText: apiError.response?.statusText
-      });
-
-      // Log specific API errors for debugging
-      if (apiError.response?.status === 401) {
-        console.error('Paystack API authentication failed - check API keys');
-      } else if (apiError.response?.status === 403) {
-        console.error('Paystack API access forbidden - account may be restricted');
-      } else if (apiError.response?.status >= 500) {
-        console.error('Paystack API server error - service may be down');
-      }
-    }
-
-    // Fallback to critical banks with additional metadata
-    console.log('Using fallback bank list due to API unavailability');
-    return res.status(200).json({
-      success: true,
-      data: CRITICAL_BANKS.map(bank => ({
-        ...bank,
-        active: true,
-        type: 'commercial'
-      })).sort((a, b) => a.name.localeCompare(b.name)),
-      source: 'fallback',
-      message: 'Using fallback bank list - API temporarily unavailable',
-      fallback: true,
-      count: CRITICAL_BANKS.length
-    });
-
-  } catch (error) {
-    console.error('Get banks error:', {
-      message: error.message,
-      stack: error.stack
-    });
-    
-    return res.status(200).json({
-      success: true,
-      data: CRITICAL_BANKS.map(bank => ({
-        ...bank,
-        active: true,
-        type: 'commercial'
-      })).sort((a, b) => a.name.localeCompare(b.name)),
-      source: 'fallback',
-      message: 'Using fallback bank list due to system error',
-      fallback: true,
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error',
-      count: CRITICAL_BANKS.length
-    });
-  }
-};
 
 // Helper function to check Paystack account balance (optional enhancement)
 exports.checkPaystackBalance = async (req, res) => {
@@ -1922,6 +1798,130 @@ exports.verifyWithdrawal = async (req, res) => {
   }
 };
 
+// Updated bank list fetcher with correct codes and better error handling
+exports.getPaystackBanks = async (req, res) => {
+  try {
+    console.log('Fetching bank list...');
+
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
+      console.warn('Unable to get Paystack secret key, using fallback bank list');
+      // Return critical banks as fallback
+      return res.status(200).json({
+        success: true,
+        data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
+        message: 'Using cached bank list - service temporarily limited',
+        fallback: true
+      });
+    }
+
+    try {
+      const response = await axios.get('https://api.paystack.co/bank', {
+        headers: {
+          'Authorization': `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        params: {
+          country: 'nigeria',
+          use_cursor: false,
+          perPage: 100
+        },
+        timeout: 10000,
+      });
+
+      if (response.data?.status && Array.isArray(response.data.data)) {
+        const banks = response.data.data
+          .map(bank => ({
+            name: bank.name.trim(),
+            code: bank.code,
+            active: bank.active !== false, // Default to true if not specified
+            type: bank.type || 'commercial'
+          }))
+          .filter(bank => bank.name && bank.code && bank.active);
+
+        // Merge with critical banks to ensure they're included
+        const banksMap = new Map();
+
+        // Add API banks first
+        banks.forEach(bank => banksMap.set(bank.code, bank));
+
+        // Ensure critical banks are included (they override API data if present)
+        CRITICAL_BANKS.forEach(bank => {
+          if (!banksMap.has(bank.code)) {
+            banksMap.set(bank.code, { ...bank, active: true, type: 'commercial' });
+          }
+        });
+
+        const finalBanks = Array.from(banksMap.values())
+          .filter(bank => bank.active) // Only return active banks
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        console.log(`Successfully fetched ${finalBanks.length} active banks from Paystack API`);
+
+        return res.status(200).json({
+          success: true,
+          data: finalBanks,
+          source: 'paystack_api',
+          count: finalBanks.length
+        });
+      } else {
+        throw new Error('Invalid response format from Paystack API');
+      }
+    } catch (apiError) {
+      console.error('Failed to fetch banks from Paystack API:', {
+        message: apiError.message,
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText
+      });
+
+      // Log specific API errors for debugging
+      if (apiError.response?.status === 401) {
+        console.error('Paystack API authentication failed - check API keys');
+      } else if (apiError.response?.status === 403) {
+        console.error('Paystack API access forbidden - account may be restricted');
+      } else if (apiError.response?.status >= 500) {
+        console.error('Paystack API server error - service may be down');
+      }
+    }
+
+    // Fallback to critical banks with additional metadata
+    console.log('Using fallback bank list due to API unavailability');
+    return res.status(200).json({
+      success: true,
+      data: CRITICAL_BANKS.map(bank => ({
+        ...bank,
+        active: true,
+        type: 'commercial'
+      })).sort((a, b) => a.name.localeCompare(b.name)),
+      source: 'fallback',
+      message: 'Using fallback bank list - API temporarily unavailable',
+      fallback: true,
+      count: CRITICAL_BANKS.length
+    });
+
+  } catch (error) {
+    console.error('Get banks error:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
+    return res.status(200).json({
+      success: true,
+      data: CRITICAL_BANKS.map(bank => ({
+        ...bank,
+        active: true,
+        type: 'commercial'
+      })).sort((a, b) => a.name.localeCompare(b.name)),
+      source: 'fallback',
+      message: 'Using fallback bank list due to system error',
+      fallback: true,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error',
+      count: CRITICAL_BANKS.length
+    });
+  }
+};
 
 
 exports.getWalletTransactions = async (req, res) => {
