@@ -1524,24 +1524,108 @@ exports.withdrawFunds = async (req, res) => {
 
       await session.abortTransaction();
 
-      // Handle specific transfer errors
+      // Enhanced error handling for specific Paystack errors
       if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        
+        // Check for insufficient balance error specifically
+        if (errorData?.code === 'insufficient_balance' || 
+            errorData?.message?.toLowerCase().includes('balance is not enough')) {
+          return res.status(502).json({
+            success: false,
+            error: 'Service temporarily unavailable. Our payment processor has insufficient funds. Please contact support for immediate assistance.',
+            errorCode: 'GATEWAY_INSUFFICIENT_FUNDS'
+          });
+        }
+        
+        // Check for account verification issues
+        if (errorData?.message?.toLowerCase().includes('account') ||
+            errorData?.message?.toLowerCase().includes('recipient')) {
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid account details. Please verify your bank account information and try again.',
+            errorCode: 'INVALID_ACCOUNT_DETAILS'
+          });
+        }
+        
+        // Check for business verification issues
+        if (errorData?.message?.toLowerCase().includes('business') ||
+            errorData?.message?.toLowerCase().includes('verification') ||
+            errorData?.message?.toLowerCase().includes('review')) {
+          return res.status(503).json({
+            success: false,
+            error: 'Withdrawals are temporarily suspended due to account verification. Please contact support.',
+            errorCode: 'ACCOUNT_UNDER_REVIEW'
+          });
+        }
+        
+        // Generic 400 error
         return res.status(400).json({
           success: false,
-          error: 'Invalid transfer details. Please verify your account information.',
+          error: 'Invalid withdrawal request. Please check your details and try again.',
+          errorCode: 'INVALID_REQUEST'
         });
       }
 
+      // Handle 401 Unauthorized (API key issues)
+      if (error.response?.status === 401) {
+        return res.status(503).json({
+          success: false,
+          error: 'Service temporarily unavailable. Please contact support.',
+          errorCode: 'AUTHENTICATION_ERROR'
+        });
+      }
+
+      // Handle 402 Payment Required (insufficient Paystack balance)
       if (error.response?.status === 402) {
         return res.status(502).json({
           success: false,
-          error: 'Insufficient funds in payment gateway. Please contact support.',
+          error: 'Service temporarily unavailable. Our payment processor has insufficient funds. Please contact support.',
+          errorCode: 'GATEWAY_INSUFFICIENT_FUNDS'
         });
       }
 
+      // Handle 403 Forbidden (account restrictions)
+      if (error.response?.status === 403) {
+        return res.status(503).json({
+          success: false,
+          error: 'Withdrawals are temporarily suspended. Please contact support for assistance.',
+          errorCode: 'ACCOUNT_RESTRICTED'
+        });
+      }
+
+      // Handle rate limiting
+      if (error.response?.status === 429) {
+        return res.status(429).json({
+          success: false,
+          error: 'Too many requests. Please wait a moment and try again.',
+          errorCode: 'RATE_LIMITED'
+        });
+      }
+
+      // Handle 5xx server errors
+      if (error.response?.status >= 500) {
+        return res.status(502).json({
+          success: false,
+          error: 'Payment gateway is temporarily unavailable. Please try again in a few minutes.',
+          errorCode: 'GATEWAY_ERROR'
+        });
+      }
+
+      // Network/timeout errors
+      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        return res.status(504).json({
+          success: false,
+          error: 'Request timed out. Please try again.',
+          errorCode: 'TIMEOUT_ERROR'
+        });
+      }
+
+      // Fallback for any other error
       return res.status(502).json({
         success: false,
-        error: 'Unable to process withdrawal at this time. Please try again later.',
+        error: 'Unable to process withdrawal at this time. Please try again later or contact support.',
+        errorCode: 'UNKNOWN_ERROR'
       });
     }
 
@@ -1552,10 +1636,173 @@ exports.withdrawFunds = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'An unexpected error occurred. Please try again.',
+      errorCode: 'INTERNAL_ERROR',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   } finally {
     await session.endSession();
+  }
+};
+
+// Updated bank list fetcher with correct codes and better error handling
+exports.getPaystackBanks = async (req, res) => {
+  try {
+    console.log('Fetching bank list...');
+
+    let secretKey;
+    try {
+      secretKey = getPaystackSecretKey();
+    } catch (error) {
+      console.warn('Unable to get Paystack secret key, using fallback bank list');
+      // Return critical banks as fallback
+      return res.status(200).json({
+        success: true,
+        data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
+        message: 'Using cached bank list - service temporarily limited',
+        fallback: true
+      });
+    }
+
+    try {
+      const response = await axios.get('https://api.paystack.co/bank', {
+        headers: {
+          'Authorization': `Bearer ${secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        params: {
+          country: 'nigeria',
+          use_cursor: false,
+          perPage: 100
+        },
+        timeout: 10000,
+      });
+
+      if (response.data?.status && Array.isArray(response.data.data)) {
+        const banks = response.data.data
+          .map(bank => ({
+            name: bank.name.trim(),
+            code: bank.code,
+            active: bank.active !== false, // Default to true if not specified
+            type: bank.type || 'commercial'
+          }))
+          .filter(bank => bank.name && bank.code && bank.active);
+
+        // Merge with critical banks to ensure they're included
+        const banksMap = new Map();
+
+        // Add API banks first
+        banks.forEach(bank => banksMap.set(bank.code, bank));
+
+        // Ensure critical banks are included (they override API data if present)
+        CRITICAL_BANKS.forEach(bank => {
+          if (!banksMap.has(bank.code)) {
+            banksMap.set(bank.code, { ...bank, active: true, type: 'commercial' });
+          }
+        });
+
+        const finalBanks = Array.from(banksMap.values())
+          .filter(bank => bank.active) // Only return active banks
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        console.log(`Successfully fetched ${finalBanks.length} active banks from Paystack API`);
+
+        return res.status(200).json({
+          success: true,
+          data: finalBanks,
+          source: 'paystack_api',
+          count: finalBanks.length
+        });
+      } else {
+        throw new Error('Invalid response format from Paystack API');
+      }
+    } catch (apiError) {
+      console.error('Failed to fetch banks from Paystack API:', {
+        message: apiError.message,
+        status: apiError.response?.status,
+        statusText: apiError.response?.statusText
+      });
+
+      // Log specific API errors for debugging
+      if (apiError.response?.status === 401) {
+        console.error('Paystack API authentication failed - check API keys');
+      } else if (apiError.response?.status === 403) {
+        console.error('Paystack API access forbidden - account may be restricted');
+      } else if (apiError.response?.status >= 500) {
+        console.error('Paystack API server error - service may be down');
+      }
+    }
+
+    // Fallback to critical banks with additional metadata
+    console.log('Using fallback bank list due to API unavailability');
+    return res.status(200).json({
+      success: true,
+      data: CRITICAL_BANKS.map(bank => ({
+        ...bank,
+        active: true,
+        type: 'commercial'
+      })).sort((a, b) => a.name.localeCompare(b.name)),
+      source: 'fallback',
+      message: 'Using fallback bank list - API temporarily unavailable',
+      fallback: true,
+      count: CRITICAL_BANKS.length
+    });
+
+  } catch (error) {
+    console.error('Get banks error:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
+    return res.status(200).json({
+      success: true,
+      data: CRITICAL_BANKS.map(bank => ({
+        ...bank,
+        active: true,
+        type: 'commercial'
+      })).sort((a, b) => a.name.localeCompare(b.name)),
+      source: 'fallback',
+      message: 'Using fallback bank list due to system error',
+      fallback: true,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error',
+      count: CRITICAL_BANKS.length
+    });
+  }
+};
+
+// Helper function to check Paystack account balance (optional enhancement)
+exports.checkPaystackBalance = async (req, res) => {
+  try {
+    const secretKey = getPaystackSecretKey();
+    
+    const response = await axios.get('https://api.paystack.co/balance', {
+      headers: {
+        'Authorization': `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000,
+    });
+
+    if (response.data?.status) {
+      const balanceData = response.data.data;
+      return res.status(200).json({
+        success: true,
+        data: {
+          currency: balanceData.currency,
+          balance: balanceData.balance / 100, // Convert from kobo to naira
+          balanceFormatted: `₦${(balanceData.balance / 100).toLocaleString()}`,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    } else {
+      throw new Error('Invalid response from Paystack');
+    }
+  } catch (error) {
+    console.error('Failed to check Paystack balance:', error.message);
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to check payment gateway balance',
+      errorCode: 'BALANCE_CHECK_FAILED'
+    });
   }
 };
 
@@ -1675,84 +1922,7 @@ exports.verifyWithdrawal = async (req, res) => {
   }
 };
 
-// Updated bank list fetcher with correct codes
-exports.getPaystackBanks = async (req, res) => {
-  try {
-    console.log('Fetching bank list...');
 
-    let secretKey;
-    try {
-      secretKey = getPaystackSecretKey();
-    } catch (error) {
-      // Return critical banks as fallback
-      return res.status(200).json({
-        success: true,
-        data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
-        message: 'Using cached bank list',
-      });
-    }
-
-    try {
-      const response = await axios.get('https://api.paystack.co/bank', {
-        headers: {
-          'Authorization': `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        params: {
-          country: 'nigeria',
-          use_cursor: false,
-          perPage: 100
-        },
-        timeout: 10000,
-      });
-
-      if (response.data?.status && Array.isArray(response.data.data)) {
-        const banks = response.data.data
-          .map(bank => ({
-            name: bank.name.trim(),
-            code: bank.code,
-          }))
-          .filter(bank => bank.name && bank.code);
-
-        // Merge with critical banks to ensure they're included
-        const banksMap = new Map();
-
-        // Add API banks
-        banks.forEach(bank => banksMap.set(bank.code, bank));
-
-        // Ensure critical banks are included
-        CRITICAL_BANKS.forEach(bank => banksMap.set(bank.code, bank));
-
-        const finalBanks = Array.from(banksMap.values())
-          .sort((a, b) => a.name.localeCompare(b.name));
-
-        console.log(`Successfully fetched ${finalBanks.length} banks`);
-
-        return res.status(200).json({
-          success: true,
-          data: finalBanks,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch banks from Paystack:', error.message);
-    }
-
-    // Fallback to critical banks
-    return res.status(200).json({
-      success: true,
-      data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
-      message: 'Using fallback bank list',
-    });
-
-  } catch (error) {
-    console.error('Get banks error:', error);
-    return res.status(200).json({
-      success: true,
-      data: CRITICAL_BANKS.sort((a, b) => a.name.localeCompare(b.name)),
-      message: 'Using fallback bank list due to error',
-    });
-  }
-};
 
 exports.getWalletTransactions = async (req, res) => {
   try {
