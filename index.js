@@ -7,10 +7,11 @@ const path = require('path');
 const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
-const cron = require('node-cron');
-const { reconcileStuckTransactions } = require('./reconciliation');
-const fs = require('fs');
+const mongoose = require('mongoose');
+const axios = require('axios'); // Required for MultiAvatar proxy
 require('dotenv').config();
+const responseFormatter = require('./middlewares/responseFormatter');
+
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_SECRET_KEY;
 console.log('Paystack Secret Key:', PAYSTACK_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 
@@ -33,10 +34,19 @@ if (missingEnvVars.length > 0) {
 
 console.log('Environment variables loaded successfully.');
 console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY set' : 'PAYSPAYSTACK_TEST_SECRET_KEYTACK_SECRET_KEY set');
+console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY set' : 'PAYSTACK_SECRET_KEY set');
+console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 
-const mongoose = require('mongoose');
-const responseFormatter = require('./middlewares/responseFormatter');
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+  });
+});
 
 async function manageIndexes() {
   try {
@@ -52,7 +62,7 @@ async function manageIndexes() {
         throw error;
       }
     }
-    // Ensure new compound index (already defined in wallet.js)
+    // Ensure new compound index (defined in Wallet.js)
     const walletIndexes = await db.collection('wallets').indexes();
     console.log('Current wallet indexes:', JSON.stringify(walletIndexes, null, 2));
   } catch (error) {
@@ -60,18 +70,6 @@ async function manageIndexes() {
     throw error;
   }
 }
-console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
-console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-  });
-});
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -263,7 +261,7 @@ app.get('/api/avatar/:seed', async (req, res) => {
       const fallbackSvg = `
         <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
           <circle cx="16" cy="16" r="15" fill="#B38939" />
-          <text x="50%" y="50%" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">${seed.slice(0, 2)}</text>
+          <text x="50%" y="50%" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">${req.params.seed.slice(0, 2)}</text>
         </svg>
       `;
       res.set('Content-Type', 'image/svg+xml');
@@ -273,7 +271,7 @@ app.get('/api/avatar/:seed', async (req, res) => {
 });
 
 // Initialize cron jobs after database connection
-const cronJobs = require('./cronJobs');
+const cronJobs = require('./jobs/cronJobs');
 cronJobs();
 
 async function startServer() {

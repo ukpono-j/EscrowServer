@@ -1,15 +1,9 @@
 const crypto = require('crypto');
+const { getPaystackSecretKey } = require('../controllers/walletController'); // Import helper
 
 module.exports = (req, res, next) => {
   try {
-    const secret = process.env.NODE_ENV === 'production'
-      ? process.env.PAYSTACK_LIVE_SECRET_KEY
-      : process.env.PAYSTACK_TEST_SECRET_KEY;
-    if (!secret) {
-      console.error('Paystack secret key is not defined');
-      return res.status(500).json({ success: false, error: 'Server configuration error' });
-    }
-
+    const secret = getPaystackSecretKey();
     const hash = crypto
       .createHmac('sha512', secret)
       .update(JSON.stringify(req.body))
