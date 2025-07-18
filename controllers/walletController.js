@@ -83,7 +83,7 @@ axiosRetry(axios, {
   },
 });
 
-const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer Balance') => {
+const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer Balance', session) => {
   return limiter.schedule(async () => {
     try {
       console.log('Initiating transfer to Paystack Transfer balance:', { amount, reason });
@@ -97,13 +97,19 @@ const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer
       const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
       if (revenueBalance < amount) {
         console.error('Insufficient Revenue balance:', { revenueBalance, required: amount });
-        await Notification.create({
-          userId: 'admin',
-          title: 'Low Revenue Balance Alert',
-          message: `Revenue balance (₦${revenueBalance.toFixed(2)}) is insufficient for transfer of ₦${amount.toFixed(2)}.`,
-          type: 'admin_alert',
-          status: 'pending',
-        });
+        // Find admin user instead of using 'admin' string
+        const adminUser = await User.findOne({ role: 'admin' }).session(session);
+        if (adminUser) {
+          await Notification.create([{
+            userId: adminUser._id,
+            title: 'Low Revenue Balance Alert',
+            message: `Revenue balance (₦${revenueBalance.toFixed(2)}) is insufficient for transfer of ₦${amount.toFixed(2)}.`,
+            type: 'system', // Changed from 'admin_alert' to a valid enum value
+            status: 'pending',
+          }], { session });
+        } else {
+          console.warn('No admin user found for notification');
+        }
         throw new Error('Insufficient funds in Revenue balance');
       }
 
