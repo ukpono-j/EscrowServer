@@ -95,16 +95,22 @@ const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer
         throw new Error('Failed to check Paystack balance');
       }
       const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
+      const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
+
+      if (transferBalance >= amount) {
+        console.log('Sufficient funds in Transfer Balance, skipping transfer:', { transferBalance, required: amount });
+        return { status: true, data: { message: 'Sufficient funds in Transfer Balance' } };
+      }
+
       if (revenueBalance < amount) {
         console.error('Insufficient Revenue balance:', { revenueBalance, required: amount });
-        // Find admin user instead of using 'admin' string
         const adminUser = await User.findOne({ role: 'admin' }).session(session);
         if (adminUser) {
           await Notification.create([{
             userId: adminUser._id,
             title: 'Low Revenue Balance Alert',
             message: `Revenue balance (₦${revenueBalance.toFixed(2)}) is insufficient for transfer of ₦${amount.toFixed(2)}.`,
-            type: 'system', // Changed from 'admin_alert' to a valid enum value
+            type: 'system',
             status: 'pending',
           }], { session });
         } else {
@@ -579,28 +585,13 @@ exports.verifyFunding = async (req, res) => {
 
           if (status === 'success') {
             transaction.status = 'completed';
-            wallet.balance += amountInNaira; // Update wallet balance
-            wallet.totalDeposits += amountInNaira; // Update total deposits
+            wallet.balance += amountInNaira;
+            wallet.totalDeposits += amountInNaira;
 
-            // Transfer funds to Paystack Transfer Balance
             try {
-              await transferToPaystackTransferBalance(amountInNaira, `Deposit for ${reference}`);
+              await transferToPaystackTransferBalance(amountInNaira, `Deposit for ${reference}`, session);
               transaction.metadata.transferredToBalance = true;
               console.log('Funds transferred to Paystack Transfer Balance:', { amount: amountInNaira, reference });
-
-              // Verify Transfer Balance
-              const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                timeout: 10000,
-              });
-              if (!balanceResponse.data.status) {
-                throw new Error('Failed to verify Paystack balance');
-              }
-              const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
-              console.log('Paystack Transfer Balance after transfer:', { transferBalance, required: amountInNaira });
-              if (transferBalance < amountInNaira) {
-                throw new Error('Transfer Balance insufficient after transfer');
-              }
             } catch (balanceError) {
               console.error('Paystack balance transfer/check error:', {
                 message: balanceError.message,
@@ -608,16 +599,17 @@ exports.verifyFunding = async (req, res) => {
               });
               transaction.metadata.transferError = balanceError.message;
               transaction.status = 'failed';
-              wallet.balance -= amountInNaira; // Rollback balance update
-              wallet.totalDeposits -= amountInNaira; // Rollback total deposits
-              await Notification.create({
+              wallet.balance -= amountInNaira;
+              wallet.totalDeposits -= amountInNaira;
+              await Notification.create([{
                 userId: wallet.userId,
                 title: 'Funding Transfer Failed',
                 message: `Failed to transfer ₦${amountInNaira.toFixed(2)} to Transfer Balance. Ref: ${reference}`,
                 transactionId: transaction.reference,
                 type: 'funding',
                 status: 'failed',
-              }, { session });
+              }], { session });
+              await wallet.save({ session });
               throw new Error('Failed to confirm funds in Paystack Transfer Balance');
             }
           } else {
@@ -629,10 +621,9 @@ exports.verifyFunding = async (req, res) => {
           transaction.amount = amountInNaira;
 
           wallet.markModified('transactions');
-          await wallet.syncBalanceWithPaystack();
           await wallet.save({ session });
 
-          const notification = {
+          await Notification.create([{
             userId: wallet.userId,
             title: status === 'success' ? 'Wallet Funded' : 'Funding Failed',
             message: status === 'success'
@@ -641,8 +632,7 @@ exports.verifyFunding = async (req, res) => {
             transactionId: transaction.reference,
             type: 'funding',
             status: status === 'success' ? 'completed' : 'failed',
-          };
-          await Notification.create([notification], { session });
+          }], { session });
 
           const io = req.app.get('io');
           if (io) {
@@ -669,6 +659,7 @@ exports.verifyFunding = async (req, res) => {
     }
   });
 };
+
 
 // New endpoint to manually sync balance with Paystack
 exports.syncWalletBalance = async (req, res) => {
@@ -773,18 +764,32 @@ exports.manualReconcileTransaction = async (req, res) => {
           transaction.metadata.reconciledAt = new Date();
         }
 
-        // Transfer funds to Paystack Transfer Balance
+        wallet.balance += amountInNaira;
+        wallet.totalDeposits += amountInNaira;
+
         try {
-          await transferToPaystackTransferBalance(amountInNaira, `Manual reconciliation for ${reference}`);
+          await transferToPaystackTransferBalance(amountInNaira, `Manual reconciliation for ${reference}`, session);
           transaction.metadata.transferredToBalance = true;
           console.log('Funds transferred to Paystack Transfer Balance during reconciliation:', { amount: amountInNaira, reference });
         } catch (transferError) {
           console.error('Transfer balance error during reconciliation:', transferError.message);
+          transaction.status = 'failed';
+          transaction.metadata.transferError = transferError.message;
+          wallet.balance -= amountInNaira;
+          wallet.totalDeposits -= amountInNaira;
+          await Notification.create([{
+            userId: wallet.userId,
+            title: 'Funding Transfer Failed',
+            message: `Failed to transfer ₦${amountInNaira.toFixed(2)} to Transfer Balance. Ref: ${reference}`,
+            transactionId: transaction.reference,
+            type: 'funding',
+            status: 'failed',
+          }], { session });
+          await wallet.save({ session });
           throw new Error('Failed to transfer funds to Paystack Transfer Balance');
         }
 
         wallet.markModified('transactions');
-        await wallet.syncBalanceWithPaystack();
         await wallet.save({ session });
 
         await Notification.create([{
@@ -907,18 +912,32 @@ exports.checkFundingStatus = async (req, res) => {
             transaction.metadata.reconciledAt = new Date();
           }
 
-          // Transfer funds to Paystack Transfer Balance
+          wallet.balance += amountInNaira;
+          wallet.totalDeposits += amountInNaira;
+
           try {
-            await transferToPaystackTransferBalance(amountInNaira, `Check funding status for ${reference}`);
+            await transferToPaystackTransferBalance(amountInNaira, `Check funding status for ${reference}`, session);
             transaction.metadata.transferredToBalance = true;
             console.log('Funds transferred to Paystack Transfer Balance during status check:', { amount: amountInNaira, reference });
           } catch (transferError) {
             console.error('Transfer balance error during status check:', transferError.message);
+            transaction.status = 'failed';
+            transaction.metadata.transferError = transferError.message;
+            wallet.balance -= amountInNaira;
+            wallet.totalDeposits -= amountInNaira;
+            await Notification.create([{
+              userId: wallet.userId,
+              title: 'Funding Transfer Failed',
+              message: `Failed to transfer ₦${amountInNaira.toFixed(2)} to Transfer Balance. Ref: ${reference}`,
+              transactionId: transaction.reference,
+              type: 'funding',
+              status: 'failed',
+            }], { session });
+            await wallet.save({ session });
             throw new Error('Failed to transfer funds to Paystack Transfer Balance');
           }
 
           wallet.markModified('transactions');
-          await wallet.syncBalanceWithPaystack();
           await wallet.save({ session });
 
           await Notification.create([{
@@ -954,7 +973,6 @@ exports.checkFundingStatus = async (req, res) => {
           });
         } else {
           console.log('Paystack verification pending:', response.data);
-          await wallet.syncBalanceWithPaystack();
           await wallet.save({ session });
           return res.status(200).json({
             success: true,
@@ -976,7 +994,6 @@ exports.checkFundingStatus = async (req, res) => {
       });
 
       if (transaction.status === 'pending') {
-        // Verify with Paystack and transfer to Transfer Balance if successful
         const response = await axios.get(
           `https://api.paystack.co/transaction/verify/${reference}`,
           {
@@ -993,7 +1010,7 @@ exports.checkFundingStatus = async (req, res) => {
           wallet.totalDeposits += amountInNaira;
 
           try {
-            await transferToPaystackTransferBalance(amountInNaira, `Check funding status for ${reference}`);
+            await transferToPaystackTransferBalance(amountInNaira, `Check funding status for ${reference}`, session);
             transaction.metadata.transferredToBalance = true;
             console.log('Funds transferred to Paystack Transfer Balance during status check:', { amount: amountInNaira, reference });
           } catch (transferError) {
@@ -1002,19 +1019,19 @@ exports.checkFundingStatus = async (req, res) => {
             transaction.metadata.transferError = transferError.message;
             wallet.balance -= amountInNaira;
             wallet.totalDeposits -= amountInNaira;
-            await Notification.create({
+            await Notification.create([{
               userId: wallet.userId,
               title: 'Funding Transfer Failed',
               message: `Failed to transfer ₦${amountInNaira.toFixed(2)} to Transfer Balance. Ref: ${reference}`,
               transactionId: transaction.reference,
               type: 'funding',
               status: 'failed',
-            }, { session });
+            }], { session });
+            await wallet.save({ session });
             throw new Error('Failed to transfer funds to Paystack Transfer Balance');
           }
 
           wallet.markModified('transactions');
-          await wallet.syncBalanceWithPaystack();
           await wallet.save({ session });
 
           await Notification.create([{
@@ -1051,7 +1068,6 @@ exports.checkFundingStatus = async (req, res) => {
         }
       }
 
-      await wallet.syncBalanceWithPaystack();
       await wallet.save({ session });
 
       return res.status(200).json({
