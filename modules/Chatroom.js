@@ -10,24 +10,6 @@ const chatroomSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     }],
-    messages: [
-      {
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "User",
-          required: true,
-        },
-        message: {
-          type: String,
-          required: true,
-        },
-        timestamp: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-    // Other chatroom fields...
   });
   
   const Chatroom = mongoose.model("Chatroom", chatroomSchema);

@@ -14,7 +14,6 @@ const transactionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-    index: true
   },
   paymentName: {
     type: String,
@@ -92,6 +91,7 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     enum: ["active", "cancelled", "completed", "pending"],
     default: "pending",
+    index: true,
   },
   paymentStatus: {
     type: String,

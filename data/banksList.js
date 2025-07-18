@@ -1,9 +1,3 @@
-/**
- * This file contains Nigerian banks supported by Paystack
- * Includes commercial banks, microfinance banks, and payment service providers
- * Used as a fallback when API fails to load banks
- */
-
 export const nigeriaBanks = [
   // Commercial Banks
   { name: "Access Bank", code: "044" },
@@ -33,14 +27,13 @@ export const nigeriaBanks = [
   { name: "Premium Trust Bank", code: "105" },
   { name: "Optimus Bank", code: "107" },
   { name: "Parallex Bank", code: "526" },
-
   // Digital Banks & Payment Service Banks
   { name: "9Payment Service Bank", code: "120001" },
   { name: "Carbon", code: "565" },
   { name: "ALAT by Wema", code: "035A" },
   { name: "Eyowo", code: "50126" },
   { name: "Kuda Bank", code: "90267" },
-  { name: "OPay", code: "100004" },
+  { name: "OPay", code: "999992" },
   { name: "PalmPay", code: "999" },
   { name: "Rubies Microfinance Bank", code: "125" },
   { name: "VFD Microfinance Bank", code: "566" },
@@ -48,7 +41,6 @@ export const nigeriaBanks = [
   { name: "HopePSB", code: "120002" },
   { name: "Sparkle Microfinance Bank", code: "51310" },
   { name: "Flutterwave Technology Solutions", code: "110013" },
-
   // Microfinance Banks
   { name: "Abbey Mortgage Bank", code: "801" },
   { name: "Accion Microfinance Bank", code: "602" },
@@ -105,16 +97,32 @@ export const nigeriaBanks = [
 
 // Function to get a bank name from code
 export const getBankNameFromCode = (code) => {
-  // First try direct code match
+  console.log("getBankNameFromCode called with code:", code);
   const bankByCode = nigeriaBanks.find(bank => bank.code.toString() === code.toString());
-  if (bankByCode) return bankByCode.name;
+  if (bankByCode) {
+    console.log("Found bank in nigeriaBanks:", bankByCode.name);
+    return bankByCode.name;
+  }
 
-  // If API returned a bank with this code, use that data directly
-  // Note: This assumes you store the API banks in localStorage or context
-  const apiBanks = JSON.parse(localStorage.getItem('apiBanks') || '[]');
-  const apiBankMatch = apiBanks.find(bank => bank.code.toString() === code.toString());
-  if (apiBankMatch) return apiBankMatch.name;
+  if (typeof window === "undefined") {
+    const apiBanks = cache ? cache.get("banks") || [] : [];
+    console.log("Server-side: apiBanks from cache:", apiBanks);
+    const apiBankMatch = apiBanks.find(bank => bank.code.toString() === code.toString());
+    if (apiBankMatch) {
+      console.log("Found bank in server cache:", apiBankMatch.name);
+      return apiBankMatch.name;
+    }
+  } else {
+    const apiBanks = JSON.parse(localStorage.getItem('apiBanks') || '[]');
+    console.log("Client-side: apiBanks from localStorage:", apiBanks);
+    const apiBankMatch = apiBanks.find(bank => bank.code.toString() === code.toString());
+    if (apiBankMatch) {
+      console.log("Found bank in localStorage:", apiBankMatch.name);
+      return apiBankMatch.name;
+    }
+  }
 
+  console.log("Bank not found, returning 'Unknown Bank'");
   return "Unknown Bank";
 };
 
@@ -132,5 +140,11 @@ export const searchBanksByName = (partialName) => {
     bank.name.toLowerCase().includes(searchTerm)
   );
 };
+
+// Validate nigeriaBanks on module load
+if (!Array.isArray(nigeriaBanks)) {
+  console.error("nigeriaBanks is not an array:", nigeriaBanks);
+  throw new Error("Invalid bank list configuration in banksList.js");
+}
 
 export default nigeriaBanks;

@@ -21,20 +21,6 @@ router.post(
     body("paymentAmount").notEmpty().isNumeric().withMessage("Amount must be a number"),
     body("paymentDescription").notEmpty().withMessage("Product description is required"),
     body("selectedUserType").notEmpty().isIn(["buyer", "seller"]).withMessage("Invalid user type"),
-    body("paymentBank")
-      .if(body("selectedUserType").equals("seller"))
-      .notEmpty()
-      .withMessage("Payment bank is required for sellers"),
-    body("paymentAccountNumber")
-      .if(body("selectedUserType").equals("seller"))
-      .notEmpty()
-      .isString()
-      .isLength({ min: 10, max: 10 })
-      .withMessage("Account number must be a 10-digit string for sellers"),
-    body("paymentBankCode")
-      .if(body("selectedUserType").equals("seller"))
-      .notEmpty()
-      .withMessage("Bank code is required for sellers"),
   ],
   validateInput,
   transactionController.createTransaction
@@ -44,7 +30,8 @@ router.get('/get-transaction', authenticateUser, transactionController.getUserTr
 
 router.get('/complete-transaction', authenticateUser, transactionController.getCompletedTransactions);
 
-router.put("/cancel/:id", authenticateUser, transactionController.cancelTransaction); // Updated
+router.put("/cancel/:id", authenticateUser, transactionController.cancelTransaction);
+
 router.post('/join-transaction', authenticateUser, transactionController.joinTransaction);
 
 router.post('/accept-and-update', authenticateUser, [
@@ -68,9 +55,8 @@ router.get('/waybill-details/:transactionId', authenticateUser, transactionContr
 router.get('/chatroom/:chatroomId', authenticateUser, transactionController.getTransactionByChatroomId);
 
 router.post('/confirm', authenticateUser, transactionController.confirmTransaction);
-router.get('/banks', authenticateUser, transactionController.getBanks);
 
-router.get('/wallet/paystack-callback', authenticateUser, transactionController.handlePaystackCallback);
+router.get('/banks', authenticateUser, transactionController.getBanks);
 
 router.post('/fund-transaction', authenticateUser, async (req, res) => {
   const { transactionId, amount } = req.body;
@@ -81,5 +67,6 @@ router.post('/fund-transaction', authenticateUser, async (req, res) => {
 });
 
 router.put('/update-payment-details/:transactionId', authenticateUser, transactionController.updatePaymentDetails);
+router.get('/user-wallet', authenticateUser, transactionController.getUserAndWallet);
 
 module.exports = router;

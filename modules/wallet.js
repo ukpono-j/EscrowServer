@@ -109,29 +109,46 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
       const User = mongoose.model('User');
       let user = await User.findById(this.userId).session(session);
       if (!user) {
-        throw new Error('User not found');
+        console.warn('User not found for wallet sync:', this.userId);
+        this.lastSynced = new Date();
+        await this.save({ session });
+        return;
       }
 
       if (!user.paystackCustomerCode) {
         console.log(`Creating Paystack customer for user ${this.userId}`);
-        const customerResponse = await axios.post(
-          'https://api.paystack.co/customer',
-          {
-            email: user.email,
-            first_name: user.firstName || 'Unknown',
-            last_name: user.lastName || 'Unknown',
-            phone: user.phoneNumber || '',
-          },
-          {
-            headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-            timeout: 15000,
+        try {
+          const customerResponse = await axios.post(
+            'https://api.paystack.co/customer',
+            {
+              email: user.email,
+              first_name: user.firstName || 'Unknown',
+              last_name: user.lastName || 'Unknown',
+              phone: user.phoneNumber || '',
+            },
+            {
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+              timeout: 20000,
+            }
+          );
+          if (!customerResponse.data.status) {
+            console.error('Failed to create Paystack customer:', customerResponse.data);
+            this.lastSynced = new Date();
+            await this.save({ session });
+            return;
           }
-        );
-        if (!customerResponse.data.status) {
-          throw new Error('Failed to create Paystack customer');
+          user.paystackCustomerCode = customerResponse.data.data.customer_code;
+          await user.save({ session });
+        } catch (customerError) {
+          console.error('Failed to create Paystack customer:', {
+            userId: this.userId,
+            message: customerError.message,
+            response: customerError.response?.data,
+          });
+          this.lastSynced = new Date();
+          await this.save({ session });
+          return;
         }
-        user.paystackCustomerCode = customerResponse.data.data.customer_code;
-        await user.save({ session });
       }
 
       try {
@@ -149,6 +166,7 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           const paystackRefs = new Set(paystackTransactions.map(t => t.reference));
           for (const tx of this.transactions) {
             if (tx.type === 'deposit' && tx.status === 'completed' && !paystackRefs.has(tx.paystackReference)) {
+              console.warn(`Marking transaction ${tx.reference} as failed due to Paystack mismatch`);
               tx.status = 'failed';
               tx.metadata.error = 'Not found in Paystack';
               this.markModified('transactions');
@@ -168,12 +186,15 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
         // Verify Paystack balance
         const balanceResponse = await axios.get('https://api.paystack.co/balance', {
           headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-          timeout: 10000,
+          timeout: 20000,
         });
         if (!balanceResponse.data.status) {
-          throw new Error('Failed to verify Paystack balance');
+          console.error('Failed to verify Paystack balance:', balanceResponse.data);
+          this.lastSynced = new Date();
+          await this.save({ session });
+          return;
         }
-        const paystackBalance = balanceResponse.data.data.balance / 100;
+        const paystackBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
         if (paystackBalance < totalDeposits - completedWithdrawals) {
           console.error('Paystack balance insufficient:', {
             userId: this.userId,
@@ -197,8 +218,9 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           userId: this.userId,
           message: paystackError.message,
           status: paystackError.response?.status,
+          response: paystackError.response?.data,
         });
-        this.lastSynced = this.lastSynced || new Date();
+        this.lastSynced = new Date();
       }
 
       await this.save({ session });
@@ -211,9 +233,10 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
     });
     throw error;
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 };
+
 
 walletSchema.methods.getBalance = async function () {
   await this.syncBalanceWithPaystack();

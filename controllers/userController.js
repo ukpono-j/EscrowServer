@@ -103,28 +103,38 @@ const setupEtherealAccount = async () => {
 };
 
 exports.getUserDetails = async (req, res) => {
-  try {
-    const { id: userId } = req.user;
-    console.log('Fetching user details:', { userId });
-    const user = await User.findById(userId).select('-password');
-    if (!user) {
-      console.log('User not found:', userId);
-      return res.status(404).json({ error: 'User not found' });
+  const maxRetries = 3;
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const { id: userId } = req.user;
+      console.log('Fetching user details:', { userId, attempt: attempt + 1 });
+      const user = await User.findById(userId).select('-password');
+      if (!user) {
+        console.log('User not found:', userId);
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const userWithAvatar = {
+        ...user.toObject(),
+        avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
+      };
+      console.log('Sending user details response:', { userId });
+      return res.status(200).json({ success: true, data: { user: userWithAvatar } });
+    } catch (error) {
+      attempt++;
+      console.error('Error in getUserDetails:', {
+        userId: req.user?.id,
+        message: error.message,
+        stack: error.stack,
+        attempt,
+      });
+      if (error.code === 'ECONNRESET' && attempt < maxRetries) {
+        console.log(`Retrying getUserDetails (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+        continue;
+      }
+      return res.status(500).json({ error: 'Internal Server Error', details: error.message });
     }
-    const userWithAvatar = {
-      ...user.toObject(),
-      avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
-    };
-    const responseData = { data: { user: userWithAvatar } };
-    console.log('Sending user details response:', responseData);
-    res.status(200).json(responseData);
-  } catch (error) {
-    console.error('Error in getUserDetails:', {
-      userId: req.user.id,
-      message: error.message,
-      stack: error.stack,
-    });
-    res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -141,7 +151,7 @@ exports.getAllUserDetails = async (req, res) => {
       ...user.toObject(),
       avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
     }));
-    res.status(200).json({ data: { users: usersWithAvatars } });
+    res.status(200).json({ success: true, data: { users: usersWithAvatars } });
   } catch (error) {
     console.error('Error in getAllUserDetails:', {
       userId: req.user.id,
@@ -173,7 +183,7 @@ exports.updateUserDetails = async (req, res) => {
       ...user.toObject(),
       avatarImage: `/api/avatar/${avatarIdentifier}`,
     };
-    res.status(200).json({ data: { message: 'User details updated successfully!', user: userWithAvatar } });
+    res.status(200).json({ success: true, data: { message: 'User details updated successfully!', user: userWithAvatar } });
   } catch (error) {
     console.error('Error in updateUserDetails:', {
       userId: req.user.id,

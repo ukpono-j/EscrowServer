@@ -1,29 +1,32 @@
 const responseFormatter = (req, res, next) => {
-    const originalJson = res.json;
-  
-    res.json = function (data) {
-      // Skip for certain routes like /api/avatar
-      if (req.path.startsWith('/api/avatar')) {
-        return originalJson.call(this, data);
-      }
-  
-      // Handle error responses
-      if (res.statusCode >= 400) {
-        return originalJson.call(this, {
-          success: false,
-          error: data.error || 'An error occurred',
-          details: data.details || undefined,
-        });
-      }
-  
-      // Handle success responses
+  const originalJson = res.json;
+
+  res.json = function (data) {
+    // Skip for /api/avatar or specific message routes
+    if (
+      req.path.startsWith('/api/avatar') ||
+      (req.path.startsWith('/api/messages') && req.method === 'GET' && Array.isArray(data))
+    ) {
+      return originalJson.call(this, data);
+    }
+
+    // Handle error responses
+    if (res.statusCode >= 400) {
       return originalJson.call(this, {
-        success: true,
-        ...data,
+        success: false,
+        error: data.error || data.message || 'An error occurred',
+        details: data.details || undefined,
       });
-    };
-  
-    next();
+    }
+
+    // Handle success responses
+    return originalJson.call(this, {
+      success: true,
+      ...data,
+    });
   };
-  
-  module.exports = responseFormatter;
+
+  next();
+};
+
+module.exports = responseFormatter;

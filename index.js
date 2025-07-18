@@ -8,15 +8,18 @@ const socketIo = require('socket.io');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const axios = require('axios'); // Required for MultiAvatar proxy
+const axios = require('axios');
 require('dotenv').config();
 const responseFormatter = require('./middlewares/responseFormatter');
+const Transaction = require('./modules/Transactions');
+const Chatroom = require('./modules/Chatroom');
 
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === 'production' ? process.env.PAYSTACK_LIVE_SECRET_KEY : process.env.PAYSTACK_SECRET_KEY;
 console.log('Paystack Secret Key:', PAYSTACK_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 
 const requiredEnvVars = [
   'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
   'MONGODB_URI',
   process.env.NODE_ENV === 'production' ? 'PAYSTACK_LIVE_SECRET_KEY' : 'PAYSTACK_SECRET_KEY',
   'PAYSTACK_API_URL',
@@ -38,7 +41,6 @@ console.log('Paystack Secret Key:', process.env.NODE_ENV === 'production' ? 'PAY
 console.log('Loaded PAYMENT_POINT_SECRET_KEY:', process.env.PAYMENT_POINT_SECRET_KEY ? '[REDACTED]' : 'NOT_SET');
 console.log('MONGODB_URI:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/\/\/(.+?)@/, '//[REDACTED]@') : 'NOT_SET');
 
-// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -51,7 +53,6 @@ app.get('/health', (req, res) => {
 async function manageIndexes() {
   try {
     const db = mongoose.connection.db;
-    // Drop problematic index
     try {
       await db.collection('wallets').dropIndex('transactions.reference_1');
       console.log('Dropped transactions.reference_1 index');
@@ -62,7 +63,6 @@ async function manageIndexes() {
         throw error;
       }
     }
-    // Ensure new compound index (defined in Wallet.js)
     const walletIndexes = await db.collection('wallets').indexes();
     console.log('Current wallet indexes:', JSON.stringify(walletIndexes, null, 2));
   } catch (error) {
@@ -82,7 +82,9 @@ const corsOptions = {
       'https://api.multiavatar.com',
       'https://mymiddleman.ng',
       'https://paywithsylo.com',
-      undefined, // Allow server-to-server requests (e.g., Paystack webhooks)
+      'https://1ea518b60f04.ngrok-free.app',
+      'http://localhost:3001',
+      undefined,
     ];
     console.log('Checking origin:', origin);
     if (allowedOrigins.includes(origin) || !origin) {
@@ -95,14 +97,13 @@ const corsOptions = {
   },
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'x-auth-token', 'x-paystack-signature'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'access-token', 'x-access-token', 'x-paystack-signature'],
   optionsSuccessStatus: 204,
   preflightContinue: false,
 };
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
-// Log response headers for debugging
 app.use((req, res, next) => {
   res.on('finish', () => {
     console.log(`Response for ${req.method} ${req.url}:`, res.getHeaders());
@@ -117,12 +118,11 @@ const io = socketIo(server, {
     methods: ['GET', 'POST'],
     credentials: true,
   },
-  pingTimeout: 60000, // Increase ping timeout to 60 seconds
+  pingTimeout: 60000,
   pingInterval: 25000,
 });
 
-// Socket.io
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   const origin = socket.handshake.headers.origin;
   console.log('Socket.IO auth attempt:', {
@@ -150,7 +150,7 @@ io.use((socket, next) => {
       origin,
       time: new Date().toISOString(),
     });
-    socket.userId = decoded.id;
+    socket.user = decoded;
     next();
   } catch (error) {
     console.error('Socket.IO authentication error:', {
@@ -164,36 +164,76 @@ io.use((socket, next) => {
   }
 });
 
-io.on('connection', (socket) => {
-  console.log('User connected:', {
-    userId: socket.userId,
-    socketId: socket.id,
-    clientIp: socket.handshake.address,
-    time: new Date().toISOString(),
-  });
-
-  socket.on('join-room', (userId) => {
-    if (userId === socket.userId) {
-      socket.join(userId);
-      console.log(`User ${userId} joined room ${userId}`);
-    } else {
-      console.warn(`User ${socket.userId} attempted to join unauthorized room ${userId}`);
-    }
-  });
-
-  socket.on('disconnect', (reason) => {
-    console.log('User disconnected:', {
-      userId: socket.userId,
+const setupSocket = (io) => {
+  io.on('connection', (socket) => {
+    console.log('User connected:', {
+      userId: socket.user.id,
       socketId: socket.id,
-      reason,
+      clientIp: socket.handshake.address,
       time: new Date().toISOString(),
     });
+
+    socket.on('join-room', async (room, userId) => {
+      if (room.startsWith('transaction_')) {
+        const chatroomId = room.replace('transaction_', '');
+        try {
+          const chatroom = await Chatroom.findById(chatroomId);
+          if (!chatroom) {
+            console.error(`Chatroom ${chatroomId} not found`);
+            socket.emit('error', { message: 'Chatroom not found' });
+            return;
+          }
+
+          const transaction = await Transaction.findById(chatroom.transactionId);
+          if (!transaction) {
+            console.error(`Transaction ${chatroom.transactionId} not found`);
+            socket.emit('error', { message: 'Transaction not found' });
+            return;
+          }
+
+          const isCreator = transaction.userId.toString() === userId;
+          const isParticipant = transaction.participants.some(
+            (p) => p.toString() === userId
+          );
+
+          if (!isCreator && !isParticipant) {
+            console.error(`User ${userId} attempted to join unauthorized room ${room}`);
+            socket.emit('error', { message: 'Unauthorized to join this chatroom' });
+            return;
+          }
+
+          socket.join(room);
+          console.log(`User ${userId} joined room ${room}`);
+        } catch (error) {
+          console.error(`Error joining room ${room}:`, error);
+          socket.emit('error', { message: 'Failed to join chatroom' });
+        }
+      } else {
+        socket.join(room);
+        console.log(`User ${userId} joined room ${room}`);
+      }
+    });
+
+    socket.on('message', (message) => {
+      console.log('Message received:', { message, userId: socket.user.id });
+      io.to(`transaction_${message.chatroomId}`).emit('message', message);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('User disconnected:', {
+        userId: socket.user.id,
+        socketId: socket.id,
+        reason,
+        time: new Date().toISOString(),
+      });
+    });
   });
-});
+};
+
+setupSocket(io);
 
 app.set('io', io);
 
-// Set server timeout to 60 seconds
 app.set('timeout', 60000);
 
 app.use(express.urlencoded({ extended: false }));
@@ -230,7 +270,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Proxy endpoint for MultiAvatar
 app.get('/api/avatar/:seed', async (req, res) => {
   try {
     const seed = req.params.seed;
@@ -238,7 +277,7 @@ app.get('/api/avatar/:seed', async (req, res) => {
 
     const response = await axios.get(multiavatarUrl, {
       responseType: 'stream',
-      timeout: 10000, // 10-second timeout
+      timeout: 10000,
     });
 
     res.set('Content-Type', 'image/svg+xml');
@@ -257,7 +296,6 @@ app.get('/api/avatar/:seed', async (req, res) => {
     } else if (error.code === 'ECONNABORTED' || error.response?.status === 408) {
       res.status(504).send('Avatar request timed out. Using fallback.');
     } else {
-      // Fallback: Generate a simple SVG circle as a placeholder
       const fallbackSvg = `
         <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
           <circle cx="16" cy="16" r="15" fill="#B38939" />
@@ -270,7 +308,6 @@ app.get('/api/avatar/:seed', async (req, res) => {
   }
 });
 
-// Initialize cron jobs after database connection
 const cronJobs = require('./jobs/cronJobs');
 cronJobs();
 

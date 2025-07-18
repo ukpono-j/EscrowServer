@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-// Utility function to generate a random seed
+// utils function to generate a random seed
 const generateRandomSeed = () => {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`; // Timestamp + random string
 };

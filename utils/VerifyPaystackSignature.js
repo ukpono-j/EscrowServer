@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { getPaystackSecretKey } = require('../controllers/walletController'); // Import helper
+const { getPaystackSecretKey } = require('../controllers/walletController');
 
 module.exports = (req, res, next) => {
   try {
@@ -17,6 +17,7 @@ module.exports = (req, res, next) => {
       return res.status(401).json({ success: false, error: 'Invalid webhook signature' });
     }
 
+    console.log('Paystack webhook signature verified');
     next();
   } catch (error) {
     console.error('Signature verification error:', {
