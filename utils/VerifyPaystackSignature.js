@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { getPaystackSecretKey } = require('../controllers/walletController');
 
+// VerifyPaystackSignature
 module.exports = (req, res, next) => {
   try {
     const secret = getPaystackSecretKey();
