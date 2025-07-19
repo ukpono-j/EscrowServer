@@ -14,6 +14,8 @@ const restrictToApiKey = (req, res, next) => {
 };
 
 
+
+
 router.get('/balance', authenticateUser, walletController.getWalletBalance);
 router.post('/fund', authenticateUser, walletController.initiateFunding);
 router.get('/funding-status/:reference', authenticateUser, walletController.checkFundingStatus);
