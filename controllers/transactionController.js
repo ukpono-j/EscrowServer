@@ -11,6 +11,15 @@ const { getBankNameFromCode } = require('../data/banksList');
 const cache = require("../cache");
 const NodeCache = require('node-cache');
 // const cache = new NodeCache({ stdTTL: 600, checkperiod: 120 }); // 10min TTL
+const fs = require("fs");
+
+
+// Ensure the Uploads directory exists
+const uploadDir = path.join(__dirname, "../Uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 
 exports.createTransaction = async (req, res) => {
   const {
@@ -910,79 +919,112 @@ exports.getTransactionById = async (req, res) => {
 };
 
 
-exports.submitWaybillDetails = async (req, res) => {
+// Submit Waybill Details
+exports.submitWaybillDetails = async (req, res, next) => {
   try {
-    const { transactionId, item, price, shippingAddress, trackingNumber, deliveryDate } = req.body;
     const userId = req.user.id;
-    const image = req.file ? req.file.path : null;
+    const { transactionId, item, price, shippingAddress, trackingNumber, deliveryDate } = req.body;
 
+    // Validate required fields
+    if (!transactionId || !item || !price || !shippingAddress || !trackingNumber || !deliveryDate || !req.file) {
+      return res.status(400).json({ error: "All fields and image are required" });
+    }
+
+    // Find the transaction
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const isCreator = transaction.userId.toString() === userId;
-    const isParticipant = transaction.participants.includes(userId);
-    if (!isCreator && !isParticipant) {
-      return res.status(403).json({ message: "Unauthorized to submit waybill details" });
-    }
-
-    const isSeller = (isCreator && transaction.selectedUserType === "seller") ||
-      (isParticipant && transaction.selectedUserType === "buyer");
+    // Check if user is the seller
+    const isSeller = transaction.selectedUserType === "buyer" ? transaction.participants.some(p => p.toString() === userId) : transaction.userId.toString() === userId;
     if (!isSeller) {
-      return res.status(403).json({ message: "Only the seller can submit waybill details" });
+      return res.status(403).json({ error: "Only the seller can submit waybill details" });
     }
 
+    // Validate price
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      return res.status(400).json({ error: "Invalid price" });
+    }
+
+    // Validate delivery date
+    const parsedDate = new Date(deliveryDate);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ error: "Invalid delivery date" });
+    }
+
+    // Store file path
+    const imagePath = `Uploads/${req.file.filename}`;
+
+    // Update transaction with waybill details
     transaction.waybillDetails = {
       item,
-      image,
-      price: parseFloat(price),
+      image: imagePath,
+      price: parsedPrice,
       shippingAddress,
       trackingNumber,
-      deliveryDate,
+      deliveryDate: parsedDate,
     };
-    transaction.proofOfWaybill = "pending";
+    transaction.proofOfWaybill = "confirmed";
+
     await transaction.save();
 
+    // Emit socket event
     const io = req.app.get("io");
-    const usersToNotify = [
-      transaction.userId.toString(),
-      ...transaction.participants.map((p) => p.toString()),
-    ];
-    usersToNotify.forEach((userId) => {
-      io.to(userId).emit("transactionUpdated", {
-        transactionId: transaction._id,
-        message: "Waybill details have been submitted.",
-      });
+    io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
+      transactionId,
+      message: "Waybill details submitted",
     });
 
-    return res.status(200).json({ message: "Waybill details submitted successfully" });
+    return res.status(200).json({
+      success: true,
+      message: "Waybill details submitted successfully",
+      data: transaction.waybillDetails,
+    });
   } catch (error) {
-    console.error("Error submitting waybill details:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Submit waybill error:", error);
+    return res.status(500).json({ error: "Failed to submit waybill details" });
   }
 };
 
-exports.getWaybillDetails = async (req, res) => {
+// Get Waybill Details
+exports.getWaybillDetails = async (req, res, next) => {
   try {
-    const { transactionId } = req.params;
     const userId = req.user.id;
+    const { transactionId } = req.params;
 
-    const transaction = await Transaction.findById(transactionId);
+    // Find the transaction
+    const transaction = await Transaction.findById(transactionId).populate("userId participants");
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const isCreator = transaction.userId.toString() === userId;
-    const isParticipant = transaction.participants.includes(userId);
+    // Check if user is part of the transaction
+    const isCreator = transaction.userId._id.toString() === userId;
+    const isParticipant = transaction.participants.some(p => p._id.toString() === userId);
     if (!isCreator && !isParticipant) {
-      return res.status(403).json({ message: "Unauthorized to view waybill details" });
+      return res.status(403).json({ error: "Unauthorized to view waybill details" });
     }
 
-    return res.status(200).json({ waybillDetails: transaction.waybillDetails });
+    if (!transaction.waybillDetails) {
+      return res.status(404).json({ error: "No waybill details found for this transaction" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        item: transaction.waybillDetails.item,
+        image: transaction.waybillDetails.image,
+        price: transaction.waybillDetails.price,
+        shippingAddress: transaction.waybillDetails.shippingAddress,
+        trackingNumber: transaction.waybillDetails.trackingNumber,
+        deliveryDate: transaction.waybillDetails.deliveryDate,
+      },
+    });
   } catch (error) {
-    console.error("Error fetching waybill details:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Get waybill details error:", error);
+    return res.status(500).json({ error: "Failed to retrieve waybill details" });
   }
 };
 
