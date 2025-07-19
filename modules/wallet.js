@@ -1,12 +1,12 @@
 const mongoose = require('mongoose');
 const axios = require('axios');
-const Notification = require('./Notification'); // Fix: Import Notification model
+const Notification = require('./Notification');
 
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
   amount: { type: Number, required: true },
   reference: { type: String, required: true },
-  paystackReference: { type: String },
+  paystackReference: { type: String, sparse: true },
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
   metadata: {
     paymentGateway: { type: String },
@@ -61,10 +61,15 @@ walletSchema.pre('deleteMany', async function () {
 
 walletSchema.pre('save', function (next) {
   if (this.isModified('transactions')) {
+    const paystackRefs = new Set();
     this.transactions.forEach((tx, index) => {
       if (!tx.reference) {
         throw new Error(`Transaction at index ${index} has invalid reference`);
       }
+      if (tx.paystackReference && paystackRefs.has(tx.paystackReference)) {
+        throw new Error(`Duplicate Paystack reference ${tx.paystackReference} at index ${index}`);
+      }
+      if (tx.paystackReference) paystackRefs.add(tx.paystackReference);
     });
   }
   next();
@@ -208,6 +213,38 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
               tx.metadata.error = 'Not found in Paystack';
               this.markModified('transactions');
             }
+            // Check for pending transactions with missing paystackReference
+            if (tx.type === 'deposit' && tx.status === 'pending' && !tx.paystackReference) {
+              console.warn(`Pending transaction ${tx.reference} missing paystackReference, attempting to reconcile`);
+              try {
+                const response = await axios.get(`https://api.paystack.co/transaction?customer=${user.paystackCustomerCode}&status=success&perPage=100`, {
+                  headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+                  timeout: 10000,
+                });
+                const matchingTx = response.data.data.find(pt => pt.amount / 100 === tx.amount && pt.customer.email === user.email);
+                if (matchingTx) {
+                  tx.paystackReference = matchingTx.reference;
+                  tx.status = 'completed';
+                  this.balance += tx.amount;
+                  this.totalDeposits += tx.amount;
+                  this.markModified('transactions');
+                  await Notification.create([{
+                    userId: this.userId,
+                    title: 'Transaction Reconciled',
+                    message: `Pending transaction ${tx.reference} reconciled with Paystack reference ${tx.paystackReference}`,
+                    type: 'system',
+                    status: 'completed',
+                    createdAt: new Date(),
+                  }], { session });
+                }
+              } catch (reconcileError) {
+                console.error('Failed to reconcile pending transaction:', {
+                  reference: tx.reference,
+                  message: reconcileError.message,
+                  status: reconcileError.response?.status,
+                });
+              }
+            }
           }
 
           await Notification.create([{
@@ -336,7 +373,7 @@ walletSchema.methods.validateWithdrawal = async function (amount) {
 };
 
 walletSchema.index({ 'transactions.reference': 1 }, { sparse: true });
-walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true });
+walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true, unique: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
 
 module.exports = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);

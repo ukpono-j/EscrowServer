@@ -1190,15 +1190,13 @@ exports.checkFundingStatus = async (req, res) => {
           const response = await axios.get(
             `https://api.paystack.co/transaction/verify/${reference}`,
             {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
               timeout: 15000,
             }
           );
 
-          console.log('Paystack response:', response.data);
-
           if (response.data.status && response.data.data?.status === 'success') {
-            const { amount, reference: paymentReference, customer } = response.data.data;
+            const { amount, reference: paystackReference, customer } = response.data.data;
             const amountInNaira = parseFloat(amount) / 100;
 
             transaction = wallet.transactions.find(
@@ -1213,8 +1211,8 @@ exports.checkFundingStatus = async (req, res) => {
               transaction = {
                 type: 'deposit',
                 amount: amountInNaira,
-                reference: `FUND_${req.user.id}_${uuidv4()}`,
-                paystackReference: paymentReference,
+                reference: `FUND_${req.user.id}_${require('uuid').v4()}`,
+                paystackReference: paystackReference,
                 status: 'completed',
                 metadata: {
                   paymentGateway: 'Paystack',
@@ -1228,7 +1226,7 @@ exports.checkFundingStatus = async (req, res) => {
               wallet.transactions.push(transaction);
             } else {
               transaction.status = 'completed';
-              transaction.paystackReference = paymentReference;
+              transaction.paystackReference = paystackReference;
               transaction.metadata.reconciledManually = true;
               transaction.metadata.reconciledAt = new Date();
             }
@@ -1242,7 +1240,7 @@ exports.checkFundingStatus = async (req, res) => {
             await Notification.create([{
               userId: wallet.userId,
               title: 'Wallet Funded Successfully',
-              message: `Your wallet has been funded with ${amountInNaira} NGN. Reference: ${transaction.reference}.`,
+              message: `Your wallet has been funded with ₦${amountInNaira.toFixed(2)} NGN. Reference: ${transaction.reference}.`,
               transactionId: transaction.reference,
               type: 'funding',
               status: 'completed',
@@ -1291,15 +1289,22 @@ exports.checkFundingStatus = async (req, res) => {
             status: error.response?.status,
             response: error.response?.data,
           });
-          await Notification.create([{
-            userId: wallet.userId,
-            title: 'Funding Verification Failed',
-            message: `Failed to verify funding for reference ${reference}: ${error.message}`,
-            transactionId: reference,
-            type: 'funding',
-            status: 'failed',
-            createdAt: new Date(),
-          }], { session });
+          if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
+            await Notification.create([{
+              userId: wallet.userId,
+              title: 'Funding Verification Failed',
+              message: `Transaction reference ${reference} not found on Paystack. Please verify the reference or contact support.`,
+              transactionId: reference,
+              type: 'funding',
+              status: 'failed',
+              createdAt: new Date(),
+            }], { session });
+            return res.status(404).json({
+              success: false,
+              error: 'Transaction not found on Paystack',
+              details: 'Please verify the transaction reference or contact support.',
+            });
+          }
           throw error;
         }
       }
@@ -1309,14 +1314,15 @@ exports.checkFundingStatus = async (req, res) => {
         status: transaction.status,
         amount: transaction.amount,
         balance: wallet.balance,
+        paystackReference: transaction.paystackReference,
       });
 
-      if (transaction.status === 'pending') {
+      if (transaction.status === 'pending' && transaction.paystackReference) {
         try {
           const response = await axios.get(
-            `https://api.paystack.co/transaction/verify/${reference}`,
+            `https://api.paystack.co/transaction/verify/${transaction.paystackReference}`,
             {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
               timeout: 15000,
             }
           );
@@ -1334,7 +1340,7 @@ exports.checkFundingStatus = async (req, res) => {
             await Notification.create([{
               userId: wallet.userId,
               title: 'Wallet Funded Successfully',
-              message: `Your wallet has been funded with ${amountInNaira} NGN. Reference: ${transaction.reference}.`,
+              message: `Your wallet has been funded with ₦${amountInNaira.toFixed(2)} NGN. Reference: ${transaction.reference}.`,
               transactionId: transaction.reference,
               type: 'funding',
               status: 'completed',
@@ -1366,20 +1372,27 @@ exports.checkFundingStatus = async (req, res) => {
           }
         } catch (error) {
           console.error('Paystack verification error:', {
-            reference,
+            reference: transaction.paystackReference,
             message: error.message,
             status: error.response?.status,
             response: error.response?.data,
           });
-          await Notification.create([{
-            userId: wallet.userId,
-            title: 'Funding Verification Failed',
-            message: `Failed to verify funding for reference ${reference}: ${error.message}`,
-            transactionId: reference,
-            type: 'funding',
-            status: 'failed',
-            createdAt: new Date(),
-          }], { session });
+          if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
+            await Notification.create([{
+              userId: wallet.userId,
+              title: 'Funding Verification Failed',
+              message: `Transaction reference ${transaction.paystackReference} not found on Paystack. Please contact support.`,
+              transactionId: transaction.reference,
+              type: 'funding',
+              status: 'failed',
+              createdAt: new Date(),
+            }], { session });
+            return res.status(404).json({
+              success: false,
+              error: 'Transaction not found on Paystack',
+              details: 'Please contact support to verify the transaction.',
+            });
+          }
           throw error;
         }
       }
@@ -1397,7 +1410,12 @@ exports.checkFundingStatus = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error('Check funding status error:', { reference: req.params.reference, message: error.message });
+    console.error('Check funding status error:', {
+      reference: req.params.reference,
+      message: error.message,
+      status: error.response?.status,
+      response: error.response?.data,
+    });
     let errorMessage = 'Failed to verify transaction';
     let statusCode = 502;
     if (error.code === 'ECONNABORTED') {
@@ -1417,14 +1435,11 @@ exports.checkFundingStatus = async (req, res) => {
     } else if (error.response?.status === 429) {
       errorMessage = 'Too many requests.';
       statusCode = 429;
-    } else if (error.response?.status === 404) {
-      errorMessage = 'Transaction not found.';
-      statusCode = 404;
     }
     return res.status(statusCode).json({
       success: false,
       error: errorMessage,
-      details: error.response?.data?.message || error.message,
+      details: error.response?.data.message || error.message,
     });
   } finally {
     session.endSession();
