@@ -238,7 +238,7 @@ exports.checkFundingReadiness = async (req, res) => {
               },
               {
                 headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                timeout: 10000, // Fixed typo here
+                timeout: 10000,
               }
             );
             if (accountResponse.data.status) break;
@@ -364,68 +364,62 @@ exports.verifyFunding = async (req, res) => {
         }
 
         if (status === 'success') {
-          try {
-            // Verify Paystack balance before transfer
-            const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-              timeout: 10000,
-            });
+          // Check Paystack balance only if BYPASS_PAYSTACK_BALANCE_CHECK is not true
+          if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
+            try {
+              const balanceResponse = await axios.get('https://api.paystack.co/balance', {
+                headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+                timeout: 10000,
+              });
 
-            if (!balanceResponse.data.status) {
-              throw new Error('Failed to fetch Paystack balance');
-            }
+              if (!balanceResponse.data.status) {
+                throw new Error('Failed to fetch Paystack balance');
+              }
 
-            const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-            if (availableBalance < amountInNaira) {
-              console.warn('Insufficient Paystack balance:', { availableBalance, required: amountInNaira });
-              transaction.status = 'pending';
-              transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-              await Notification.create([{
-                userId: wallet.userId,
-                title: 'Funding Pending',
-                message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to insufficient Paystack balance. Ref: ${reference}`,
-                transactionId: transaction.reference,
-                type: 'funding',
-                status: 'pending',
-              }], { session });
-            } else {
-              const transferResult = await transferToPaystackTransferBalance(amountInNaira, `Deposit for ${reference}`, session);
-              if (transferResult.status) {
-                transaction.status = 'completed';
-                wallet.balance += amountInNaira;
-                wallet.totalDeposits += amountInNaira;
-                transaction.metadata.transferredToBalance = true;
-                console.log('Funds transferred to Paystack balance:', { amount: amountInNaira, reference });
-              } else {
+              const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
+              if (availableBalance < amountInNaira) {
+                console.warn('Insufficient Paystack balance:', { availableBalance, required: amountInNaira });
                 transaction.status = 'pending';
-                transaction.metadata.pendingReason = 'Transfer failed, awaiting retry';
+                transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
                 await Notification.create([{
                   userId: wallet.userId,
                   title: 'Funding Pending',
-                  message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to transfer failure. Ref: ${reference}`,
+                  message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to insufficient Paystack balance. Ref: ${reference}`,
                   transactionId: transaction.reference,
                   type: 'funding',
                   status: 'pending',
                 }], { session });
+              } else {
+                // Update wallet balance directly for deposits
+                transaction.status = 'completed';
+                wallet.balance += amountInNaira;
+                wallet.totalDeposits += amountInNaira;
+                console.log('Wallet funded directly:', { amount: amountInNaira, reference });
               }
+            } catch (balanceError) {
+              console.error('Paystack balance check error:', {
+                message: balanceError.message,
+                stack: balanceError.stack,
+              });
+              transaction.metadata.transferError = balanceError.message;
+              transaction.status = 'failed';
+              await Notification.create([{
+                userId: wallet.userId,
+                title: 'Funding Failed',
+                message: `Failed to confirm funding of ₦${amountInNaira.toFixed(2)}. Ref: ${reference}`,
+                transactionId: transaction.reference,
+                type: 'funding',
+                status: 'failed',
+              }], { session });
+              await wallet.save({ session });
+              throw new Error('Failed to confirm funds in Paystack balance');
             }
-          } catch (balanceError) {
-            console.error('Paystack balance transfer/check error:', {
-              message: balanceError.message,
-              stack: balanceError.stack,
-            });
-            transaction.metadata.transferError = balanceError.message;
-            transaction.status = 'failed';
-            await Notification.create([{
-              userId: wallet.userId,
-              title: 'Funding Transfer Failed',
-              message: `Failed to transfer ₦${amountInNaira.toFixed(2)} to Paystack balance. Ref: ${reference}`,
-              transactionId: transaction.reference,
-              type: 'funding',
-              status: 'failed',
-            }], { session });
-            await wallet.save({ session });
-            throw new Error('Failed to confirm funds in Paystack balance');
+          } else {
+            // Bypass balance check and update wallet directly
+            transaction.status = 'completed';
+            wallet.balance += amountInNaira;
+            wallet.totalDeposits += amountInNaira;
+            console.log('Wallet funded directly (balance check bypassed):', { amount: amountInNaira, reference });
           }
         } else {
           transaction.status = 'failed';
@@ -808,6 +802,144 @@ exports.initiateFunding = async (req, res) => {
     await session.endSession();
   }
 };
+
+exports.retryPendingTransactions = async () => {
+  try {
+    const wallets = await Wallet.find({ 'transactions.status': 'pending' });
+    console.log(`Found ${wallets.length} wallets with pending transactions`);
+    for (const wallet of wallets) {
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          for (const transaction of wallet.transactions.filter(t => t.status === 'pending' && t.metadata?.pendingReason === 'Insufficient Paystack balance, awaiting retry')) {
+            try {
+              // Only retry transactions that require balance transfers (e.g., withdrawals, not deposits)
+              if (transaction.type !== 'deposit') {
+                const transferResult = await transferToPaystackTransferBalance(transaction.amount, `Retry for ${transaction.reference}`, session);
+                if (transferResult.status) {
+                  transaction.status = 'completed';
+                  wallet.balance += transaction.amount;
+                  wallet.totalDeposits += transaction.amount;
+                  transaction.metadata.transferredToBalance = true;
+                  delete transaction.metadata.pendingReason;
+                  console.log('Retry successful, funds transferred:', { reference: transaction.reference, amount: transaction.amount });
+
+                  await Notification.create([{
+                    userId: wallet.userId,
+                    title: 'Transaction Completed',
+                    message: `Transaction of ₦${transaction.amount.toFixed(2)} completed after retry. Ref: ${transaction.reference}`,
+                    transactionId: transaction.reference,
+                    type: transaction.type,
+                    status: 'completed',
+                  }], { session });
+                } else {
+                  transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
+                  console.log(`Retry attempt ${transaction.metadata.retryAttempts} for transaction ${transaction.reference}`);
+                  if (transaction.metadata.retryAttempts >= 3) {
+                    transaction.status = 'failed';
+                    transaction.metadata.transferError = 'Max retry attempts reached';
+                    await Notification.create([{
+                      userId: wallet.userId,
+                      title: 'Transaction Failed',
+                      message: `Transaction of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
+                      transactionId: transaction.reference,
+                      type: transaction.type,
+                      status: 'failed',
+                    }], { session });
+                  }
+                }
+              } else {
+                // For deposits, complete the transaction if balance check is bypassed or funds are confirmed
+                if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK === 'true') {
+                  transaction.status = 'completed';
+                  wallet.balance += transaction.amount;
+                  wallet.totalDeposits += transaction.amount;
+                  delete transaction.metadata.pendingReason;
+                  console.log('Deposit completed (balance check bypassed):', { reference: transaction.reference, amount: transaction.amount });
+
+                  await Notification.create([{
+                    userId: wallet.userId,
+                    title: 'Wallet Funded',
+                    message: `Wallet funded with ₦${transaction.amount.toFixed(2)} after retry. Ref: ${transaction.reference}`,
+                    transactionId: transaction.reference,
+                    type: 'funding',
+                    status: 'completed',
+                  }], { session });
+                } else {
+                  const balanceResponse = await axios.get('https://api.paystack.co/balance', {
+                    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+                    timeout: 10000,
+                  });
+
+                  if (!balanceResponse.data.status) {
+                    throw new Error('Failed to fetch Paystack balance');
+                  }
+
+                  const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
+                  if (availableBalance >= transaction.amount) {
+                    transaction.status = 'completed';
+                    wallet.balance += transaction.amount;
+                    wallet.totalDeposits += transaction.amount;
+                    delete transaction.metadata.pendingReason;
+                    console.log('Deposit completed after retry:', { reference: transaction.reference, amount: transaction.amount });
+
+                    await Notification.create([{
+                      userId: wallet.userId,
+                      title: 'Wallet Funded',
+                      message: `Wallet funded with ₦${transaction.amount.toFixed(2)} after retry. Ref: ${transaction.reference}`,
+                      transactionId: transaction.reference,
+                      type: 'funding',
+                      status: 'completed',
+                    }], { session });
+                  } else {
+                    transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
+                    console.log(`Retry attempt ${transaction.metadata.retryAttempts} for transaction ${transaction.reference}`);
+                    if (transaction.metadata.retryAttempts >= 3) {
+                      transaction.status = 'failed';
+                      transaction.metadata.transferError = 'Max retry attempts reached';
+                      await Notification.create([{
+                        userId: wallet.userId,
+                        title: 'Funding Failed',
+                        message: `Funding of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
+                        transactionId: transaction.reference,
+                        type: 'funding',
+                        status: 'failed',
+                      }], { session });
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Retry failed for transaction:', { reference: transaction.reference, error: error.message });
+              transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
+              if (transaction.metadata.retryAttempts >= 3) {
+                transaction.status = 'failed';
+                transaction.metadata.transferError = 'Max retry attempts reached';
+                await Notification.create([{
+                  userId: wallet.userId,
+                  title: 'Transaction Failed',
+                  message: `Transaction of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
+                  transactionId: transaction.reference,
+                  type: transaction.type,
+                  status: 'failed',
+                }], { session });
+              }
+            }
+          }
+          wallet.markModified('transactions');
+          await wallet.save({ session });
+        });
+      } finally {
+        session.endSession();
+      }
+    }
+    console.log('Pending transaction retry job completed');
+  } catch (error) {
+    console.error('Error in retryPendingTransactions:', error.message);
+  }
+};
+
+// ====================================
 
 // New endpoint to manually sync balance with Paystack
 exports.syncWalletBalance = async (req, res) => {
@@ -1826,87 +1958,6 @@ exports.getWalletTransactions = async (req, res) => {
 };
 
 
-exports.retryPendingTransactions = async () => {
-  try {
-    const wallets = await Wallet.find({ 'transactions.status': 'pending' });
-    console.log(`Found ${wallets.length} wallets with pending transactions`);
-    for (const wallet of wallets) {
-      const session = await mongoose.startSession();
-      try {
-        await session.withTransaction(async () => {
-          for (const transaction of wallet.transactions.filter(t => t.status === 'pending' && t.metadata?.pendingReason === 'Insufficient Revenue Balance, awaiting retry')) {
-            try {
-              const transferResult = await transferToPaystackTransferBalance(transaction.amount, `Retry deposit for ${transaction.reference}`, session);
-              if (transferResult.status) {
-                transaction.status = 'completed';
-                wallet.balance += transaction.amount;
-                wallet.totalDeposits += transaction.amount;
-                transaction.metadata.transferredToBalance = true;
-                delete transaction.metadata.pendingReason;
-                console.log('Retry successful, funds transferred:', { reference: transaction.reference, amount: transaction.amount });
-
-                await Notification.create([{
-                  userId: wallet.userId,
-                  title: 'Wallet Funded',
-                  message: `Wallet funded with ₦${transaction.amount.toFixed(2)} after retry. Ref: ${transaction.reference}`,
-                  transactionId: transaction.reference,
-                  type: 'funding',
-                  status: 'completed',
-                }], { session });
-
-                const io = req.app.get('io');
-                if (io) {
-                  io.to(wallet.userId.toString()).emit('balanceUpdate', {
-                    balance: wallet.balance,
-                    totalDeposits: wallet.totalDeposits,
-                    transaction: { amount: transaction.amount, reference: transaction.reference, status: 'completed' },
-                  });
-                }
-              } else {
-                transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
-                console.log(`Retry attempt ${transaction.metadata.retryAttempts} for transaction ${transaction.reference}`);
-                if (transaction.metadata.retryAttempts >= 3) {
-                  transaction.status = 'failed';
-                  transaction.metadata.transferError = 'Max retry attempts reached';
-                  await Notification.create([{
-                    userId: wallet.userId,
-                    title: 'Funding Failed',
-                    message: `Funding of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
-                    transactionId: transaction.reference,
-                    type: 'funding',
-                    status: 'failed',
-                  }], { session });
-                }
-              }
-            } catch (error) {
-              console.error('Retry failed for transaction:', { reference: transaction.reference, error: error.message });
-              transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
-              if (transaction.metadata.retryAttempts >= 3) {
-                transaction.status = 'failed';
-                transaction.metadata.transferError = 'Max retry attempts reached';
-                await Notification.create([{
-                  userId: wallet.userId,
-                  title: 'Funding Failed',
-                  message: `Funding of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
-                  transactionId: transaction.reference,
-                  type: 'funding',
-                  status: 'failed',
-                }], { session });
-              }
-            }
-          }
-          wallet.markModified('transactions');
-          await wallet.save({ session });
-        });
-      } finally {
-        session.endSession();
-      }
-    }
-    console.log('Pending transaction retry job completed');
-  } catch (error) {
-    console.error('Error in retryPendingTransactions:', error.message);
-  }
-};
 
 
 exports.monitorPaystackBalance = async () => {
