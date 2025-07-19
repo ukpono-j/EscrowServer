@@ -24,6 +24,7 @@ router.get('/transactions', authenticateUser, walletController.getWalletTransact
 router.get('/paystack/banks', authenticateUser, walletController.getPaystackBanks);
 router.post('/sync', authenticateUser, walletController.syncWalletBalance);
 router.get('/check-paystack-balance', authenticateUser, walletController.checkPaystackBalance); // Added route
+router.post('/check-funding-readiness', authenticateUser, walletController.checkFundingReadiness);
 router.post('/webhook/paystack', paystackWebhookAuth, walletController.verifyFunding, walletController.verifyWithdrawal);
 
 

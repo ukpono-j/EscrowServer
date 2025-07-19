@@ -1,23 +1,39 @@
-const jwt = require("jsonwebtoken");
+const jwt = require('jsonwebtoken');
 
 function authenticateUser(req, res, next) {
-  let token = req.header("Authorization")?.replace("Bearer ", "") || req.header("access-token");
+  const token = req.header('Authorization')?.replace('Bearer ', '') || req.header('access-token');
+
   if (!token) {
-    console.warn("No token provided in request headers");
-    return res.status(401).json({ error: "Access Denied" });
+    console.warn('No token provided in request headers', {
+      url: req.originalUrl,
+      method: req.method,
+    });
+    return res.status(401).json({ success: false, error: 'Access denied: No token provided' });
   }
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
     const currentTimestamp = Math.floor(Date.now() / 1000);
+
     if (verified.exp && currentTimestamp > verified.exp) {
-      return res.status(401).json({ error: "Token has expired", tokenExpired: true });
+      console.warn('Token has expired', { userId: verified.id });
+      return res.status(401).json({ success: false, error: 'Token has expired', tokenExpired: true });
     }
-    req.user = verified;
+
+    if (!verified.id) {
+      console.error('Token missing userId', { token });
+      return res.status(401).json({ success: false, error: 'Invalid token: Missing userId' });
+    }
+
+    req.user = { id: verified.id }; // Simplified to only include userId
     next();
   } catch (error) {
-    console.error("Token verification failed:", error.message);
-    return res.status(401).json({ error: "Invalid token" });
+    console.error('Token verification failed:', {
+      message: error.message,
+      url: req.originalUrl,
+      method: req.method,
+    });
+    return res.status(401).json({ success: false, error: 'Invalid token' });
   }
 }
 

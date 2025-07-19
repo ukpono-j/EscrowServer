@@ -143,8 +143,18 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           console.error('Failed to create Paystack customer:', {
             userId: this.userId,
             message: customerError.message,
+            status: customerError.response?.status,
             response: customerError.response?.data,
           });
+          if (customerError.response?.status === 401) {
+            await Notification.create([{
+              userId: this.userId,
+              title: 'Payment Provider Error',
+              message: 'Failed to sync wallet due to invalid payment provider configuration. Please contact support.',
+              type: 'system',
+              status: 'error',
+            }], { session });
+          }
           this.lastSynced = new Date();
           await this.save({ session });
           return;
@@ -183,7 +193,6 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           }], { session });
         }
 
-        // Verify Paystack balance
         const balanceResponse = await axios.get('https://api.paystack.co/balance', {
           headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
           timeout: 20000,
@@ -220,6 +229,15 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           status: paystackError.response?.status,
           response: paystackError.response?.data,
         });
+        if (paystackError.response?.status === 401) {
+          await Notification.create([{
+            userId: this.userId,
+            title: 'Payment Provider Error',
+            message: 'Failed to sync wallet due to invalid payment provider configuration. Please contact support.',
+            type: 'system',
+            status: 'error',
+          }], { session });
+        }
         this.lastSynced = new Date();
       }
 
