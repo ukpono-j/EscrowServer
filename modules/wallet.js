@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const axios = require('axios');
+const Notification = require('./Notification'); // Fix: Import Notification model
 
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
@@ -85,14 +86,28 @@ const getPaystackCustomerBalance = async (customerCode, retries = 3) => {
         .filter(t => t.status === 'success' && t.amount > 0)
         .reduce((sum, t) => sum + (t.amount / 100), 0);
 
-      return { totalDeposits, transactions: transactions.map(t => ({ reference: t.reference, amount: t.amount / 100, date: t.transaction_date })) };
+      return {
+        totalDeposits,
+        transactions: transactions.map(t => ({
+          reference: t.reference,
+          amount: t.amount / 100,
+          date: t.transaction_date,
+        })),
+      };
     }
     throw new Error('Invalid Paystack response');
   } catch (error) {
     if (retries > 0 && error.response?.status !== 401) {
+      console.warn(`Retrying Paystack customer balance fetch, attempts left: ${retries}`);
       await new Promise(resolve => setTimeout(resolve, 1000));
       return getPaystackCustomerBalance(customerCode, retries - 1);
     }
+    console.error('Paystack customer balance fetch failed:', {
+      customerCode,
+      message: error.message,
+      status: error.response?.status,
+      response: error.response?.data,
+    });
     throw error;
   }
 };
@@ -132,7 +147,19 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
             }
           );
           if (!customerResponse.data.status) {
-            console.error('Failed to create Paystack customer:', customerResponse.data);
+            console.error('Failed to create Paystack customer:', {
+              userId: this.userId,
+              message: customerResponse.data.message,
+              response: customerResponse.data,
+            });
+            await Notification.create([{
+              userId: this.userId,
+              title: 'Payment Provider Error',
+              message: 'Failed to sync wallet due to payment provider configuration issue. Please contact support.',
+              type: 'system',
+              status: 'error',
+              createdAt: new Date(),
+            }], { session });
             this.lastSynced = new Date();
             await this.save({ session });
             return;
@@ -146,15 +173,14 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
             status: customerError.response?.status,
             response: customerError.response?.data,
           });
-          if (customerError.response?.status === 401) {
-            await Notification.create([{
-              userId: this.userId,
-              title: 'Payment Provider Error',
-              message: 'Failed to sync wallet due to invalid payment provider configuration. Please contact support.',
-              type: 'system',
-              status: 'error',
-            }], { session });
-          }
+          await Notification.create([{
+            userId: this.userId,
+            title: 'Payment Provider Error',
+            message: `Failed to sync wallet: ${customerError.message}. Please contact support.`,
+            type: 'system',
+            status: 'error',
+            createdAt: new Date(),
+          }], { session });
           this.lastSynced = new Date();
           await this.save({ session });
           return;
@@ -173,6 +199,7 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
 
         const discrepancy = Math.abs(localDeposits - totalDeposits);
         if (discrepancy > 0.01) {
+          console.warn(`Balance discrepancy detected for user ${this.userId}: Local ₦${localDeposits.toFixed(2)}, Paystack ₦${totalDeposits.toFixed(2)}`);
           const paystackRefs = new Set(paystackTransactions.map(t => t.reference));
           for (const tx of this.transactions) {
             if (tx.type === 'deposit' && tx.status === 'completed' && !paystackRefs.has(tx.paystackReference)) {
@@ -183,13 +210,13 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
             }
           }
 
-          const Notification = mongoose.model('Notification');
           await Notification.create([{
             userId: this.userId,
             title: 'Balance Discrepancy',
             message: `Local deposits (₦${localDeposits.toFixed(2)}) do not match Paystack (₦${totalDeposits.toFixed(2)})`,
             type: 'system',
             status: 'error',
+            createdAt: new Date(),
           }], { session });
         }
 
@@ -198,30 +225,60 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           timeout: 20000,
         });
         if (!balanceResponse.data.status) {
-          console.error('Failed to verify Paystack balance:', balanceResponse.data);
+          console.error('Failed to verify Paystack balance:', {
+            userId: this.userId,
+            message: balanceResponse.data.message,
+            response: balanceResponse.data,
+          });
+          await Notification.create([{
+            userId: this.userId,
+            title: 'Paystack Balance Check Failed',
+            message: `Failed to verify Paystack balance: ${balanceResponse.data.message}`,
+            type: 'system',
+            status: 'error',
+            createdAt: new Date(),
+          }], { session });
           this.lastSynced = new Date();
           await this.save({ session });
           return;
         }
-        const paystackBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
-        if (paystackBalance < totalDeposits - completedWithdrawals) {
+
+        const paystackBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100 || 0;
+        const expectedBalance = totalDeposits - completedWithdrawals;
+        if (paystackBalance < expectedBalance) {
           console.error('Paystack balance insufficient:', {
             userId: this.userId,
-            paystackBalance,
-            expectedBalance: totalDeposits - completedWithdrawals,
+            paystackBalance: paystackBalance.toFixed(2),
+            expectedBalance: expectedBalance.toFixed(2),
           });
           await Notification.create([{
             userId: this.userId,
             title: 'Paystack Balance Issue',
-            message: `Paystack balance (₦${paystackBalance.toFixed(2)}) is less than expected (₦${(totalDeposits - completedWithdrawals).toFixed(2)})`,
+            message: `Paystack balance (₦${paystackBalance.toFixed(2)}) is less than expected (₦${expectedBalance.toFixed(2)})`,
             type: 'system',
             status: 'error',
+            createdAt: new Date(),
           }], { session });
         }
 
-        this.balance = Math.max(0, totalDeposits - completedWithdrawals);
+        this.balance = Math.max(0, expectedBalance);
         this.totalDeposits = totalDeposits;
         this.lastSynced = new Date();
+
+        await Notification.create([{
+          userId: this.userId,
+          title: 'Wallet Balance Synced',
+          message: `Wallet balance synced with Paystack. New balance: ₦${this.balance.toFixed(2)}`,
+          type: 'system',
+          status: 'completed',
+          createdAt: new Date(),
+        }], { session });
+
+        console.log('Balance synced successfully:', {
+          userId: this.userId,
+          newBalance: this.balance,
+          totalDeposits: this.totalDeposits,
+        });
       } catch (paystackError) {
         console.error('Paystack API error during balance sync:', {
           userId: this.userId,
@@ -231,11 +288,21 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
         });
         if (paystackError.response?.status === 401) {
           await Notification.create([{
-            userId: this.userId,
-            title: 'Payment Provider Error',
-            message: 'Failed to sync wallet due to invalid payment provider configuration. Please contact support.',
+            userId: null, // Admin notification
+            title: 'Paystack API Key Error',
+            message: `Failed to sync wallet for user ${this.userId} due to invalid Paystack API key. Please update PAYSTACK_LIVE_SECRET_KEY.`,
             type: 'system',
             status: 'error',
+            createdAt: new Date(),
+          }], { session });
+        } else {
+          await Notification.create([{
+            userId: this.userId,
+            title: 'Balance Sync Failed',
+            message: `Failed to sync wallet balance: ${paystackError.message}`,
+            type: 'system',
+            status: 'error',
+            createdAt: new Date(),
           }], { session });
         }
         this.lastSynced = new Date();
@@ -272,5 +339,4 @@ walletSchema.index({ 'transactions.reference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
 
-// Export the model, preventing redefinition
 module.exports = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);
