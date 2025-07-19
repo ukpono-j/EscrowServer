@@ -17,7 +17,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["transaction", "waybill", "funding", "confirmation", "payment", "registration", 'withdrawal',],
+    enum: ["transaction", "waybill", "funding", "confirmation", "payment", "registration", 'withdrawal', 'kyc',],
     default: "transaction",
   },
   timestamp: {

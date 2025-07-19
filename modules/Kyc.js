@@ -1,19 +1,18 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-
-const kycSchema = new mongoose.Schema({
+const KYCSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Reference to the User model
+    ref: "User",
     required: true,
   },
   documentType: {
     type: String,
-    enum: ['Drivers License', 'Nin Slip', 'Passport'],
+    enum: ["Drivers License", "NIN Slip", "Passport"],
     required: true,
   },
   documentPhoto: {
-    type: String, // Assuming you store the file path or URL
+    type: String,
     required: true,
   },
   personalPhoto: {
@@ -32,12 +31,26 @@ const kycSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected", "not_submitted"],
+    default: "pending",
+  },
   isSubmitted: {
     type: Boolean,
     default: false,
   },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-const KYC = mongoose.model('KYC', kycSchema);
+KYCSchema.index({ user: 1 });
+KYCSchema.index({ status: 1 });
 
-module.exports = KYC;
+module.exports = mongoose.model("KYC", KYCSchema);

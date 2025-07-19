@@ -47,7 +47,7 @@ const walletSchema = new mongoose.Schema({
     provider_reference: { type: String },
     dedicated_reference: { type: String },
   },
-  lastSynced: { type: Date }, // Added to track last sync time
+  lastSynced: { type: Date },
 });
 
 walletSchema.pre('deleteOne', { document: true, query: false }, async function () {
@@ -237,7 +237,6 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
   }
 };
 
-
 walletSchema.methods.getBalance = async function () {
   await this.syncBalanceWithPaystack();
   return { balance: this.balance, totalDeposits: this.totalDeposits, currency: this.currency, virtualAccount: this.virtualAccount };
@@ -255,4 +254,5 @@ walletSchema.index({ 'transactions.reference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
 
-module.exports = mongoose.model('Wallet', walletSchema);
+// Export the model, preventing redefinition
+module.exports = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);

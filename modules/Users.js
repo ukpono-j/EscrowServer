@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 
 // utils function to generate a random seed
 const generateRandomSeed = () => {
@@ -34,15 +34,19 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    default: '',
+    default: "",
   },
   bank: {
     type: String,
-    default: '',
+    default: "",
   },
   accountNumber: {
     type: String,
-    default: '',
+    default: "",
+  },
+  isAdmin: { // Changed from `role` to `isAdmin` for consistency
+    type: Boolean,
+    default: false,
   },
   avatarSeed: {
     type: String,
@@ -58,11 +62,11 @@ const userSchema = new mongoose.Schema({
   paystackCustomerCode: { type: String, sparse: true },
 });
 
-userSchema.pre('save', async function (next) {
-  if (this.isModified('password')) {
-    console.log('Hashing password for user:', this.email);
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
+    console.log("Hashing password for user:", this.email);
     this.password = await bcrypt.hash(this.password, 10);
-    console.log('Password hashed successfully for user:', this.email);
+    console.log("Password hashed successfully for user:", this.email);
     if (this.isNew) {
       // Ensure avatarSeed is unique
       const existingUser = await this.constructor.findOne({ avatarSeed: this.avatarSeed });
@@ -73,10 +77,10 @@ userSchema.pre('save', async function (next) {
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  console.log('Comparing password for user:', this.email);
+  console.log("Comparing password for user:", this.email);
   const isMatch = await bcrypt.compare(candidatePassword, this.password);
-  console.log('Password comparison result:', isMatch);
+  console.log("Password comparison result:", isMatch);
   return isMatch;
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);

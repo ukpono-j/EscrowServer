@@ -1,15 +1,11 @@
-const express = require('express');
-const { submitKYC, getKYCDetails } = require('../controllers/kycController');
-const authenticateUser = require('../middlewares/authenticateUser');
-const upload = require('../middlewares/upload');
+const express = require("express");
+const { submitKYC, getKYCDetails, uploadFiles } = require("../controllers/kycController");
+const authenticateUser = require("../middlewares/authenticateUser");
 
 const router = express.Router();
 
-router.post('/submit-kyc', authenticateUser, upload.fields([
-  { name: 'documentPhoto', maxCount: 1 },
-  { name: 'personalPhoto', maxCount: 1 },
-]), submitKYC);
-
-router.get('/kyc-details', authenticateUser, getKYCDetails);
+router.post("/submit-kyc", authenticateUser, submitKYC);
+router.get("/kyc-details", authenticateUser, getKYCDetails);
+router.post("/upload", authenticateUser, uploadFiles); // Changed from GET to POST
 
 module.exports = router;
