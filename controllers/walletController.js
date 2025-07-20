@@ -46,11 +46,14 @@ exports.getPaystackSecretKey = () => {
     : process.env.PAYSTACK_SECRET_KEY;
 
   if (!secretKey) {
-    console.error(`PAYSTACK_${isProduction ? 'LIVE_' : ''}SECRET_KEY is not set in environment variables`);
+    console.error(`PAYSTACK_${isProduction ? 'LIVE_' : ''}SECRET_KEY is not set in environment variables`, {
+      nodeEnv: process.env.NODE_ENV,
+      isProduction,
+    });
     throw new Error(`PAYSTACK_${isProduction ? 'LIVE_' : ''}SECRET_KEY not configured`);
   }
 
-  console.log(`Using Paystack ${isProduction ? 'live' : 'test'} secret key`);
+  console.log(`Using Paystack ${isProduction ? 'live' : 'test'} secret key`, { keyLength: secretKey.length });
   return secretKey;
 };
 
@@ -295,21 +298,37 @@ exports.verifyFunding = async (req, res) => {
       await session.withTransaction(async () => {
         const { event, data } = req.body;
         if (!['dedicatedaccount.credit', 'charge.success'].includes(event)) {
-          console.log('Ignoring non-relevant Paystack event:', event);
+          console.log('Ignoring non-relevant Paystack event:', {
+            event,
+            time: new Date().toISOString(),
+          });
           return res.status(200).json({ status: 'success' });
         }
 
         const { reference, amount, status, customer, account_details } = data;
         if (!reference || !amount || !status || !customer?.email) {
-          console.error('Invalid webhook payload:', { event, data });
+          console.error('Invalid webhook payload:', {
+            event,
+            data,
+            time: new Date().toISOString(),
+          });
           return res.status(400).json({ success: false, error: 'Invalid webhook payload' });
         }
 
-        console.log('Processing webhook event:', { event, reference, amount, customerEmail: customer.email });
+        console.log('Processing webhook event:', {
+          event,
+          reference,
+          amount,
+          customerEmail: customer.email,
+          time: new Date().toISOString(),
+        });
 
         const user = await User.findOne({ email: customer.email }).session(session);
         if (!user) {
-          console.error('User not found for email:', customer.email);
+          console.error('User not found for email:', {
+            email: customer.email,
+            time: new Date().toISOString(),
+          });
           throw new Error(`User not found for email: ${customer.email}`);
         }
 
@@ -330,7 +349,10 @@ exports.verifyFunding = async (req, res) => {
           t => t.paystackReference === reference && t.status === 'completed'
         );
         if (existingTransaction) {
-          console.log('Transaction already processed:', reference);
+          console.log('Transaction already processed:', {
+            reference,
+            time: new Date().toISOString(),
+          });
           return res.status(200).json({ status: 'success' });
         }
 
@@ -342,7 +364,10 @@ exports.verifyFunding = async (req, res) => {
         );
 
         if (!transaction) {
-          console.log('Creating new transaction for:', reference);
+          console.log('Creating new transaction for:', {
+            reference,
+            time: new Date().toISOString(),
+          });
           transaction = {
             type: 'deposit',
             amount: amountInNaira,
@@ -362,7 +387,7 @@ exports.verifyFunding = async (req, res) => {
         }
 
         if (status === 'success') {
-          // Check Paystack balance only if BYPASS_PAYSTACK_BALANCE_CHECK is not true
+          // Verify Paystack balance if not bypassed
           if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
             try {
               const balanceResponse = await axios.get('https://api.paystack.co/balance', {
@@ -376,7 +401,12 @@ exports.verifyFunding = async (req, res) => {
 
               const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
               if (availableBalance < amountInNaira) {
-                console.warn('Insufficient Paystack balance:', { availableBalance, required: amountInNaira });
+                console.warn('Insufficient Paystack balance:', {
+                  availableBalance,
+                  required: amountInNaira,
+                  reference,
+                  time: new Date().toISOString(),
+                });
                 transaction.status = 'pending';
                 transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
                 await Notification.create([{
@@ -386,42 +416,57 @@ exports.verifyFunding = async (req, res) => {
                   transactionId: transaction.reference,
                   type: 'funding',
                   status: 'pending',
+                  createdAt: new Date(),
                 }], { session });
               } else {
-                // Update wallet balance directly for deposits
                 transaction.status = 'completed';
                 wallet.balance += amountInNaira;
                 wallet.totalDeposits += amountInNaira;
-                console.log('Wallet funded directly:', { amount: amountInNaira, reference });
+                console.log('Wallet funded successfully:', {
+                  amount: amountInNaira,
+                  reference,
+                  newBalance: wallet.balance,
+                  time: new Date().toISOString(),
+                });
               }
             } catch (balanceError) {
               console.error('Paystack balance check error:', {
                 message: balanceError.message,
                 stack: balanceError.stack,
+                reference,
+                time: new Date().toISOString(),
               });
-              transaction.metadata.transferError = balanceError.message;
-              transaction.status = 'failed';
+              transaction.status = 'pending';
+              transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
               await Notification.create([{
                 userId: wallet.userId,
-                title: 'Funding Failed',
-                message: `Failed to confirm funding of ₦${amountInNaira.toFixed(2)}. Ref: ${reference}`,
+                title: 'Funding Pending',
+                message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to a system issue. Ref: ${reference}`,
                 transactionId: transaction.reference,
                 type: 'funding',
-                status: 'failed',
+                status: 'pending',
+                createdAt: new Date(),
               }], { session });
-              await wallet.save({ session });
-              throw new Error('Failed to confirm funds in Paystack balance');
             }
           } else {
-            // Bypass balance check and update wallet directly
             transaction.status = 'completed';
             wallet.balance += amountInNaira;
             wallet.totalDeposits += amountInNaira;
-            console.log('Wallet funded directly (balance check bypassed):', { amount: amountInNaira, reference });
+            console.log('Wallet funded directly (balance check bypassed):', {
+              amount: amountInNaira,
+              reference,
+              newBalance: wallet.balance,
+              time: new Date().toISOString(),
+            });
           }
         } else {
           transaction.status = 'failed';
           transaction.metadata.error = 'Transaction failed at Paystack';
+          console.log('Transaction failed:', {
+            reference,
+            status,
+            time: new Date().toISOString(),
+          });
         }
 
         transaction.paystackReference = reference;
@@ -429,6 +474,11 @@ exports.verifyFunding = async (req, res) => {
 
         wallet.markModified('transactions');
         await wallet.save({ session });
+
+        // Clear cache to ensure fresh balance on next fetch
+        const cacheKey = `wallet_balance_${wallet.userId}`;
+        cache.del(cacheKey);
+        console.log('Cache cleared for wallet:', { cacheKey, time: new Date().toISOString() });
 
         if (transaction.status !== 'pending') {
           await Notification.create([{
@@ -446,11 +496,78 @@ exports.verifyFunding = async (req, res) => {
 
         const io = req.app.get('io');
         if (io) {
-          io.to(wallet.userId.toString()).emit('balanceUpdate', {
-            balance: wallet.balance,
-            totalDeposits: wallet.totalDeposits,
-            transaction: { amount: amountInNaira, reference: transaction.reference, status: transaction.status },
+          const retryEmit = async (attempts = 5, delay = 2000) => {
+            for (let i = 0; i < attempts; i++) {
+              try {
+                const socketsInRoom = await io.in(wallet.userId.toString()).allSockets();
+                if (socketsInRoom.size > 0) {
+                  io.to(wallet.userId.toString()).emit('balanceUpdate', {
+                    balance: wallet.balance,
+                    totalDeposits: wallet.totalDeposits,
+                    transaction: {
+                      amount: amountInNaira,
+                      reference: transaction.reference,
+                      status: transaction.status,
+                      type: transaction.type,
+                      createdAt: transaction.createdAt,
+                      paystackReference: transaction.paystackReference,
+                    },
+                  });
+                  console.log('Balance update emitted:', {
+                    userId: wallet.userId,
+                    balance: wallet.balance,
+                    reference: transaction.reference,
+                    attempt: i + 1,
+                    time: new Date().toISOString(),
+                  });
+                  return true;
+                } else {
+                  console.warn('No active sockets for user:', {
+                    userId: wallet.userId,
+                    attempt: i + 1,
+                    time: new Date().toISOString(),
+                  });
+                }
+              } catch (error) {
+                console.error('Error emitting balance update:', {
+                  userId: wallet.userId,
+                  attempt: i + 1,
+                  error: error.message,
+                  time: new Date().toISOString(),
+                });
+              }
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            return false;
+          };
+
+          const emitted = await retryEmit();
+          if (!emitted) {
+            console.warn('Failed to emit balance update after retries:', {
+              userId: wallet.userId,
+              time: new Date().toISOString(),
+            });
+            await Notification.create([{
+              userId: wallet.userId,
+              title: 'Balance Update Issue',
+              message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
+              type: 'system',
+              status: 'warning',
+              createdAt: new Date(),
+            }], { session });
+          }
+        } else {
+          console.error('Socket.io instance not available', {
+            time: new Date().toISOString(),
           });
+          await Notification.create([{
+            userId: wallet.userId,
+            title: 'Balance Update Issue',
+            message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
+            type: 'system',
+            status: 'warning',
+            createdAt: new Date(),
+          }], { session });
         }
 
         return res.status(200).json({ status: 'success' });
@@ -461,6 +578,7 @@ exports.verifyFunding = async (req, res) => {
         reference: req.body.data?.reference,
         message: error.message,
         stack: error.stack,
+        time: new Date().toISOString(),
       });
       return res.status(500).json({ success: false, error: 'Internal server error' });
     } finally {

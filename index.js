@@ -59,6 +59,12 @@ const io = socketIo(server, {
   },
   pingTimeout: 60000,
   pingInterval: 25000,
+  transports: ['websocket', 'polling'], // Fallback to polling for Vercel compatibility
+  reconnection: true, // Enable reconnection
+  reconnectionAttempts: 5, // Increase reconnection attempts
+  reconnectionDelay: 1000, // Initial delay of 1 second
+  reconnectionDelayMax: 5000, // Maximum delay of 5 seconds
+  randomizationFactor: 0.5, // Randomize reconnection delay
 });
 
 app.set("io", io);
@@ -73,7 +79,6 @@ const requiredEnvVars = [
   "MONGODB_URI",
   process.env.NODE_ENV === "production" ? "PAYSTACK_LIVE_SECRET_KEY" : "PAYSTACK_SECRET_KEY",
   "PAYSTACK_API_URL",
-  // Removed Cloudinary vars as they're no longer needed
 ];
 
 const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -134,7 +139,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Serve uploads folder statically
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
 
 app.use((req, res, next) => {
   res.on("finish", () => {
@@ -146,14 +151,28 @@ app.use((req, res, next) => {
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   if (!token) {
+    console.error("Socket authentication failed: No token provided", {
+      socketId: socket.id,
+      time: new Date().toISOString(),
+    });
     return next(new Error("Authentication error: No token provided"));
   }
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.user = decoded;
     socket.join(`user_${decoded.id}`); // Join user-specific room
+    console.log("Socket authenticated successfully:", {
+      userId: decoded.id,
+      socketId: socket.id,
+      time: new Date().toISOString(),
+    });
     next();
   } catch (error) {
+    console.error("Socket authentication error:", {
+      socketId: socket.id,
+      message: error.message,
+      time: new Date().toISOString(),
+    });
     return next(new Error(`Authentication error: ${error.message}`));
   }
 });
@@ -173,33 +192,101 @@ const setupSocket = (io) => {
         try {
           const chatroom = await Chatroom.findById(chatroomId);
           if (!chatroom) {
+            console.error("Chatroom not found:", {
+              chatroomId,
+              userId,
+              socketId: socket.id,
+              time: new Date().toISOString(),
+            });
             socket.emit("error", { message: "Chatroom not found" });
             return;
           }
           const transaction = await Transaction.findById(chatroom.transactionId);
           if (!transaction) {
+            console.error("Transaction not found:", {
+              chatroomId,
+              userId,
+              socketId: socket.id,
+              time: new Date().toISOString(),
+            });
             socket.emit("error", { message: "Transaction not found" });
             return;
           }
           const isCreator = transaction.userId.toString() === userId;
           const isParticipant = transaction.participants.some((p) => p.toString() === userId);
           if (!isCreator && !isParticipant) {
+            console.error("Unauthorized room join attempt:", {
+              userId,
+              room,
+              socketId: socket.id,
+              time: new Date().toISOString(),
+            });
             socket.emit("error", { message: "Unauthorized to join this chatroom" });
             return;
           }
           socket.join(room);
-          console.log(`User ${userId} joined room ${room}`);
+          console.log("User joined room:", {
+            userId,
+            room,
+            socketId: socket.id,
+            time: new Date().toISOString(),
+          });
         } catch (error) {
+          console.error("Error joining chatroom:", {
+            userId,
+            room,
+            socketId: socket.id,
+            message: error.message,
+            time: new Date().toISOString(),
+          });
           socket.emit("error", { message: "Failed to join chatroom" });
         }
       } else {
         socket.join(room);
-        console.log(`User ${userId} joined room ${room}`);
+        console.log("User joined room:", {
+          userId,
+          room,
+          socketId: socket.id,
+          time: new Date().toISOString(),
+        });
       }
     });
 
     socket.on("message", (message) => {
+      console.log("Message received:", {
+        userId: socket.user.id,
+        chatroomId: message.chatroomId,
+        socketId: socket.id,
+        time: new Date().toISOString(),
+      });
       io.to(`transaction_${message.chatroomId}`).emit("message", message);
+    });
+
+    socket.on("reconnect", (attempt) => {
+      console.log("Socket reconnected:", {
+        userId: socket.user.id,
+        socketId: socket.id,
+        attempt,
+        time: new Date().toISOString(),
+      });
+    });
+
+    socket.on("reconnect_error", (error) => {
+      console.error("Socket reconnection error:", {
+        userId: socket.user.id,
+        socketId: socket.id,
+        message: error.message,
+        time: new Date().toISOString(),
+      });
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", {
+        userId: socket.user.id,
+        socketId: socket.id,
+        message: error.message,
+        time: new Date().toISOString(),
+      });
     });
 
     socket.on("disconnect", (reason) => {
