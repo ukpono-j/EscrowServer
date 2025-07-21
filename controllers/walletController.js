@@ -125,7 +125,6 @@ const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer
           message: `Failed to transfer ₦${amount.toFixed(2)} to Paystack balance: ${error.message}`,
           type: 'system',
           status: 'error',
-          createdAt: new Date(),
         },
         { session }
       );
@@ -361,8 +360,7 @@ exports.verifyFunding = async (req, res) => {
         let transaction = wallet.transactions.find(
           t =>
             t.paystackReference === reference ||
-            (t.metadata?.virtualAccountId === account_details?.id && t.status === 'pending') ||
-            (t.amount === amountInNaira && t.status === 'pending' && !t.paystackReference)
+            (t.metadata?.virtualAccountId === account_details?.id && t.status === 'pending')
         );
 
         if (!transaction) {
@@ -386,13 +384,6 @@ exports.verifyFunding = async (req, res) => {
             createdAt: new Date(),
           };
           wallet.transactions.push(transaction);
-        } else if (!transaction.paystackReference) {
-          console.log('Updating transaction with paystackReference:', {
-            reference,
-            transactionReference: transaction.reference,
-            time: new Date().toISOString(),
-          });
-          transaction.paystackReference = reference;
         }
 
         if (status === 'success') {
@@ -478,7 +469,9 @@ exports.verifyFunding = async (req, res) => {
           });
         }
 
+        transaction.paystackReference = reference;
         transaction.amount = amountInNaira;
+
         wallet.markModified('transactions');
         await wallet.save({ session });
 
@@ -503,7 +496,7 @@ exports.verifyFunding = async (req, res) => {
 
         const io = req.app.get('io');
         if (io) {
-          const retryEmit = async (attempts = 10, delay = 3000) => {
+          const retryEmit = async (attempts = 5, delay = 2000) => {
             for (let i = 0; i < attempts; i++) {
               try {
                 const socketsInRoom = await io.in(wallet.userId.toString()).allSockets();
@@ -559,7 +552,7 @@ exports.verifyFunding = async (req, res) => {
               title: 'Balance Update Issue',
               message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
               type: 'system',
-              status: 'error', // Changed from 'warning' to 'error'
+              status: 'warning',
               createdAt: new Date(),
             }], { session });
           }
@@ -572,7 +565,7 @@ exports.verifyFunding = async (req, res) => {
             title: 'Balance Update Issue',
             message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
             type: 'system',
-            status: 'error', // Changed from 'warning' to 'error'
+            status: 'warning',
             createdAt: new Date(),
           }], { session });
         }
@@ -1195,529 +1188,80 @@ exports.manualReconcileTransaction = async (req, res) => {
   try {
     await session.withTransaction(async () => {
       const { reference } = req.body;
-      const userId = req.user.id;
-      if (!reference) {
-        console.warn('No reference provided for manual reconciliation', { userId });
-        return res.status(400).json({ success: false, error: 'Reference is required' });
-      }
-
-      let wallet = await Wallet.findOne({ userId }).session(session);
+      const userId = req.user.id; // Fixed from req.user.userId
+      const wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
-        console.warn('Wallet not found, recreating:', { userId });
-        wallet = new Wallet({
-          userId,
-          balance: 0,
-          totalDeposits: 0,
-          currency: 'NGN',
-          transactions: [],
-          lastSynced: new Date(),
+        return res.status(404).json({ success: false, error: 'Wallet not found' });
+      }
+      const transaction = wallet.transactions.find(t => t.reference === reference);
+      if (!transaction || transaction.status !== 'pending') {
+        return res.status(400).json({ success: false, error: 'Invalid or non-pending transaction' });
+      }
+
+      try {
+        const paystackResponse = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+          timeout: 15000,
         });
+        if (!paystackResponse.data.status || paystackResponse.data.data.status !== 'success') {
+          return res.status(400).json({ success: false, error: 'Transaction not successful on payment provider' });
+        }
+
+        transaction.status = 'completed';
+        transaction.metadata.paystackReference = paystackResponse.data.data.reference;
+        wallet.balance += transaction.amount;
+        wallet.totalDeposits += transaction.amount;
+        wallet.markModified('transactions');
         await wallet.save({ session });
-        console.log('Wallet recreated:', { userId, walletId: wallet._id });
-      }
 
-      let transaction = wallet.transactions.find(
-        t => t.reference === reference || t.paystackReference === reference
-      );
+        await Notification.create([{
+          userId,
+          title: 'Funding Confirmed',
+          message: `Funding of ₦${transaction.amount.toFixed(2)} confirmed. Ref: ${reference}`,
+          transactionId: reference,
+          type: 'funding',
+          status: 'completed',
+          createdAt: new Date(),
+        }], { session });
 
-      if (!transaction) {
-        console.log('Transaction not found locally, checking Paystack:', { reference, userId });
-        try {
-          const paystackResponse = await axios.get(
-            `https://api.paystack.co/transaction/verify/${reference}`,
-            {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-              timeout: 15000,
-            }
-          );
-
-          if (paystackResponse.data.status && paystackResponse.data.data?.status === 'success') {
-            const { amount, reference: paystackReference, customer } = paystackResponse.data.data;
-            const amountInNaira = parseFloat(amount) / 100;
-
-            // Search for a matching pending transaction by amount and email
-            transaction = wallet.transactions.find(
-              t =>
-                t.type === 'deposit' &&
-                t.status === 'pending' &&
-                t.amount === amountInNaira &&
-                t.metadata?.customerEmail === customer.email
-            );
-
-            if (!transaction) {
-              console.log('Creating new transaction for Paystack reference:', { reference, userId });
-              transaction = {
-                type: 'deposit',
-                amount: amountInNaira,
-                reference: `FUND_${userId}_${uuidv4()}`,
-                paystackReference: paystackReference,
-                status: 'completed',
-                metadata: {
-                  paymentGateway: 'Paystack',
-                  customerEmail: customer.email,
-                  virtualAccount: wallet.virtualAccount,
-                  reconciledManually: true,
-                  reconciledAt: new Date(),
-                },
-                createdAt: new Date(),
-              };
-              wallet.transactions.push(transaction);
-            } else {
-              console.log('Updating existing transaction with Paystack reference:', {
-                localReference: transaction.reference,
-                paystackReference,
-                userId,
-              });
-              transaction.status = 'completed';
-              transaction.paystackReference = paystackReference;
-              transaction.metadata.reconciledManually = true;
-              transaction.metadata.reconciledAt = new Date();
-            }
-
-            // Verify Paystack balance
-            if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
-              try {
-                const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                  headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
-
-                if (!balanceResponse.data.status) {
-                  throw new Error('Failed to fetch Paystack balance');
-                }
-
-                const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-                if (availableBalance < amountInNaira) {
-                  console.warn('Insufficient Paystack balance during reconciliation:', {
-                    availableBalance,
-                    required: amountInNaira,
-                    reference,
-                    userId,
-                  });
-                  transaction.status = 'pending';
-                  transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-                  await Notification.create([{
-                    userId,
-                    title: 'Funding Pending',
-                    message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to insufficient Paystack balance. Ref: ${transaction.reference}`,
-                    transactionId: transaction.reference,
-                    type: 'funding',
-                    status: 'pending',
-                    createdAt: new Date(),
-                  }], { session });
-                  wallet.markModified('transactions');
-                  await wallet.save({ session });
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Transaction pending due to insufficient Paystack balance',
-                    data: { transaction, newBalance: wallet.balance },
-                  });
-                }
-              } catch (balanceError) {
-                console.error('Paystack balance check error during reconciliation:', {
-                  message: balanceError.message,
-                  status: balanceError.response?.status,
-                  response: balanceError.response?.data,
-                  reference,
-                  userId,
-                });
-                transaction.status = 'pending';
-                transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
-                await Notification.create([{
-                  userId,
-                  title: 'Funding Pending',
-                  message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to a system issue. Ref: ${transaction.reference}`,
-                  transactionId: transaction.reference,
-                  type: 'funding',
-                  status: 'pending',
-                  createdAt: new Date(),
-                }], { session });
-                wallet.markModified('transactions');
-                await wallet.save({ session });
-                return res.status(200).json({
-                  success: true,
-                  message: 'Transaction pending due to system issue',
-                  data: { transaction, newBalance: wallet.balance },
-                });
-              }
-            }
-
-            wallet.balance += amountInNaira;
-            wallet.totalDeposits += amountInNaira;
-            wallet.markModified('transactions');
-            await wallet.save({ session });
-
-            await Notification.create([{
-              userId,
-              title: 'Funding Confirmed',
-              message: `Funding of ₦${amountInNaira.toFixed(2)} confirmed. Ref: ${transaction.reference}`,
-              transactionId: transaction.reference,
-              type: 'funding',
-              status: 'completed',
-              createdAt: new Date(),
-            }], { session });
-
-            // Clear cache
-            const cacheKey = `wallet_balance_${userId}`;
-            cache.del(cacheKey);
-            console.log('Cache cleared for wallet:', { cacheKey, userId, time: new Date().toISOString() });
-
-            const io = req.app.get('io');
-            if (io) {
-              const retryEmit = async (attempts = 10, delay = 3000) => {
-                for (let i = 0; i < attempts; i++) {
-                  try {
-                    const socketsInRoom = await io.in(userId.toString()).allSockets();
-                    if (socketsInRoom.size > 0) {
-                      io.to(userId.toString()).emit('balanceUpdate', {
-                        balance: wallet.balance,
-                        totalDeposits: wallet.totalDeposits,
-                        transaction: {
-                          amount: amountInNaira,
-                          reference: transaction.reference,
-                          status: 'completed',
-                          paystackReference,
-                        },
-                      });
-                      console.log('Balance update emitted:', {
-                        userId,
-                        balance: wallet.balance,
-                        reference: transaction.reference,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                      return true;
-                    } else {
-                      console.warn('No active sockets for user:', {
-                        userId,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error emitting balance update:', {
-                      userId,
-                      attempt: i + 1,
-                      error: error.message,
-                      time: new Date().toISOString(),
-                    });
-                  }
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                }
-                return false;
-              };
-
-              const emitted = await retryEmit();
-              if (!emitted) {
-                console.warn('Failed to emit balance update after retries:', {
-                  userId,
-                  time: new Date().toISOString(),
-                });
-                await Notification.create([{
-                  userId,
-                  title: 'Balance Update Issue',
-                  message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                  type: 'system',
-                  status: 'error',
-                  createdAt: new Date(),
-                }], { session });
-              }
-            } else {
-              console.error('Socket.io instance not available', { time: new Date().toISOString() });
-              await Notification.create([{
-                userId,
-                title: 'Balance Update Issue',
-                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                type: 'system',
-                status: 'error',
-                createdAt: new Date(),
-              }], { session });
-            }
-
-            return res.status(200).json({
-              success: true,
-              message: 'Transaction reconciled successfully',
-              data: {
-                transaction: {
-                  amount: amountInNaira,
-                  reference: transaction.reference,
-                  status: 'completed',
-                  paystackReference,
-                },
-                newBalance: wallet.balance,
-                lastSynced: new Date().toISOString(),
-              },
-            });
-          } else {
-            console.log('Paystack verification failed or pending:', {
-              reference,
-              userId,
-              paystackStatus: paystackResponse.data.data?.status,
-            });
-            return res.status(400).json({
-              success: false,
-              error: 'Transaction not successful on payment provider',
-              data: { status: paystackResponse.data.data?.status || 'pending' },
-            });
-          }
-        } catch (error) {
-          console.error('Paystack verification error:', {
-            userId,
-            reference,
-            message: error.message,
-            status: error.response?.status,
-            response: error.response?.data,
+        const io = req.app.get('io');
+        if (io) {
+          io.to(userId.toString()).emit('balanceUpdate', {
+            balance: wallet.balance,
+            totalDeposits: wallet.totalDeposits,
+            transaction: { amount: transaction.amount, reference, status: 'completed' },
           });
-          if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
-            await Notification.create([{
-              userId,
-              title: 'Reconciliation Failed',
-              message: `Transaction reference ${reference} not found on Paystack. Please verify the reference or contact support.`,
-              transactionId: reference,
-              type: 'funding',
-              status: 'failed',
-              createdAt: new Date(),
-            }], { session });
-            return res.status(404).json({
-              success: false,
-              error: 'Transaction not found on Paystack',
-              details: 'Please verify the transaction reference or contact support.',
-            });
-          }
-          throw error;
         }
-      } else if (transaction.status !== 'pending') {
-        console.log('Transaction already processed:', { reference, status: transaction.status, userId });
-        return res.status(400).json({
-          success: false,
-          error: 'Transaction is not pending',
-          data: { status: transaction.status },
+
+        return res.status(200).json({
+          success: true,
+          data: { transaction: { amount: transaction.amount, reference, status: 'completed' } },
         });
+      } catch (error) {
+        console.error('Paystack verification error:', {
+          userId,
+          reference,
+          message: error.message,
+          status: error.response?.status,
+          response: error.response?.data,
+        });
+        await Notification.create([{
+          userId,
+          title: 'Reconciliation Failed',
+          message: `Failed to reconcile transaction ${reference}: ${error.message}`,
+          transactionId: reference,
+          type: 'funding',
+          status: 'failed',
+          createdAt: new Date(),
+        }], { session });
+        throw error;
       }
-
-      // Verify existing transaction
-      if (transaction.paystackReference) {
-        try {
-          const paystackResponse = await axios.get(
-            `https://api.paystack.co/transaction/verify/${transaction.paystackReference}`,
-            {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-              timeout: 15000,
-            }
-          );
-
-          if (paystackResponse.data.status && paystackResponse.data.data?.status === 'success') {
-            const amountInNaira = parseFloat(paystackResponse.data.data.amount) / 100;
-
-            // Verify Paystack balance
-            if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
-              try {
-                const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                  headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
-
-                if (!balanceResponse.data.status) {
-                  throw new Error('Failed to fetch Paystack balance');
-                }
-
-                const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-                if (availableBalance < amountInNaira) {
-                  console.warn('Insufficient Paystack balance during reconciliation:', {
-                    availableBalance,
-                    required: amountInNaira,
-                    reference: transaction.paystackReference,
-                    userId,
-                  });
-                  transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-                  wallet.markModified('transactions');
-                  await wallet.save({ session });
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Transaction pending due to insufficient Paystack balance',
-                    data: { transaction, newBalance: wallet.balance },
-                  });
-                }
-              } catch (balanceError) {
-                console.error('Paystack balance check error during reconciliation:', {
-                  message: balanceError.message,
-                  status: balanceError.response?.status,
-                  response: balanceError.response?.data,
-                  reference: transaction.paystackReference,
-                  userId,
-                });
-                transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
-                wallet.markModified('transactions');
-                await wallet.save({ session });
-                return res.status(200).json({
-                  success: true,
-                  message: 'Transaction pending due to system issue',
-                  data: { transaction, newBalance: wallet.balance },
-                });
-              }
-            }
-
-            transaction.status = 'completed';
-            transaction.metadata.reconciledManually = true;
-            transaction.metadata.reconciledAt = new Date();
-            wallet.balance += amountInNaira;
-            wallet.totalDeposits += amountInNaira;
-            wallet.markModified('transactions');
-            await wallet.save({ session });
-
-            await Notification.create([{
-              userId,
-              title: 'Funding Confirmed',
-              message: `Funding of ₦${amountInNaira.toFixed(2)} confirmed. Ref: ${transaction.reference}`,
-              transactionId: transaction.reference,
-              type: 'funding',
-              status: 'completed',
-              createdAt: new Date(),
-            }], { session });
-
-            // Clear cache
-            const cacheKey = `wallet_balance_${userId}`;
-            cache.del(cacheKey);
-            console.log('Cache cleared for wallet:', { cacheKey, userId, time: new Date().toISOString() });
-
-            const io = req.app.get('io');
-            if (io) {
-              const retryEmit = async (attempts = 10, delay = 3000) => {
-                for (let i = 0; i < attempts; i++) {
-                  try {
-                    const socketsInRoom = await io.in(userId.toString()).allSockets();
-                    if (socketsInRoom.size > 0) {
-                      io.to(userId.toString()).emit('balanceUpdate', {
-                        balance: wallet.balance,
-                        totalDeposits: wallet.totalDeposits,
-                        transaction: {
-                          amount: amountInNaira,
-                          reference: transaction.reference,
-                          status: 'completed',
-                          paystackReference: transaction.paystackReference,
-                        },
-                      });
-                      console.log('Balance update emitted:', {
-                        userId,
-                        balance: wallet.balance,
-                        reference: transaction.reference,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                      return true;
-                    } else {
-                      console.warn('No active sockets for user:', {
-                        userId,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error emitting balance update:', {
-                      userId,
-                      attempt: i + 1,
-                      error: error.message,
-                      time: new Date().toISOString(),
-                    });
-                  }
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                }
-                return false;
-              };
-
-              const emitted = await retryEmit();
-              if (!emitted) {
-                console.warn('Failed to emit balance update after retries:', {
-                  userId,
-                  time: new Date().toISOString(),
-                });
-                await Notification.create([{
-                  userId,
-                  title: 'Balance Update Issue',
-                  message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                  type: 'system',
-                  status: 'error',
-                  createdAt: new Date(),
-                }], { session });
-              }
-            } else {
-              console.error('Socket.io instance not available', { time: new Date().toISOString() });
-              await Notification.create([{
-                userId,
-                title: 'Balance Update Issue',
-                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                type: 'system',
-                status: 'error',
-                createdAt: new Date(),
-              }], { session });
-            }
-
-            return res.status(200).json({
-              success: true,
-              message: 'Transaction reconciled successfully',
-              data: {
-                transaction: {
-                  amount: amountInNaira,
-                  reference: transaction.reference,
-                  status: 'completed',
-                  paystackReference: transaction.paystackReference,
-                },
-                newBalance: wallet.balance,
-                lastSynced: new Date().toISOString(),
-              },
-            });
-          } else {
-            console.log('Paystack verification failed or pending:', {
-              reference: transaction.paystackReference,
-              userId,
-              paystackStatus: paystackResponse.data.data?.status,
-            });
-            return res.status(400).json({
-              success: false,
-              error: 'Transaction not successful on payment provider',
-              data: { status: paystackResponse.data.data?.status || 'pending' },
-            });
-          }
-        } catch (error) {
-          console.error('Paystack verification error:', {
-            userId,
-            reference: transaction.paystackReference,
-            message: error.message,
-            status: error.response?.status,
-            response: error.response?.data,
-          });
-          if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
-            await Notification.create([{
-              userId,
-              title: 'Reconciliation Failed',
-              message: `Transaction reference ${transaction.paystackReference} not found on Paystack. Please contact support.`,
-              transactionId: transaction.reference,
-              type: 'funding',
-              status: 'failed',
-              createdAt: new Date(),
-            }], { session });
-            return res.status(404).json({
-              success: false,
-              error: 'Transaction not found on Paystack',
-              details: 'Please contact support to verify the transaction.',
-            });
-          }
-          throw error;
-        }
-      }
-
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid or non-pending transaction',
-      });
     });
   } catch (error) {
     console.error('Manual reconcile error:', {
       userId: req.user?.id,
       reference: req.body.reference,
       message: error.message,
-      status: error.response?.status,
-      response: error.response?.data,
     });
     return res.status(500).json({
       success: false,
@@ -1733,63 +1277,59 @@ exports.checkFundingStatus = async (req, res) => {
   try {
     await session.withTransaction(async () => {
       const { reference } = req.params;
-      const userId = req.user.id;
       if (!reference) {
-        console.warn('No reference provided for funding status check', { userId });
+        console.warn('No reference provided');
         return res.status(400).json({ success: false, error: 'Reference is required' });
       }
 
-      console.log('Checking funding status:', { reference, userId });
+      console.log('Checking funding status:', reference);
 
-      let wallet = await Wallet.findOne({ userId }).session(session);
+      let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
       if (!wallet) {
-        console.warn('Wallet not found, recreating:', { userId });
+        console.warn('Wallet not found, recreating:', req.user.id);
         wallet = new Wallet({
-          userId,
+          userId: req.user.id,
           balance: 0,
           totalDeposits: 0,
           currency: 'NGN',
           transactions: [],
-          lastSynced: new Date(),
         });
         await wallet.save({ session });
-        console.log('Wallet recreated:', { userId, walletId: wallet._id });
+        console.log('Wallet recreated:', { userId: req.user.id, walletId: wallet._id });
       }
 
       let transaction = wallet.transactions.find(
-        t => t.reference === reference || t.paystackReference === reference
+        (t) => t.reference === reference || t.paystackReference === reference
       );
 
       if (!transaction) {
-        console.log('Transaction not found locally, checking Paystack:', { reference, userId });
+        console.log('Transaction not found locally, checking Paystack:', reference);
         try {
-          const paystackResponse = await axios.get(
+          const response = await axios.get(
             `https://api.paystack.co/transaction/verify/${reference}`,
             {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
               timeout: 15000,
             }
           );
 
-          if (paystackResponse.data.status && paystackResponse.data.data?.status === 'success') {
-            const { amount, reference: paystackReference, customer } = paystackResponse.data.data;
+          if (response.data.status && response.data.data?.status === 'success') {
+            const { amount, reference: paystackReference, customer } = response.data.data;
             const amountInNaira = parseFloat(amount) / 100;
 
-            // Search for a matching pending transaction by amount and email
             transaction = wallet.transactions.find(
-              t =>
+              (t) =>
                 t.type === 'deposit' &&
                 t.status === 'pending' &&
-                t.amount === amountInNaira &&
-                t.metadata?.customerEmail === customer.email
+                t.metadata?.customerEmail === customer.email &&
+                t.amount === amountInNaira
             );
 
             if (!transaction) {
-              console.log('Creating new transaction for Paystack reference:', { reference, userId });
               transaction = {
                 type: 'deposit',
                 amount: amountInNaira,
-                reference: `FUND_${userId}_${uuidv4()}`,
+                reference: `FUND_${req.user.id}_${require('uuid').v4()}`,
                 paystackReference: paystackReference,
                 status: 'completed',
                 metadata: {
@@ -1803,92 +1343,20 @@ exports.checkFundingStatus = async (req, res) => {
               };
               wallet.transactions.push(transaction);
             } else {
-              console.log('Updating existing transaction with Paystack reference:', {
-                localReference: transaction.reference,
-                paystackReference,
-                userId,
-              });
               transaction.status = 'completed';
               transaction.paystackReference = paystackReference;
               transaction.metadata.reconciledManually = true;
               transaction.metadata.reconciledAt = new Date();
             }
 
-            // Verify Paystack balance
-            if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
-              try {
-                const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                  headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
-
-                if (!balanceResponse.data.status) {
-                  throw new Error('Failed to fetch Paystack balance');
-                }
-
-                const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-                if (availableBalance < amountInNaira) {
-                  console.warn('Insufficient Paystack balance during funding check:', {
-                    availableBalance,
-                    required: amountInNaira,
-                    reference,
-                    userId,
-                  });
-                  transaction.status = 'pending';
-                  transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-                  await Notification.create([{
-                    userId,
-                    title: 'Funding Pending',
-                    message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to insufficient Paystack balance. Ref: ${transaction.reference}`,
-                    transactionId: transaction.reference,
-                    type: 'funding',
-                    status: 'pending',
-                    createdAt: new Date(),
-                  }], { session });
-                  wallet.markModified('transactions');
-                  await wallet.save({ session });
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Transaction pending due to insufficient Paystack balance',
-                    data: { transaction, newBalance: wallet.balance, lastSynced: new Date().toISOString() },
-                  });
-                }
-              } catch (balanceError) {
-                console.error('Paystack balance check error during funding check:', {
-                  message: balanceError.message,
-                  status: balanceError.response?.status,
-                  response: balanceError.response?.data,
-                  reference,
-                  userId,
-                });
-                transaction.status = 'pending';
-                transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
-                await Notification.create([{
-                  userId,
-                  title: 'Funding Pending',
-                  message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to a system issue. Ref: ${transaction.reference}`,
-                  transactionId: transaction.reference,
-                  type: 'funding',
-                  status: 'pending',
-                  createdAt: new Date(),
-                }], { session });
-                wallet.markModified('transactions');
-                await wallet.save({ session });
-                return res.status(200).json({
-                  success: true,
-                  message: 'Transaction pending due to system issue',
-                  data: { transaction, newBalance: wallet.balance, lastSynced: new Date().toISOString() },
-                });
-              }
-            }
-
             wallet.balance += amountInNaira;
             wallet.totalDeposits += amountInNaira;
+
             wallet.markModified('transactions');
             await wallet.save({ session });
 
             await Notification.create([{
-              userId,
+              userId: wallet.userId,
               title: 'Wallet Funded Successfully',
               message: `Your wallet has been funded with ₦${amountInNaira.toFixed(2)} NGN. Reference: ${transaction.reference}.`,
               transactionId: transaction.reference,
@@ -1897,81 +1365,17 @@ exports.checkFundingStatus = async (req, res) => {
               createdAt: new Date(),
             }], { session });
 
-            // Clear cache
-            const cacheKey = `wallet_balance_${userId}`;
-            cache.del(cacheKey);
-            console.log('Cache cleared for wallet:', { cacheKey, userId, time: new Date().toISOString() });
-
             const io = req.app.get('io');
             if (io) {
-              const retryEmit = async (attempts = 10, delay = 3000) => {
-                for (let i = 0; i < attempts; i++) {
-                  try {
-                    const socketsInRoom = await io.in(userId.toString()).allSockets();
-                    if (socketsInRoom.size > 0) {
-                      io.to(userId.toString()).emit('balanceUpdate', {
-                        balance: wallet.balance,
-                        totalDeposits: wallet.totalDeposits,
-                        transaction: {
-                          amount: amountInNaira,
-                          reference: transaction.reference,
-                          status: 'completed',
-                          paystackReference,
-                        },
-                      });
-                      console.log('Balance update emitted:', {
-                        userId,
-                        balance: wallet.balance,
-                        reference: transaction.reference,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                      return true;
-                    } else {
-                      console.warn('No active sockets for user:', {
-                        userId,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error emitting balance update:', {
-                      userId,
-                      attempt: i + 1,
-                      error: error.message,
-                      time: new Date().toISOString(),
-                    });
-                  }
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                }
-                return false;
-              };
-
-              const emitted = await retryEmit();
-              if (!emitted) {
-                console.warn('Failed to emit balance update after retries:', {
-                  userId,
-                  time: new Date().toISOString(),
-                });
-                await Notification.create([{
-                  userId,
-                  title: 'Balance Update Issue',
-                  message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                  type: 'system',
-                  status: 'error',
-                  createdAt: new Date(),
-                }], { session });
-              }
-            } else {
-              console.error('Socket.io instance not available', { time: new Date().toISOString() });
-              await Notification.create([{
-                userId,
-                title: 'Balance Update Issue',
-                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                type: 'system',
-                status: 'error',
-                createdAt: new Date(),
-              }], { session });
+              io.to(wallet.userId.toString()).emit('balanceUpdate', {
+                balance: wallet.balance,
+                totalDeposits: wallet.totalDeposits,
+                transaction: {
+                  amount: amountInNaira,
+                  reference: transaction.reference,
+                  status: 'completed',
+                },
+              });
             }
 
             return res.status(200).json({
@@ -1984,17 +1388,13 @@ exports.checkFundingStatus = async (req, res) => {
               },
             });
           } else {
-            console.log('Paystack verification pending:', {
-              reference,
-              userId,
-              paystackStatus: paystackResponse.data.data?.status,
-            });
+            console.log('Paystack verification pending:', response.data);
             await wallet.save({ session });
             return res.status(200).json({
               success: true,
               message: 'Payment not confirmed',
               data: {
-                status: paystackResponse.data.data?.status || 'pending',
+                status: response.data.data?.status || 'pending',
                 newBalance: wallet.balance,
                 lastSynced: new Date().toISOString(),
               },
@@ -2003,14 +1403,13 @@ exports.checkFundingStatus = async (req, res) => {
         } catch (error) {
           console.error('Paystack verification error:', {
             reference,
-            userId,
             message: error.message,
             status: error.response?.status,
             response: error.response?.data,
           });
           if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
             await Notification.create([{
-              userId,
+              userId: wallet.userId,
               title: 'Funding Verification Failed',
               message: `Transaction reference ${reference} not found on Paystack. Please verify the reference or contact support.`,
               transactionId: reference,
@@ -2034,80 +1433,30 @@ exports.checkFundingStatus = async (req, res) => {
         amount: transaction.amount,
         balance: wallet.balance,
         paystackReference: transaction.paystackReference,
-        userId,
       });
 
       if (transaction.status === 'pending' && transaction.paystackReference) {
         try {
-          const paystackResponse = await axios.get(
+          const response = await axios.get(
             `https://api.paystack.co/transaction/verify/${transaction.paystackReference}`,
             {
-              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+              headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
               timeout: 15000,
             }
           );
 
-          if (paystackResponse.data.status && paystackResponse.data.data?.status === 'success') {
-            const amountInNaira = parseFloat(paystackResponse.data.data.amount) / 100;
-
-            // Verify Paystack balance
-            if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
-              try {
-                const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                  headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
-
-                if (!balanceResponse.data.status) {
-                  throw new Error('Failed to fetch Paystack balance');
-                }
-
-                const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-                if (availableBalance < amountInNaira) {
-                  console.warn('Insufficient Paystack balance during funding check:', {
-                    availableBalance,
-                    required: amountInNaira,
-                    reference: transaction.paystackReference,
-                    userId,
-                  });
-                  transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-                  wallet.markModified('transactions');
-                  await wallet.save({ session });
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Transaction pending due to insufficient Paystack balance',
-                    data: { transaction, newBalance: wallet.balance, lastSynced: new Date().toISOString() },
-                  });
-                }
-              } catch (balanceError) {
-                console.error('Paystack balance check error during funding check:', {
-                  message: balanceError.message,
-                  status: balanceError.response?.status,
-                  response: balanceError.response?.data,
-                  reference: transaction.paystackReference,
-                  userId,
-                });
-                transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
-                wallet.markModified('transactions');
-                await wallet.save({ session });
-                return res.status(200).json({
-                  success: true,
-                  message: 'Transaction pending due to system issue',
-                  data: { transaction, newBalance: wallet.balance, lastSynced: new Date().toISOString() },
-                });
-              }
-            }
-
+          if (response.data.status && response.data.data?.status === 'success') {
+            const amountInNaira = parseFloat(response.data.data.amount) / 100;
             transaction.status = 'completed';
-            transaction.metadata.reconciledManually = true;
-            transaction.metadata.reconciledAt = new Date();
+            transaction.paystackReference = response.data.data.reference;
             wallet.balance += amountInNaira;
             wallet.totalDeposits += amountInNaira;
+
             wallet.markModified('transactions');
             await wallet.save({ session });
 
             await Notification.create([{
-              userId,
+              userId: wallet.userId,
               title: 'Wallet Funded Successfully',
               message: `Your wallet has been funded with ₦${amountInNaira.toFixed(2)} NGN. Reference: ${transaction.reference}.`,
               transactionId: transaction.reference,
@@ -2116,81 +1465,17 @@ exports.checkFundingStatus = async (req, res) => {
               createdAt: new Date(),
             }], { session });
 
-            // Clear cache
-            const cacheKey = `wallet_balance_${userId}`;
-            cache.del(cacheKey);
-            console.log('Cache cleared for wallet:', { cacheKey, userId, time: new Date().toISOString() });
-
             const io = req.app.get('io');
             if (io) {
-              const retryEmit = async (attempts = 10, delay = 3000) => {
-                for (let i = 0; i < attempts; i++) {
-                  try {
-                    const socketsInRoom = await io.in(userId.toString()).allSockets();
-                    if (socketsInRoom.size > 0) {
-                      io.to(userId.toString()).emit('balanceUpdate', {
-                        balance: wallet.balance,
-                        totalDeposits: wallet.totalDeposits,
-                        transaction: {
-                          amount: amountInNaira,
-                          reference: transaction.reference,
-                          status: 'completed',
-                          paystackReference: transaction.paystackReference,
-                        },
-                      });
-                      console.log('Balance update emitted:', {
-                        userId,
-                        balance: wallet.balance,
-                        reference: transaction.reference,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                      return true;
-                    } else {
-                      console.warn('No active sockets for user:', {
-                        userId,
-                        attempt: i + 1,
-                        time: new Date().toISOString(),
-                      });
-                    }
-                  } catch (error) {
-                    console.error('Error emitting balance update:', {
-                      userId,
-                      attempt: i + 1,
-                      error: error.message,
-                      time: new Date().toISOString(),
-                    });
-                  }
-                  await new Promise(resolve => setTimeout(resolve, delay));
-                }
-                return false;
-              };
-
-              const emitted = await retryEmit();
-              if (!emitted) {
-                console.warn('Failed to emit balance update after retries:', {
-                  userId,
-                  time: new Date().toISOString(),
-                });
-                await Notification.create([{
-                  userId,
-                  title: 'Balance Update Issue',
-                  message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                  type: 'system',
-                  status: 'error',
-                  createdAt: new Date(),
-                }], { session });
-              }
-            } else {
-              console.error('Socket.io instance not available', { time: new Date().toISOString() });
-              await Notification.create([{
-                userId,
-                title: 'Balance Update Issue',
-                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                type: 'system',
-                status: 'error',
-                createdAt: new Date(),
-              }], { session });
+              io.to(wallet.userId.toString()).emit('balanceUpdate', {
+                balance: wallet.balance,
+                totalDeposits: wallet.totalDeposits,
+                transaction: {
+                  amount: amountInNaira,
+                  reference: transaction.reference,
+                  status: 'completed',
+                },
+              });
             }
 
             return res.status(200).json({
@@ -2202,33 +1487,17 @@ exports.checkFundingStatus = async (req, res) => {
                 lastSynced: new Date().toISOString(),
               },
             });
-          } else {
-            console.log('Paystack verification failed or pending:', {
-              reference: transaction.paystackReference,
-              userId,
-              paystackStatus: paystackResponse.data.data?.status,
-            });
-            return res.status(200).json({
-              success: true,
-              message: 'Payment not confirmed',
-              data: {
-                status: paystackResponse.data.data?.status || 'pending',
-                newBalance: wallet.balance,
-                lastSynced: new Date().toISOString(),
-              },
-            });
           }
         } catch (error) {
           console.error('Paystack verification error:', {
             reference: transaction.paystackReference,
-            userId,
             message: error.message,
             status: error.response?.status,
             response: error.response?.data,
           });
           if (error.response?.status === 400 && error.response?.data?.code === 'transaction_not_found') {
             await Notification.create([{
-              userId,
+              userId: wallet.userId,
               title: 'Funding Verification Failed',
               message: `Transaction reference ${transaction.paystackReference} not found on Paystack. Please contact support.`,
               transactionId: transaction.reference,
@@ -2246,9 +1515,11 @@ exports.checkFundingStatus = async (req, res) => {
         }
       }
 
+      await wallet.save({ session });
+
       return res.status(200).json({
         success: true,
-        message: `Transaction status: ${transaction.status}`,
+        message: transaction.status === 'completed' ? 'Payment confirmed' : transaction.status === 'failed' ? 'Payment failed' : 'Payment pending',
         data: {
           transaction,
           newBalance: wallet.balance,
@@ -2257,16 +1528,36 @@ exports.checkFundingStatus = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error('Funding status check error:', {
-      userId: req.user?.id,
+    console.error('Check funding status error:', {
       reference: req.params.reference,
       message: error.message,
       status: error.response?.status,
       response: error.response?.data,
     });
-    return res.status(500).json({
+    let errorMessage = 'Failed to verify transaction';
+    let statusCode = 502;
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = 'Payment provider timeout.';
+    } else if (error.response?.status === 401) {
+      errorMessage = 'Invalid Paystack API key.';
+      statusCode = 401;
+      await Notification.create([{
+        userId: req.user.id,
+        title: 'API Key Error',
+        message: 'Failed to verify transaction due to invalid Paystack API key. Please contact support.',
+        transactionId: req.params.reference,
+        type: 'system',
+        status: 'error',
+        createdAt: new Date(),
+      }], { session });
+    } else if (error.response?.status === 429) {
+      errorMessage = 'Too many requests.';
+      statusCode = 429;
+    }
+    return res.status(statusCode).json({
       success: false,
-      error: error.message || 'Failed to check funding status',
+      error: errorMessage,
+      details: error.response?.data.message || error.message,
     });
   } finally {
     session.endSession();
