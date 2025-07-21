@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 const axios = require('axios');
 const Notification = require('./Notification');
+const NodeCache = require('node-cache');
+
+// Singleton cache instance
+const cache = new NodeCache({ stdTTL: 600 });
 
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
@@ -129,10 +133,8 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
       const User = mongoose.model('User');
       let user = await User.findById(this.userId).session(session);
       if (!user) {
-        console.warn('User not found for wallet sync:', this.userId);
-        this.lastSynced = new Date();
-        await this.save({ session });
-        return;
+        console.error('User not found for wallet sync:', { userId: this.userId });
+        throw new Error('User not found');
       }
 
       if (!user.paystackCustomerCode) {
@@ -157,150 +159,101 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
               message: customerResponse.data.message,
               response: customerResponse.data,
             });
-            await Notification.create([{
-              userId: this.userId,
-              title: 'Payment Provider Error',
-              message: 'Failed to sync wallet due to payment provider configuration issue. Please contact support.',
-              type: 'system',
-              status: 'error',
-              createdAt: new Date(),
-            }], { session });
-            this.lastSynced = new Date();
-            await this.save({ session });
-            return;
+            throw new Error('Failed to create Paystack customer');
           }
           user.paystackCustomerCode = customerResponse.data.data.customer_code;
           await user.save({ session });
+          console.log('Paystack customer created:', { userId: this.userId, customerCode: user.paystackCustomerCode });
         } catch (customerError) {
-          console.error('Failed to create Paystack customer:', {
+          console.error('Error creating Paystack customer:', {
             userId: this.userId,
             message: customerError.message,
             status: customerError.response?.status,
             response: customerError.response?.data,
           });
-          await Notification.create([{
-            userId: this.userId,
-            title: 'Payment Provider Error',
-            message: `Failed to sync wallet: ${customerError.message}. Please contact support.`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-          this.lastSynced = new Date();
-          await this.save({ session });
-          return;
+          throw customerError;
         }
       }
 
       try {
         const { totalDeposits, transactions: paystackTransactions } = await getPaystackCustomerBalance(user.paystackCustomerCode);
+        console.log('Paystack transactions fetched:', {
+          userId: this.userId,
+          transactionCount: paystackTransactions.length,
+          totalDeposits,
+        });
+
+        // Update local transactions
+        const paystackRefs = new Set(paystackTransactions.map(t => t.reference));
+        for (const tx of this.transactions) {
+          if (tx.type === 'deposit' && tx.status === 'completed' && !paystackRefs.has(tx.paystackReference)) {
+            console.warn(`Marking transaction ${tx.reference} as failed due to Paystack mismatch`);
+            tx.status = 'failed';
+            tx.metadata.error = 'Not found in Paystack';
+            this.markModified('transactions');
+          }
+          if (tx.type === 'deposit' && tx.status === 'pending' && !tx.paystackReference) {
+            console.log(`Reconciling pending transaction ${tx.reference}`);
+            const matchingTx = paystackTransactions.find(pt => pt.amount === tx.amount && pt.date >= tx.createdAt);
+            if (matchingTx) {
+              tx.paystackReference = matchingTx.reference;
+              tx.status = 'completed';
+              this.markModified('transactions');
+              console.log('Transaction reconciled:', { reference: tx.reference, paystackReference: matchingTx.reference });
+              await Notification.create([{
+                userId: this.userId,
+                title: 'Transaction Reconciled',
+                message: `Pending transaction ${tx.reference} reconciled with Paystack reference ${tx.paystackReference}`,
+                type: 'system',
+                status: 'completed',
+                createdAt: new Date(),
+              }], { session });
+            }
+          }
+        }
+
+        // Add new Paystack transactions not in local wallet
+        for (const pt of paystackTransactions) {
+          if (!this.transactions.some(t => t.paystackReference === pt.reference)) {
+            const amountInNaira = pt.amount;
+            this.transactions.push({
+              type: 'deposit',
+              amount: amountInNaira,
+              reference: `FUND_${this.userId}_${require('uuid').v4()}`,
+              paystackReference: pt.reference,
+              status: 'completed',
+              metadata: {
+                paymentGateway: 'Paystack',
+                customerEmail: user.email,
+                virtualAccount: this.virtualAccount,
+                reconciledManually: true,
+                reconciledAt: new Date(),
+              },
+              createdAt: new Date(pt.date),
+            });
+            this.markModified('transactions');
+            console.log('Added new Paystack transaction:', { reference: pt.reference, amount: amountInNaira });
+          }
+        }
+
+        // Calculate balance
+        const completedDeposits = this.transactions
+          .filter(t => t.type === 'deposit' && t.status === 'completed')
+          .reduce((sum, t) => sum + t.amount, 0);
         const completedWithdrawals = this.transactions
           .filter(t => t.type === 'withdrawal' && t.status === 'completed')
           .reduce((sum, t) => sum + t.amount, 0);
 
-        const localDeposits = this.transactions
-          .filter(t => t.type === 'deposit' && t.status === 'completed')
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const discrepancy = Math.abs(localDeposits - totalDeposits);
-        if (discrepancy > 0.01) {
-          console.warn(`Balance discrepancy detected for user ${this.userId}: Local ₦${localDeposits.toFixed(2)}, Paystack ₦${totalDeposits.toFixed(2)}`);
-          const paystackRefs = new Set(paystackTransactions.map(t => t.reference));
-          for (const tx of this.transactions) {
-            if (tx.type === 'deposit' && tx.status === 'completed' && !paystackRefs.has(tx.paystackReference)) {
-              console.warn(`Marking transaction ${tx.reference} as failed due to Paystack mismatch`);
-              tx.status = 'failed';
-              tx.metadata.error = 'Not found in Paystack';
-              this.markModified('transactions');
-            }
-            // Check for pending transactions with missing paystackReference
-            if (tx.type === 'deposit' && tx.status === 'pending' && !tx.paystackReference) {
-              console.warn(`Pending transaction ${tx.reference} missing paystackReference, attempting to reconcile`);
-              try {
-                const response = await axios.get(`https://api.paystack.co/transaction?customer=${user.paystackCustomerCode}&status=success&perPage=100`, {
-                  headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
-                const matchingTx = response.data.data.find(pt => pt.amount / 100 === tx.amount && pt.customer.email === user.email);
-                if (matchingTx) {
-                  tx.paystackReference = matchingTx.reference;
-                  tx.status = 'completed';
-                  this.balance += tx.amount;
-                  this.totalDeposits += tx.amount;
-                  this.markModified('transactions');
-                  await Notification.create([{
-                    userId: this.userId,
-                    title: 'Transaction Reconciled',
-                    message: `Pending transaction ${tx.reference} reconciled with Paystack reference ${tx.paystackReference}`,
-                    type: 'system',
-                    status: 'completed',
-                    createdAt: new Date(),
-                  }], { session });
-                }
-              } catch (reconcileError) {
-                console.error('Failed to reconcile pending transaction:', {
-                  reference: tx.reference,
-                  message: reconcileError.message,
-                  status: reconcileError.response?.status,
-                });
-              }
-            }
-          }
-
-          await Notification.create([{
-            userId: this.userId,
-            title: 'Balance Discrepancy',
-            message: `Local deposits (₦${localDeposits.toFixed(2)}) do not match Paystack (₦${totalDeposits.toFixed(2)})`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-        }
-
-        const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-          headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
-          timeout: 20000,
-        });
-        if (!balanceResponse.data.status) {
-          console.error('Failed to verify Paystack balance:', {
-            userId: this.userId,
-            message: balanceResponse.data.message,
-            response: balanceResponse.data,
-          });
-          await Notification.create([{
-            userId: this.userId,
-            title: 'Paystack Balance Check Failed',
-            message: `Failed to verify Paystack balance: ${balanceResponse.data.message}`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-          this.lastSynced = new Date();
-          await this.save({ session });
-          return;
-        }
-
-        const paystackBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100 || 0;
-        const expectedBalance = totalDeposits - completedWithdrawals;
-        if (paystackBalance < expectedBalance) {
-          console.error('Paystack balance insufficient:', {
-            userId: this.userId,
-            paystackBalance: paystackBalance.toFixed(2),
-            expectedBalance: expectedBalance.toFixed(2),
-          });
-          await Notification.create([{
-            userId: this.userId,
-            title: 'Paystack Balance Issue',
-            message: `Paystack balance (₦${paystackBalance.toFixed(2)}) is less than expected (₦${expectedBalance.toFixed(2)})`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-        }
-
-        this.balance = Math.max(0, expectedBalance);
-        this.totalDeposits = totalDeposits;
+        this.balance = Math.max(0, completedDeposits - completedWithdrawals);
+        this.totalDeposits = completedDeposits;
         this.lastSynced = new Date();
+
+        console.log('Balance synced successfully:', {
+          userId: this.userId,
+          newBalance: this.balance,
+          totalDeposits: this.totalDeposits,
+          transactionCount: this.transactions.length,
+        });
 
         await Notification.create([{
           userId: this.userId,
@@ -311,11 +264,12 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           createdAt: new Date(),
         }], { session });
 
-        console.log('Balance synced successfully:', {
-          userId: this.userId,
-          newBalance: this.balance,
-          totalDeposits: this.totalDeposits,
-        });
+        await this.save({ session });
+
+        // Invalidate cache after sync using the singleton cache instance
+        const cacheKey = `wallet_balance_${this.userId}`;
+        cache.del(cacheKey);
+        console.log('Cache invalidated after sync:', { cacheKey });
       } catch (paystackError) {
         console.error('Paystack API error during balance sync:', {
           userId: this.userId,
@@ -323,29 +277,8 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
           status: paystackError.response?.status,
           response: paystackError.response?.data,
         });
-        if (paystackError.response?.status === 401) {
-          await Notification.create([{
-            userId: null, // Admin notification
-            title: 'Paystack API Key Error',
-            message: `Failed to sync wallet for user ${this.userId} due to invalid Paystack API key. Please update PAYSTACK_LIVE_SECRET_KEY.`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-        } else {
-          await Notification.create([{
-            userId: this.userId,
-            title: 'Balance Sync Failed',
-            message: `Failed to sync wallet balance: ${paystackError.message}`,
-            type: 'system',
-            status: 'error',
-            createdAt: new Date(),
-          }], { session });
-        }
-        this.lastSynced = new Date();
+        throw paystackError;
       }
-
-      await this.save({ session });
     });
   } catch (error) {
     console.error('Balance sync error:', {
@@ -360,12 +293,10 @@ walletSchema.methods.syncBalanceWithPaystack = async function () {
 };
 
 walletSchema.methods.getBalance = async function () {
-  await this.syncBalanceWithPaystack();
   return { balance: this.balance, totalDeposits: this.totalDeposits, currency: this.currency, virtualAccount: this.virtualAccount };
 };
 
 walletSchema.methods.validateWithdrawal = async function (amount) {
-  await this.syncBalanceWithPaystack();
   if (amount > this.balance) {
     throw new Error(`Insufficient funds: Available ₦${this.balance.toFixed(2)}, Requested ₦${amount.toFixed(2)}`);
   }

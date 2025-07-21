@@ -395,78 +395,15 @@ exports.verifyFunding = async (req, res) => {
         }
 
         if (status === 'success') {
-          // Verify Paystack balance if not bypassed
-          if (process.env.BYPASS_PAYSTACK_BALANCE_CHECK !== 'true') {
-            try {
-              const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                timeout: 10000,
-              });
-
-              if (!balanceResponse.data.status) {
-                throw new Error('Failed to fetch Paystack balance');
-              }
-
-              const availableBalance = balanceResponse.data.data.find(b => b.currency === 'NGN')?.balance / 100;
-              if (availableBalance < amountInNaira) {
-                console.warn('Insufficient Paystack balance:', {
-                  availableBalance,
-                  required: amountInNaira,
-                  reference,
-                  time: new Date().toISOString(),
-                });
-                transaction.status = 'pending';
-                transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-                await Notification.create([{
-                  userId: wallet.userId,
-                  title: 'Funding Pending',
-                  message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to insufficient Paystack balance. Ref: ${reference}`,
-                  transactionId: transaction.reference,
-                  type: 'funding',
-                  status: 'pending',
-                  createdAt: new Date(),
-                }], { session });
-              } else {
-                transaction.status = 'completed';
-                wallet.balance += amountInNaira;
-                wallet.totalDeposits += amountInNaira;
-                console.log('Wallet funded successfully:', {
-                  amount: amountInNaira,
-                  reference,
-                  newBalance: wallet.balance,
-                  time: new Date().toISOString(),
-                });
-              }
-            } catch (balanceError) {
-              console.error('Paystack balance check error:', {
-                message: balanceError.message,
-                stack: balanceError.stack,
-                reference,
-                time: new Date().toISOString(),
-              });
-              transaction.status = 'pending';
-              transaction.metadata.pendingReason = 'Balance check failed, awaiting retry';
-              await Notification.create([{
-                userId: wallet.userId,
-                title: 'Funding Pending',
-                message: `Funding of ₦${amountInNaira.toFixed(2)} is pending due to a system issue. Ref: ${reference}`,
-                transactionId: transaction.reference,
-                type: 'funding',
-                status: 'pending',
-                createdAt: new Date(),
-              }], { session });
-            }
-          } else {
-            transaction.status = 'completed';
-            wallet.balance += amountInNaira;
-            wallet.totalDeposits += amountInNaira;
-            console.log('Wallet funded directly (balance check bypassed):', {
-              amount: amountInNaira,
-              reference,
-              newBalance: wallet.balance,
-              time: new Date().toISOString(),
-            });
-          }
+          transaction.status = 'completed';
+          wallet.balance += amountInNaira;
+          wallet.totalDeposits += amountInNaira;
+          console.log('Wallet funded successfully:', {
+            amount: amountInNaira,
+            reference,
+            newBalance: wallet.balance,
+            time: new Date().toISOString(),
+          });
         } else {
           transaction.status = 'failed';
           transaction.metadata.error = 'Transaction failed at Paystack';
@@ -481,12 +418,35 @@ exports.verifyFunding = async (req, res) => {
         wallet.markModified('transactions');
         await wallet.save({ session });
 
-        // Clear cache to ensure fresh balance on next fetch
+        // Invalidate cache
         const cacheKey = `wallet_balance_${wallet.userId}`;
         cache.del(cacheKey);
         console.log('Cache cleared for wallet:', { cacheKey, time: new Date().toISOString() });
 
-        // Attempt to create notification, but don't fail the transaction if it fails
+        // Emit balance update
+        const io = req.app.get('io');
+        if (io) {
+          io.to(wallet.userId.toString()).emit('balanceUpdate', {
+            balance: wallet.balance,
+            totalDeposits: wallet.totalDeposits,
+            transaction: {
+              amount: amountInNaira,
+              reference: transaction.reference,
+              status: transaction.status,
+              type: transaction.type,
+              createdAt: transaction.createdAt,
+              paystackReference: transaction.paystackReference,
+            },
+          });
+          console.log('Balance update emitted:', {
+            userId: wallet.userId,
+            balance: wallet.balance,
+            reference: transaction.reference,
+            time: new Date().toISOString(),
+          });
+        }
+
+        // Create notification
         try {
           if (transaction.status !== 'pending') {
             await Notification.create([{
@@ -508,99 +468,6 @@ exports.verifyFunding = async (req, res) => {
             message: notificationError.message,
             time: new Date().toISOString(),
           });
-          // Log the error but don't throw it to prevent transaction rollback
-        }
-
-        const io = req.app.get('io');
-        if (io) {
-          const retryEmit = async (attempts = 10, delay = 3000) => {
-            for (let i = 0; i < attempts; i++) {
-              try {
-                const socketsInRoom = await io.in(wallet.userId.toString()).allSockets();
-                if (socketsInRoom.size > 0) {
-                  io.to(wallet.userId.toString()).emit('balanceUpdate', {
-                    balance: wallet.balance,
-                    totalDeposits: wallet.totalDeposits,
-                    transaction: {
-                      amount: amountInNaira,
-                      reference: transaction.reference,
-                      status: transaction.status,
-                      type: transaction.type,
-                      createdAt: transaction.createdAt,
-                      paystackReference: transaction.paystackReference,
-                    },
-                  });
-                  console.log('Balance update emitted:', {
-                    userId: wallet.userId,
-                    balance: wallet.balance,
-                    reference: transaction.reference,
-                    attempt: i + 1,
-                    time: new Date().toISOString(),
-                  });
-                  return true;
-                } else {
-                  console.warn('No active sockets for user:', {
-                    userId: wallet.userId,
-                    attempt: i + 1,
-                    time: new Date().toISOString(),
-                  });
-                }
-              } catch (error) {
-                console.error('Error emitting balance update:', {
-                  userId: wallet.userId,
-                  attempt: i + 1,
-                  error: error.message,
-                  time: new Date().toISOString(),
-                });
-              }
-              await new Promise(resolve => setTimeout(resolve, delay));
-            }
-            return false;
-          };
-
-          const emitted = await retryEmit();
-          if (!emitted) {
-            console.warn('Failed to emit balance update after retries:', {
-              userId: wallet.userId,
-              time: new Date().toISOString(),
-            });
-            try {
-              await Notification.create([{
-                userId: wallet.userId,
-                title: 'Balance Update Issue',
-                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-                type: 'system',
-                status: 'error',
-                createdAt: new Date(),
-              }], { session });
-            } catch (notificationError) {
-              console.error('Notification creation for socket failure failed:', {
-                userId: wallet.userId,
-                message: notificationError.message,
-                time: new Date().toISOString(),
-              });
-            }
-          }
-        } else {
-          console.error('Socket.io instance not available', {
-            time: new Date().toISOString(),
-          });
-          try {
-            await Notification.create([{
-              userId: wallet.userId,
-              title: 'Balance Update Issue',
-              message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-              type: 'system',
-              status: 'error',
-              createdAt: new Date(),
-            }], { session });
-          } catch (notificationError) {
-            console.error('Notification creation for socket failure failed:', {
-              userId: wallet.userId,
-              message: notificationError.message,
-              time: new Date().toISOString(),
-            });
-          }
         }
 
         return res.status(200).json({ status: 'success' });
@@ -631,30 +498,11 @@ exports.getWalletBalance = async (req, res) => {
       });
     }
 
-    const maxRetries = 3;
-    let retries = 0;
-    while (mongoose.connection.readyState !== 1 && retries < maxRetries) {
-      console.log(`Database not connected (state: ${mongoose.connection.readyState}), retrying (${retries + 1}/${maxRetries})...`, {
-        host: mongoose.connection.host,
-        port: mongoose.connection.port,
-        dbName: mongoose.connection.name,
-      });
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      retries++;
-    }
-    if (mongoose.connection.readyState !== 1) {
-      console.error('Database connection failed after retries', {
-        retryAttempts: maxRetries,
-        host: mongoose.connection.host,
-        port: mongoose.connection.port,
-        dbName: mongoose.connection.name,
-      });
-      throw new Error('Database connection failed after retries');
-    }
+    const { noCache } = req.query;
+    const cacheKey = `wallet_balance_${req.user.id}`;
+    const useCache = !noCache || noCache === 'false';
 
-    session = await mongoose.startSession();
-    await session.withTransaction(async () => {
-      const cacheKey = `wallet_balance_${req.user.id}`;
+    if (useCache) {
       const cachedBalance = cache.get(cacheKey);
       if (cachedBalance) {
         console.log('Returning cached wallet balance:', { userId: req.user.id, cacheKey });
@@ -664,7 +512,12 @@ exports.getWalletBalance = async (req, res) => {
           source: 'cache',
         });
       }
+    } else {
+      console.log('Bypassing cache due to noCache parameter:', { userId: req.user.id, noCache });
+    }
 
+    session = await mongoose.startSession();
+    await session.withTransaction(async () => {
       let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
       if (!wallet) {
         wallet = new Wallet({
@@ -687,27 +540,6 @@ exports.getWalletBalance = async (req, res) => {
           success: false,
           error: 'User not found',
         });
-      }
-
-      const syncInterval = 5 * 60 * 1000; // 5 minutes
-      const now = new Date();
-      let syncWarning = null;
-      if (!wallet.lastSynced || (now - new Date(wallet.lastSynced)) > syncInterval) {
-        try {
-          console.log('Attempting Paystack sync for user:', req.user.id);
-          await wallet.syncBalanceWithPaystack();
-          console.log('Paystack sync completed for user:', req.user.id);
-        } catch (syncError) {
-          console.error('Paystack sync error:', {
-            userId: req.user.id,
-            message: syncError.message,
-            stack: syncError.stack,
-            paystackResponse: syncError.response?.data,
-          });
-          syncWarning = 'Balance sync with payment provider failed. Displaying last known balance.';
-        }
-      } else {
-        console.log('Skipping Paystack sync, using recent balance:', { userId: req.user.id, lastSynced: wallet.lastSynced });
       }
 
       await wallet.save({ session });
@@ -743,11 +575,24 @@ exports.getWalletBalance = async (req, res) => {
         },
       };
 
-      cache.set(cacheKey, responseData);
+      if (useCache) {
+        cache.set(cacheKey, responseData);
+        console.log('Cached wallet balance:', { userId: req.user.id, cacheKey });
+      }
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(req.user.id.toString()).emit('balanceUpdate', {
+          balance: wallet.balance,
+          totalDeposits: wallet.totalDeposits,
+          lastSynced: wallet.lastSynced.toISOString(),
+        });
+        console.log('Balance update emitted:', { userId: req.user.id });
+      }
+
       res.status(200).json({
         success: true,
         data: responseData,
-        ...(syncWarning && { warning: syncWarning }),
       });
     });
   } catch (error) {
