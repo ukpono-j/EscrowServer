@@ -25,7 +25,7 @@ const notificationSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "accepted", "declined", "completed", "cancelled", "failed", "error"],
+    enum: ["pending", "accepted", "declined", "completed", "cancelled", "failed", "error", "warning"],
     default: "pending",
   },
   isRead: {

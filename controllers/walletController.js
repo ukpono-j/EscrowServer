@@ -360,7 +360,8 @@ exports.verifyFunding = async (req, res) => {
         let transaction = wallet.transactions.find(
           t =>
             t.paystackReference === reference ||
-            (t.metadata?.virtualAccountId === account_details?.id && t.status === 'pending')
+            (t.metadata?.virtualAccountId === account_details?.id && t.status === 'pending') ||
+            (t.amount === amountInNaira && t.status === 'pending' && !t.paystackReference)
         );
 
         if (!transaction) {
@@ -384,6 +385,13 @@ exports.verifyFunding = async (req, res) => {
             createdAt: new Date(),
           };
           wallet.transactions.push(transaction);
+        } else if (!transaction.paystackReference) {
+          console.log('Updating transaction with paystackReference:', {
+            reference,
+            transactionReference: transaction.reference,
+            time: new Date().toISOString(),
+          });
+          transaction.paystackReference = reference;
         }
 
         if (status === 'success') {
@@ -469,9 +477,7 @@ exports.verifyFunding = async (req, res) => {
           });
         }
 
-        transaction.paystackReference = reference;
         transaction.amount = amountInNaira;
-
         wallet.markModified('transactions');
         await wallet.save({ session });
 
@@ -480,23 +486,34 @@ exports.verifyFunding = async (req, res) => {
         cache.del(cacheKey);
         console.log('Cache cleared for wallet:', { cacheKey, time: new Date().toISOString() });
 
-        if (transaction.status !== 'pending') {
-          await Notification.create([{
+        // Attempt to create notification, but don't fail the transaction if it fails
+        try {
+          if (transaction.status !== 'pending') {
+            await Notification.create([{
+              userId: wallet.userId,
+              title: transaction.status === 'completed' ? 'Wallet Funded' : 'Funding Failed',
+              message: transaction.status === 'completed'
+                ? `Wallet funded with ₦${amountInNaira.toFixed(2)}. Ref: ${transaction.reference}`
+                : `Funding of ₦${amountInNaira.toFixed(2)} failed. Ref: ${transaction.reference}`,
+              transactionId: transaction.reference,
+              type: 'funding',
+              status: transaction.status,
+              createdAt: new Date(),
+            }], { session });
+          }
+        } catch (notificationError) {
+          console.error('Notification creation failed:', {
             userId: wallet.userId,
-            title: transaction.status === 'completed' ? 'Wallet Funded' : 'Funding Failed',
-            message: transaction.status === 'completed'
-              ? `Wallet funded with ₦${amountInNaira.toFixed(2)}. Ref: ${transaction.reference}`
-              : `Funding of ₦${amountInNaira.toFixed(2)} failed. Ref: ${transaction.reference}`,
-            transactionId: transaction.reference,
-            type: 'funding',
-            status: transaction.status,
-            createdAt: new Date(),
-          }], { session });
+            reference,
+            message: notificationError.message,
+            time: new Date().toISOString(),
+          });
+          // Log the error but don't throw it to prevent transaction rollback
         }
 
         const io = req.app.get('io');
         if (io) {
-          const retryEmit = async (attempts = 5, delay = 2000) => {
+          const retryEmit = async (attempts = 10, delay = 3000) => {
             for (let i = 0; i < attempts; i++) {
               try {
                 const socketsInRoom = await io.in(wallet.userId.toString()).allSockets();
@@ -547,27 +564,43 @@ exports.verifyFunding = async (req, res) => {
               userId: wallet.userId,
               time: new Date().toISOString(),
             });
-            await Notification.create([{
-              userId: wallet.userId,
-              title: 'Balance Update Issue',
-              message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-              type: 'system',
-              status: 'warning',
-              createdAt: new Date(),
-            }], { session });
+            try {
+              await Notification.create([{
+                userId: wallet.userId,
+                title: 'Balance Update Issue',
+                message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
+                type: 'system',
+                status: 'error',
+                createdAt: new Date(),
+              }], { session });
+            } catch (notificationError) {
+              console.error('Notification creation for socket failure failed:', {
+                userId: wallet.userId,
+                message: notificationError.message,
+                time: new Date().toISOString(),
+              });
+            }
           }
         } else {
           console.error('Socket.io instance not available', {
             time: new Date().toISOString(),
           });
-          await Notification.create([{
-            userId: wallet.userId,
-            title: 'Balance Update Issue',
-            message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
-            type: 'system',
-            status: 'warning',
-            createdAt: new Date(),
-          }], { session });
+          try {
+            await Notification.create([{
+              userId: wallet.userId,
+              title: 'Balance Update Issue',
+              message: 'Wallet balance updated, but real-time update failed. Please refresh to see the latest balance.',
+              type: 'system',
+              status: 'error',
+              createdAt: new Date(),
+            }], { session });
+          } catch (notificationError) {
+            console.error('Notification creation for socket failure failed:', {
+              userId: wallet.userId,
+              message: notificationError.message,
+              time: new Date().toISOString(),
+            });
+          }
         }
 
         return res.status(200).json({ status: 'success' });
