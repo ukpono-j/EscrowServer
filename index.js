@@ -8,7 +8,7 @@ const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const axios = require("axios");
-const multer = require("multer"); // Add multer
+const multer = require("multer");
 require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
@@ -17,7 +17,7 @@ const Chatroom = require("./modules/Chatroom");
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // Save files to uploads folder
+    cb(null, "Uploads/"); // Save files to uploads folder
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
@@ -59,12 +59,12 @@ const io = socketIo(server, {
   },
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['websocket', 'polling'], // Fallback to polling for Vercel compatibility
-  reconnection: true, // Enable reconnection
-  reconnectionAttempts: 5, // Increase reconnection attempts
-  reconnectionDelay: 1000, // Initial delay of 1 second
-  reconnectionDelayMax: 5000, // Maximum delay of 5 seconds
-  randomizationFactor: 0.5, // Randomize reconnection delay
+  transports: ['websocket', 'polling'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5,
 });
 
 app.set("io", io);
@@ -160,7 +160,7 @@ io.use(async (socket, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     socket.user = decoded;
-    socket.join(`user_${decoded.id}`); // Join user-specific room
+    socket.join(`user_${decoded.id}`);
     console.log("Socket authenticated successfully:", {
       userId: decoded.id,
       socketId: socket.id,
@@ -260,6 +260,17 @@ const setupSocket = (io) => {
         time: new Date().toISOString(),
       });
       io.to(`transaction_${message.chatroomId}`).emit("message", message);
+    });
+
+    socket.on("balanceUpdate", (data) => {
+      console.log("Balance update received:", {
+        userId: socket.user.id,
+        socketId: socket.id,
+        amount: data.amount,
+        reference: data.reference,
+        time: new Date().toISOString(),
+      });
+      io.to(`user_${socket.user.id}`).emit("balanceUpdate", data);
     });
 
     socket.on("reconnect", (attempt) => {
