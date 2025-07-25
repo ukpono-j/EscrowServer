@@ -186,13 +186,12 @@ const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer
       console.log('Initiating Paystack transfer to transfer balance:', { amount, reason });
 
       const response = await axios.post(
-        'https://api.paystack.co/transfer',
+        'https://api.paystack.co/balance/transfer',
         {
-          source: 'balance', // Primary balance (revenue)
+          source: 'revenue', // Source is revenue balance
           amount: Math.round(amount * 100), // Convert to kobo
           currency: 'NGN',
           reason,
-          recipient: 'balance', // Transfer to transfer balance
         },
         {
           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
@@ -214,13 +213,14 @@ const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer
       });
 
       await Notification.create(
-        {
+        [{
           userId: null,
           title: 'Transfer Failure',
           message: `Failed to transfer ₦${amount.toFixed(2)} to Paystack transfer balance: ${error.message}`,
           type: 'system',
           status: 'error',
-        },
+          createdAt: new Date().toISOString(),
+        }],
         { session }
       );
 
