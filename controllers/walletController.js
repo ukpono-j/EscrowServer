@@ -1536,7 +1536,7 @@ exports.withdrawFunds = async (req, res) => {
           timeout: 10000,
         })
       );
-      const availableBalance = balanceResponse.data.data[0].balance / 100;
+      const availableBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
       const transferFee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
       const totalAmount = amount + transferFee;
 
@@ -1587,7 +1587,7 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error(`Failed to create transfer recipient: ${error.response?.data?.message || error.message}`);
       }
 
-      const reference = `WDR_${userId}_${Date.now()}_${require('crypto').randomBytes(4).toString('hex')}`;
+      const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const transaction = {
         type: 'withdrawal',
         amount,
@@ -1626,7 +1626,7 @@ exports.withdrawFunds = async (req, res) => {
           'https://api.paystack.co/transfer',
           {
             source: 'balance',
-            amount: amount * 100,
+            amount: Math.round(amount * 100), // Convert to kobo
             recipient: recipientCode,
             reason: `Withdrawal from wallet (Ref: ${reference})`,
           },
@@ -1643,7 +1643,8 @@ exports.withdrawFunds = async (req, res) => {
       );
       await wallet.save({ session });
 
-      require('../utils/socket').emitBalanceUpdate(userId, {
+      const { emitBalanceUpdate } = require('../utils/socket');
+      emitBalanceUpdate(userId, {
         balance: wallet.balance,
         reference,
         transaction,
