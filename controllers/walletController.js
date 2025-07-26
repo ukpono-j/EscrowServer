@@ -358,6 +358,12 @@ exports.verifyFunding = async (req, res) => {
         }
 
         const amountInNaira = parseFloat(amount) / 100;
+        // Validate amount to catch discrepancies
+        if (isNaN(amountInNaira) || amountInNaira <= 0) {
+          logger.error('Invalid amount in webhook', { reference, amount });
+          throw new Error('Invalid amount received from Paystack');
+        }
+
         let transaction = wallet.transactions.find(
           (t) =>
             t.paystackReference === reference ||
@@ -394,6 +400,7 @@ exports.verifyFunding = async (req, res) => {
             amount: amountInNaira,
             reference,
             newBalance: wallet.balance,
+            rawAmount: amount, // Log raw amount for debugging
           });
         } else {
           transaction.status = 'failed';
@@ -1419,17 +1426,56 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance}, Requested: ₦${amount}`);
       }
 
-      // Check Paystack balance
-      const balanceResponse = await retryAsync(() =>
-        axios.get('https://api.paystack.co/balance', {
-          headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-          timeout: 10000,
-        })
-      );
+      // Check Paystack balance with retries and delay
+      let balanceResponse;
+      let attempts = 0;
+      const maxAttempts = 3;
+      const delay = 2000; // 2 seconds delay between retries
+
+      while (attempts < maxAttempts) {
+        try {
+          balanceResponse = await retryAsync(() =>
+            axios.get('https://api.paystack.co/balance', {
+              headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+              timeout: 10000,
+            })
+          );
+          logger.info('Paystack balance response', {
+            status: balanceResponse.data.status,
+            data: balanceResponse.data.data,
+          });
+          break;
+        } catch (error) {
+          attempts++;
+          logger.warn('Paystack balance check failed', {
+            attempt: attempts,
+            error: error.message,
+            status: error.response?.status,
+          });
+          if (attempts === maxAttempts) {
+            throw new Error('Failed to retrieve Paystack balance after retries');
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+
+      // Handle malformed balance response
+      if (!balanceResponse.data?.status || !Array.isArray(balanceResponse.data.data)) {
+        logger.error('Invalid Paystack balance response', { response: balanceResponse.data });
+        throw new Error('Invalid response from Paystack balance check');
+      }
+
       const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
       const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
       const transferFee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
       const totalAmount = amount + transferFee;
+
+      logger.info('Paystack balance check', {
+        transferBalance,
+        revenueBalance,
+        required: totalAmount,
+        transferFee,
+      });
 
       // Ensure sufficient funds in transfer balance or revenue balance
       if (totalAmount > transferBalance + revenueBalance) {
@@ -1522,7 +1568,7 @@ exports.withdrawFunds = async (req, res) => {
         axios.post(
           'https://api.paystack.co/transfer',
           {
-            source: 'balance', // Paystack automatically uses transfer balance
+            source: 'balance',
             amount: Math.round(amount * 100), // Convert to kobo
             recipient: recipientCode,
             reason: `Withdrawal from wallet (Ref: ${reference})`,
