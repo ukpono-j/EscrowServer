@@ -312,11 +312,30 @@ exports.verifyFunding = async (req, res) => {
     try {
       await session.withTransaction(async () => {
         const { event, data } = req.body;
-        if (!['dedicatedaccount.credit', 'charge.success'].includes(event)) {
+        if (!['dedicatedaccount.credit', 'charge.success', 'balance.warning', 'balance.critical'].includes(event)) {
           logger.info('Ignoring non-relevant Paystack event', { event });
           return res.status(200).json({ status: 'success' });
         }
 
+        // Handle balance warning/critical events
+        if (['balance.warning', 'balance.critical'].includes(event)) {
+          const balance = data?.balance ? parseFloat(data.balance) / 100 : 0;
+          await Notification.create(
+            [{
+              userId: null, // System-level notification
+              title: event === 'balance.warning' ? 'Low Balance Warning' : 'Critical Balance Alert',
+              message: `Paystack balance is ₦${balance.toFixed(2)}. Please top up to ensure smooth operations.`,
+              type: 'system',
+              status: 'warning',
+              createdAt: new Date(),
+            }],
+            { session }
+          );
+          logger.info('Balance alert processed', { event, balance });
+          return res.status(200).json({ status: 'success' });
+        }
+
+        // Funding event handling
         const { reference, amount, status, customer, account_details } = data;
         if (!reference || !amount || !status || !customer?.email) {
           logger.error('Invalid webhook payload', { event, data });
@@ -357,24 +376,45 @@ exports.verifyFunding = async (req, res) => {
           return res.status(200).json({ status: 'success' });
         }
 
+        // Ensure amount is in kobo and convert to naira
         const amountInNaira = parseFloat(amount) / 100;
-        // Validate amount to catch discrepancies
         if (isNaN(amountInNaira) || amountInNaira <= 0) {
           logger.error('Invalid amount in webhook', { reference, amount });
           throw new Error('Invalid amount received from Paystack');
+        }
+
+        // Verify transaction with Paystack to ensure correct amount
+        const paystackResponse = await axios.get(
+          `https://api.paystack.co/transaction/verify/${reference}`,
+          {
+            headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+            timeout: 10000,
+          }
+        );
+        if (!paystackResponse.data.status || paystackResponse.data.data.status !== 'success') {
+          logger.error('Paystack verification failed', { reference, response: paystackResponse.data });
+          throw new Error('Transaction verification failed');
+        }
+        const verifiedAmount = parseFloat(paystackResponse.data.data.amount) / 100;
+        if (verifiedAmount !== amountInNaira) {
+          logger.warn('Amount mismatch in webhook', {
+            webhookAmount: amountInNaira,
+            verifiedAmount,
+            reference,
+          });
         }
 
         let transaction = wallet.transactions.find(
           (t) =>
             t.paystackReference === reference ||
             (t.metadata?.virtualAccountId === account_details?.id && t.status === 'pending') ||
-            (t.amount === amountInNaira && t.status === 'pending' && !t.paystackReference)
+            (t.amount === verifiedAmount && t.status === 'pending' && !t.paystackReference)
         );
 
         if (!transaction) {
           transaction = {
             type: 'deposit',
-            amount: amountInNaira,
+            amount: verifiedAmount,
             reference: `FUND_${wallet.userId}_${uuidv4()}`,
             paystackReference: reference,
             status: 'pending',
@@ -390,17 +430,18 @@ exports.verifyFunding = async (req, res) => {
           wallet.transactions.push(transaction);
         } else if (!transaction.paystackReference) {
           transaction.paystackReference = reference;
+          transaction.amount = verifiedAmount; // Update amount if mismatched
         }
 
         if (status === 'success') {
           transaction.status = 'completed';
-          wallet.balance += amountInNaira;
-          wallet.totalDeposits += amountInNaira;
+          wallet.balance += verifiedAmount;
+          wallet.totalDeposits += verifiedAmount;
           logger.info('Wallet funded successfully', {
-            amount: amountInNaira,
+            amount: verifiedAmount,
             reference,
             newBalance: wallet.balance,
-            rawAmount: amount, // Log raw amount for debugging
+            rawAmount: amount,
           });
         } else {
           transaction.status = 'failed';
@@ -421,7 +462,7 @@ exports.verifyFunding = async (req, res) => {
             balance: wallet.balance,
             totalDeposits: wallet.totalDeposits,
             transaction: {
-              amount: amountInNaira,
+              amount: verifiedAmount,
               reference: transaction.reference,
               status: transaction.status,
               type: transaction.type,
@@ -443,8 +484,8 @@ exports.verifyFunding = async (req, res) => {
               title: transaction.status === 'completed' ? 'Wallet Funded' : 'Funding Failed',
               message:
                 transaction.status === 'completed'
-                  ? `Wallet funded with ₦${amountInNaira.toFixed(2)}. Ref: ${transaction.reference}`
-                  : `Funding of ₦${amountInNaira.toFixed(2)} failed. Ref: ${transaction.reference}`,
+                  ? `Wallet funded with ₦${verifiedAmount.toFixed(2)}. Ref: ${transaction.reference}`
+                  : `Funding of ₦${verifiedAmount.toFixed(2)} failed. Ref: ${transaction.reference}`,
               transactionId: transaction.reference,
               type: 'funding',
               status: transaction.status,
@@ -1623,22 +1664,48 @@ exports.checkPaystackBalance = async (req, res) => {
       timeout: 10000,
     });
 
-    if (response.data?.status) {
-      const balanceData = response.data.data;
-      return res.status(200).json({
-        success: true,
-        data: {
-          currency: balanceData.currency,
-          transferBalance: balanceData.find(b => b.balance_type === 'transfers')?.balance / 100 || 0,
-          revenueBalance: balanceData.find(b => b.balance_type === 'revenue')?.balance / 100 || 0,
-          lastUpdated: new Date().toISOString(),
-        },
-      });
-    } else {
+    if (!response.data?.status) {
       throw new Error('Invalid response from Paystack');
     }
+
+    const balanceData = response.data.data;
+    // Handle both array and object balance responses
+    let transferBalance = 0;
+    let revenueBalance = 0;
+    let currency = 'NGN';
+
+    if (Array.isArray(balanceData)) {
+      transferBalance = balanceData.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
+      revenueBalance = balanceData.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
+      currency = balanceData.find(b => b.currency)?.currency || 'NGN';
+    } else if (typeof balanceData === 'object') {
+      transferBalance = balanceData.transfers?.balance / 100 || balanceData.balance / 100 || 0;
+      revenueBalance = balanceData.revenue?.balance / 100 || balanceData.balance / 100 || 0;
+      currency = balanceData.currency || 'NGN';
+    }
+
+    logger.info('Paystack balance retrieved', {
+      transferBalance,
+      revenueBalance,
+      currency,
+      rawData: balanceData,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        currency,
+        transferBalance,
+        revenueBalance,
+        lastUpdated: new Date().toISOString(),
+      },
+    });
   } catch (error) {
-    console.error('Failed to check Paystack balance:', error.message);
+    logger.error('Failed to check Paystack balance', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
     return res.status(503).json({
       success: false,
       error: 'Unable to check payment gateway balance',
