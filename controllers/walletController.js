@@ -180,54 +180,6 @@ const serializeUserData = (user) => {
   };
 };
 
-const transferToPaystackTransferBalance = async (amount, reason = 'Fund Transfer Balance', session) => {
-  return limiter.schedule(async () => {
-    try {
-      console.log('Initiating Paystack transfer to transfer balance:', { amount, reason });
-
-      const response = await axios.post(
-        'https://api.paystack.co/balance/transfer',
-        {
-          source: 'revenue', // Source is revenue balance
-          amount: Math.round(amount * 100), // Convert to kobo
-          currency: 'NGN',
-          reason,
-        },
-        {
-          headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
-          timeout: 10000,
-        }
-      );
-
-      if (!response.data.status) {
-        throw new Error(response.data.message || 'Failed to transfer to Paystack transfer balance');
-      }
-
-      console.log('Transfer to transfer balance successful:', response.data.data);
-      return { status: true, data: response.data.data };
-    } catch (error) {
-      console.error('Transfer to transfer balance error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-      });
-
-      await Notification.create(
-        [{
-          userId: null,
-          title: 'Transfer Failure',
-          message: `Failed to transfer ₦${amount.toFixed(2)} to Paystack transfer balance: ${error.message}`,
-          type: 'system',
-          status: 'error',
-          createdAt: new Date().toISOString(),
-        }],
-        { session }
-      );
-
-      throw error;
-    }
-  });
-};
 
 exports.checkFundingReadiness = async (req, res) => {
   const session = await mongoose.startSession();
@@ -443,29 +395,6 @@ exports.verifyFunding = async (req, res) => {
             reference,
             newBalance: wallet.balance,
           });
-
-          // Transfer funds to Paystack transfer balance
-          try {
-            const transferResult = await transferToPaystackTransferBalance(
-              amountInNaira,
-              `Fund Transfer for ${reference}`,
-              session
-            );
-            if (transferResult.status) {
-              transaction.metadata.transferredToBalance = true;
-              logger.info('Funds transferred to Paystack transfer balance', {
-                amount: amountInNaira,
-                reference,
-              });
-            }
-          } catch (transferError) {
-            logger.error('Failed to transfer to Paystack transfer balance', {
-              reference,
-              message: transferError.message,
-            });
-            transaction.metadata.pendingReason = 'Insufficient Paystack balance, awaiting retry';
-            transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
-          }
         } else {
           transaction.status = 'failed';
           transaction.metadata.error = 'Transaction failed at Paystack';
@@ -848,67 +777,27 @@ exports.retryPendingTransactions = async () => {
         await session.withTransaction(async () => {
           for (const transaction of wallet.transactions.filter(t => t.status === 'pending')) {
             try {
-              if (transaction.metadata?.pendingReason === 'Insufficient Paystack balance, awaiting retry') {
-                const transferResult = await transferToPaystackTransferBalance(
-                  transaction.amount,
-                  `Retry for ${transaction.reference}`,
-                  session
-                );
-                if (transferResult.status) {
-                  transaction.status = 'completed';
-                  transaction.metadata.transferredToBalance = true;
-                  delete transaction.metadata.pendingReason;
-                  console.log('Retry successful, funds transferred:', { reference: transaction.reference, amount: transaction.amount });
-
-                  await Notification.create([{
-                    userId: wallet.userId,
-                    title: 'Transaction Completed',
-                    message: `Transaction of ₦${transaction.amount.toFixed(2)} completed after retry. Ref: ${transaction.reference}`,
-                    transactionId: transaction.reference,
-                    type: transaction.type,
-                    status: 'completed',
-                    createdAt: new Date(),
-                  }], { session });
-                } else {
-                  transaction.metadata.retryAttempts = (transaction.metadata.retryAttempts || 0) + 1;
-                  console.log(`Retry attempt ${transaction.metadata.retryAttempts} for transaction ${transaction.reference}`);
-                  if (transaction.metadata.retryAttempts >= 3) {
-                    transaction.status = 'failed';
-                    transaction.metadata.transferError = 'Max retry attempts reached';
-                    await Notification.create([{
-                      userId: wallet.userId,
-                      title: 'Transaction Failed',
-                      message: `Transaction of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
-                      transactionId: transaction.reference,
-                      type: transaction.type,
-                      status: 'failed',
-                      createdAt: new Date(),
-                    }], { session });
+              if (transaction.type === 'deposit' && transaction.paystackReference) {
+                const response = await axios.get(
+                  `https://api.paystack.co/transaction/verify/${transaction.paystackReference}`,
+                  {
+                    headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+                    timeout: 10000,
                   }
-                }
-              } else if (transaction.type === 'deposit') {
-                const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-                  headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                  timeout: 10000,
-                });
+                );
 
-                if (!balanceResponse.data.status) {
-                  throw new Error('Failed to fetch Paystack balance');
-                }
-
-                const availableBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
-                if (availableBalance >= transaction.amount) {
+                if (response.data.status && response.data.data?.status === 'success') {
+                  const amountInNaira = parseFloat(response.data.data.amount) / 100;
                   transaction.status = 'completed';
-                  wallet.balance += transaction.amount;
-                  wallet.totalDeposits += transaction.amount;
-                  transaction.metadata.transferredToBalance = true;
-                  delete transaction.metadata.pendingReason;
-                  console.log('Deposit completed after retry:', { reference: transaction.reference, amount: transaction.amount });
+                  wallet.balance += amountInNaira;
+                  wallet.totalDeposits += amountInNaira;
+                  transaction.metadata.reconciledAt = new Date();
+                  console.log('Deposit completed after retry:', { reference: transaction.reference, amount: amountInNaira });
 
                   await Notification.create([{
                     userId: wallet.userId,
                     title: 'Wallet Funded',
-                    message: `Wallet funded with ₦${transaction.amount.toFixed(2)} after retry. Ref: ${transaction.reference}`,
+                    message: `Wallet funded with ₦${amountInNaira.toFixed(2)} after retry. Ref: ${transaction.reference}`,
                     transactionId: transaction.reference,
                     type: 'funding',
                     status: 'completed',
@@ -1530,22 +1419,26 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance}, Requested: ₦${amount}`);
       }
 
+      // Check Paystack balance
       const balanceResponse = await retryAsync(() =>
         axios.get('https://api.paystack.co/balance', {
           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
           timeout: 10000,
         })
       );
-      const availableBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
+      const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
+      const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
       const transferFee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
       const totalAmount = amount + transferFee;
 
-      if (totalAmount > availableBalance) {
+      // Ensure sufficient funds in transfer balance or revenue balance
+      if (totalAmount > transferBalance + revenueBalance) {
         throw new Error(
-          `Insufficient Paystack balance. Available: ₦${availableBalance}, Required: ₦${totalAmount} (including ₦${transferFee} fee)`
+          `Insufficient Paystack balance. Transfer balance: ₦${transferBalance}, Revenue balance: ₦${revenueBalance}, Required: ₦${totalAmount} (including ₦${transferFee} fee)`
         );
       }
 
+      // Validate bank details
       const banksResponse = await retryAsync(() =>
         axios.get('https://api.paystack.co/bank', {
           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
@@ -1567,6 +1460,7 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error('Account verification failed or name mismatch');
       }
 
+      // Create transfer recipient
       let recipientCode;
       try {
         const recipientResponse = await retryAsync(() =>
@@ -1587,6 +1481,7 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error(`Failed to create transfer recipient: ${error.response?.data?.message || error.message}`);
       }
 
+      // Record transaction
       const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const transaction = {
         type: 'withdrawal',
@@ -1606,6 +1501,7 @@ exports.withdrawFunds = async (req, res) => {
       wallet.balance -= amount;
       await wallet.save({ session });
 
+      // Create notification
       await Notification.create(
         [
           {
@@ -1621,11 +1517,12 @@ exports.withdrawFunds = async (req, res) => {
         { session }
       );
 
+      // Initiate transfer
       const transferResponse = await retryAsync(() =>
         axios.post(
           'https://api.paystack.co/transfer',
           {
-            source: 'balance',
+            source: 'balance', // Paystack automatically uses transfer balance
             amount: Math.round(amount * 100), // Convert to kobo
             recipient: recipientCode,
             reason: `Withdrawal from wallet (Ref: ${reference})`,
@@ -1638,11 +1535,13 @@ exports.withdrawFunds = async (req, res) => {
         throw new Error(transferResponse.data.message || 'Failed to initiate transfer');
       }
 
+      // Update transaction status
       wallet.transactions = wallet.transactions.map((tx) =>
         tx.reference === reference ? { ...tx, status: 'completed', updatedAt: new Date() } : tx
       );
       await wallet.save({ session });
 
+      // Emit balance update
       const { emitBalanceUpdate } = require('../utils/socket');
       emitBalanceUpdate(userId, {
         balance: wallet.balance,
