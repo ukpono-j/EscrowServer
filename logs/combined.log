@@ -572,3 +572,36 @@
 {"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:10:24.058Z","userId":"687bda699635303a0a2eec6e"}
 {"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:10:26.090Z","userId":"687bda699635303a0a2eec6e"}
 {"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:10:27.512Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:07.029Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:08.296Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:09.147Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:09.457Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:10.203Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:10.355Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:11.190Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:11.726Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:12.661Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:13.556Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:14.568Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:15.600Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:16.176Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:17.002Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:45.665Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:45.733Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:45.748Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:23:46.735Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:26:14.089Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:26:14.120Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:26:14.911Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:26:15.672Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Cached wallet balance","timestamp":"2025-07-26T09:26:27.282Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:26:27.282Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-26T09:26:27.651Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-26T09:26:27.679Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-26T09:26:27.694Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-26T09:26:28.178Z","userId":"687bda699635303a0a2eec6e"}
+{"cacheKey":"wallet_balance_687bda699635303a0a2eec6e","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-26T09:26:28.283Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:33:36.399Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:33:36.748Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:33:39.229Z","userId":"687bda699635303a0a2eec6e"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-26T09:33:40.597Z","userId":"687bda699635303a0a2eec6e"}
