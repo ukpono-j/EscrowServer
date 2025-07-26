@@ -1,0 +1,3 @@
+// logger.js
+const pino = require('pino')({ level: 'info' });
+module.exports = pino;

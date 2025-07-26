@@ -4,8 +4,8 @@ const Notification = require('./Notification');
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
   amount: { type: Number, required: true, min: 0 },
-  reference: { type: String, required: true, unique: true }, // Ensure unique transaction references
-  paystackReference: { type: String, unique: true, sparse: true }, // Unique Paystack reference
+  reference: { type: String, required: true, unique: true },
+  paystackReference: { type: String, unique: true, sparse: true },
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
   metadata: {
     paymentGateway: { type: String },
@@ -30,12 +30,29 @@ const transactionSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+const withdrawalRequestSchema = new mongoose.Schema({
+  type: { type: String, default: 'withdrawal' },
+  amount: { type: Number, required: true, min: 100 },
+  reference: { type: String, required: true, unique: true },
+  status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+  metadata: {
+    accountNumber: { type: String, required: true },
+    accountName: { type: String, required: true },
+    requestDate: { type: Date, required: true },
+    expectedPayoutDate: { type: Date, required: true },
+    manualProcessing: { type: Boolean, default: true },
+  },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
 const walletSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   balance: { type: Number, default: 0, min: 0 },
   totalDeposits: { type: Number, default: 0, min: 0 },
   currency: { type: String, default: 'NGN' },
   transactions: [transactionSchema],
+  withdrawalRequests: [withdrawalRequestSchema],
   virtualAccount: {
     account_name: { type: String },
     account_number: { type: String },
@@ -56,11 +73,14 @@ walletSchema.pre('deleteMany', async function () {
   throw new Error('Bulk wallet deletion not allowed');
 });
 
-// Validate transactions before saving
+// Validate transactions and withdrawal requests before saving
 walletSchema.pre('save', function (next) {
+  const references = new Set();
+  const paystackRefs = new Set();
+  const withdrawalRefs = new Set();
+
+  // Validate transactions
   if (this.isModified('transactions')) {
-    const references = new Set();
-    const paystackRefs = new Set();
     this.transactions.forEach((tx, index) => {
       if (!tx.reference) {
         throw new Error(`Transaction at index ${index} has invalid reference`);
@@ -71,11 +91,35 @@ walletSchema.pre('save', function (next) {
       if (tx.paystackReference && paystackRefs.has(tx.paystackReference)) {
         throw new Error(`Duplicate Paystack reference ${tx.paystackReference} at index ${index}`);
       }
-      references.add(tx.reference);
+      references.add(tx.reference.toLowerCase());
       if (tx.paystackReference) paystackRefs.add(tx.paystackReference);
-      tx.updatedAt = new Date(); // Update timestamp
+      tx.updatedAt = new Date();
     });
   }
+
+  // Validate withdrawal requests
+  if (this.isModified('withdrawalRequests')) {
+    this.withdrawalRequests.forEach((wr, index) => {
+      if (!wr.reference) {
+        throw new Error(`Withdrawal request at index ${index} has invalid reference`);
+      }
+      if (withdrawalRefs.has(wr.reference)) {
+        throw new Error(`Duplicate withdrawal request reference ${wr.reference} at index ${index}`);
+      }
+      if (wr.amount < 100) {
+        throw new Error(`Withdrawal request at index ${index} has invalid amount. Minimum is ₦100`);
+      }
+      if (!/^\d{10}$/.test(wr.metadata?.accountNumber)) {
+        throw new Error(`Withdrawal request at index ${index} has invalid account number`);
+      }
+      if (!wr.metadata?.accountName) {
+        throw new Error(`Withdrawal request at index ${index} has invalid account name`);
+      }
+      withdrawalRefs.add(wr.reference.toLowerCase());
+      wr.updatedAt = new Date();
+    });
+  }
+
   this.lastSynced = new Date();
   next();
 });
@@ -104,5 +148,6 @@ walletSchema.index({ userId: 1 });
 walletSchema.index({ 'transactions.reference': 1 }, { unique: true });
 walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true, unique: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
+walletSchema.index({ 'withdrawalRequests.reference': 1 }, { unique: true });
 
 module.exports = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);
