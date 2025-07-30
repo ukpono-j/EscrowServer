@@ -1,6 +1,6 @@
 const User = require('../modules/Users');
 const Transaction = require('../modules/Transactions');
-const KYC = require('../modules/KYC');
+const KYC = require('../modules/Kyc');
 
 exports.getDashboardStats = async (req, res) => {
   try {

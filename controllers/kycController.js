@@ -1,4 +1,4 @@
-const KYC = require("../modules/KYC");
+const KYC = require("../modules/Kyc");
 const Notification = require("../modules/Notification");
 const path = require("path");
 
