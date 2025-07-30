@@ -1419,6 +1419,30 @@ exports.confirmTransaction = async (req, res) => {
       return res.status(400).json({ message: "Transaction must be funded before confirmation" });
     }
 
+    // Check buyer's wallet balance before allowing confirmation
+    if (isBuyer) {
+      const buyerWallet = await Wallet.findOne({ userId }).session(session);
+      if (!buyerWallet) {
+        console.log('Buyer wallet not found:', { userId });
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: "Buyer wallet not found" });
+      }
+      if (buyerWallet.balance < transaction.paymentAmount) {
+        console.log('Insufficient buyer wallet balance:', {
+          balance: buyerWallet.balance,
+          required: transaction.paymentAmount,
+        });
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          message: "Insufficient funds in wallet to confirm transaction",
+          shortfall: transaction.paymentAmount - buyerWallet.balance,
+          balance: buyerWallet.balance,
+        });
+      }
+    }
+
     if (isBuyer) {
       if (transaction.buyerConfirmed) {
         console.log('Buyer already confirmed:', transactionId);

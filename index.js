@@ -45,6 +45,7 @@ const io = socketIo(server, {
   cors: {
     origin: [
       process.env.VITE_BASE_URL || "http://localhost:5173",
+      "http://localhost:5174", // Add this line
       "https://res.cloudinary.com",
       "https://api.multiavatar.com",
       "https://escrow-app.onrender.com",
@@ -120,6 +121,7 @@ async function manageIndexes() {
 const corsOptions = {
   origin: [
     process.env.VITE_BASE_URL || "http://localhost:5173",
+    "http://localhost:5174", // Add this line
     "https://res.cloudinary.com",
     "https://api.multiavatar.com",
     "https://escrow-app.onrender.com",
@@ -128,6 +130,7 @@ const corsOptions = {
     "https://mymiddleman.ng",
     "https://paywithsylo.com",
     "https://1ea518b60f04.ngrok-free.app",
+    "http://localhost:3001",
   ],
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
   credentials: true,
@@ -327,6 +330,7 @@ const initializeRoutes = () => {
   const kycRoutes = require("./routes/kycRoutes");
   const walletRoutes = require("./routes/walletRoutes");
   const messageRoutes = require("./routes/messages");
+  const adminRoutes = require('./routes/adminRoutes');
 
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
@@ -335,6 +339,7 @@ const initializeRoutes = () => {
   app.use("/api/kyc", kycRoutes);
   app.use("/api/wallet", walletRoutes);
   app.use("/api/messages", messageRoutes);
+  app.use('/api/admin', adminRoutes);
 };
 
 // Expose multer upload middleware for KYC routes

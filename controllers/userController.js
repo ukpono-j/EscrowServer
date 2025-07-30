@@ -303,6 +303,24 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+
+
+const CRITICAL_BANKS = [
+  { name: 'Access Bank', code: '044' },
+  { name: 'Wema Bank', code: '035' },
+  { name: 'Opay', code: '999992' },
+  { name: 'Kuda Bank', code: '090197' },
+  { name: 'Zenith Bank', code: '057' },
+  { name: 'Moniepoint Microfinance Bank', code: '090405' },
+  { name: 'Palmpay', code: '999991' },
+  { name: 'First Bank', code: '011' },
+  { name: 'GTBank', code: '058' },
+  { name: 'UBA', code: '033' },
+  { name: 'Fidelity Bank', code: '070' },
+];
+
+const FALLBACK_BANKS = ['wema-bank', 'access-bank', 'zenith-bank', 'uba'];
+
 exports.register = async (req, res) => {
   let session = null;
   let savedUser = null;
@@ -310,33 +328,29 @@ exports.register = async (req, res) => {
   console.time('Register Process');
 
   try {
-    // Start transaction for user and wallet creation
     session = await mongoose.startSession();
     session.startTransaction();
     console.log('Transaction started');
 
     const { firstName, lastName, email, password, dateOfBirth, phoneNumber } = req.body;
     console.log('Register attempt:', { firstName, lastName, email, dateOfBirth, phoneNumber, password: '[REDACTED]' });
+    const isTestMode = process.env.NODE_ENV !== 'production';
 
     // Validate inputs
     if (!firstName || !lastName || !email || !password || !dateOfBirth || !phoneNumber) {
-      console.log('Missing required fields');
       throw new Error('All fields are required');
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      console.log('Invalid email format:', email);
       throw new Error('Invalid email format');
     }
 
     if (!/^(0\d{10}|\+234\d{10})$/.test(phoneNumber)) {
-      console.log('Invalid phone number format:', phoneNumber);
       throw new Error('Phone number must be 11 digits starting with 0 or +234');
     }
 
     const dob = new Date(dateOfBirth);
     if (isNaN(dob.getTime())) {
-      console.log('Invalid date of birth:', dateOfBirth);
       throw new Error('Invalid date of birth');
     }
     const today = new Date();
@@ -346,23 +360,18 @@ exports.register = async (req, res) => {
       age--;
     }
     if (age < 18) {
-      console.log('User is under 18:', { dateOfBirth, age });
       throw new Error('You must be at least 18 years old');
     }
 
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      console.log('Invalid password format:', email);
       throw new Error('Password must be at least 8 characters and include uppercase, number, and special character');
     }
 
-    console.timeLog('Register Process', 'Before checking existing user');
     const existingUser = await User.findOne({ email }).session(session);
     if (existingUser) {
-      console.log('Email already exists:', email);
       throw new Error('Email already in use');
     }
 
-    console.timeLog('Register Process', 'Before creating user');
     const user = new User({
       firstName,
       lastName,
@@ -372,40 +381,14 @@ exports.register = async (req, res) => {
       phoneNumber,
     });
 
-    // Save user with strict validation
-    try {
-      savedUser = await user.save({ session });
-      console.log('User saved (raw):', savedUser);
-      if (!savedUser || !savedUser._id || !mongoose.Types.ObjectId.isValid(savedUser._id)) {
-        console.error('User creation failed: Invalid or missing user ID', { savedUser });
-        throw new Error('User creation failed: Invalid or missing user ID');
-      }
-      console.log('User saved successfully:', { userId: savedUser._id, email: savedUser.email });
-    } catch (userError) {
-      console.error('User creation error:', {
-        message: userError.message,
-        stack: userError.stack,
-        userData: { firstName, lastName, email, dateOfBirth, phoneNumber },
-      });
-      throw new Error('Failed to save user: ' + userError.message);
-    }
+    savedUser = await user.save({ session });
+    console.log('User saved successfully:', { userId: savedUser._id, email: savedUser.email });
 
-    // Verify user in database
-    const verifiedUser = await User.findById(savedUser._id).session(session);
-    if (!verifiedUser) {
-      console.error('User not found in database after save:', { userId: savedUser._id });
-      throw new Error('User not found after save');
-    }
-    console.log('User verified in database:', { userId: verifiedUser._id });
-
-    console.timeLog('Register Process', 'Before checking existing wallet');
     const existingWallet = await Wallet.findOne({ userId: savedUser._id.toString() }).session(session);
     if (existingWallet) {
-      console.error('Wallet already exists for user:', savedUser._id);
       throw new Error('Wallet already exists for this user');
     }
 
-    console.timeLog('Register Process', 'Before creating wallet');
     const wallet = new Wallet({
       userId: savedUser._id.toString(),
       balance: 0,
@@ -414,42 +397,18 @@ exports.register = async (req, res) => {
       transactions: [],
       virtualAccount: null,
     });
-    try {
-      savedWallet = await wallet.save({ session });
-      if (!savedWallet || !savedWallet._id) {
-        console.error('Wallet creation failed: No wallet ID returned', { userId: savedUser._id });
-        throw new Error('Failed to save wallet');
-      }
-      console.log('Wallet created:', { walletId: savedWallet._id, userId: savedWallet.userId });
-    } catch (walletError) {
-      console.error('Wallet creation error:', {
-        message: walletError.message,
-        stack: walletError.stack,
-        userId: savedUser._id,
-      });
-      throw new Error('Failed to save wallet: ' + walletError.message);
-    }
-
-    console.timeLog('Register Process', 'Before verifying wallet');
-    const verifyWallet = await Wallet.findOne({ userId: savedUser._id.toString() }).session(session);
-    if (!verifyWallet) {
-      console.error('Wallet verification failed: Wallet not found after save', { userId: savedUser._id });
-      throw new Error('Wallet creation failed: Wallet not found after save');
-    }
-    console.log('Wallet verified:', { walletId: verifyWallet._id });
+    savedWallet = await wallet.save({ session });
+    console.log('Wallet created:', { walletId: savedWallet._id, userId: savedWallet.userId });
 
     // Commit transaction before non-critical steps
     await session.commitTransaction();
     console.log('Transaction committed for user:', { userId: savedUser._id, walletId: savedWallet._id });
-
-    // End session as transaction is complete
     session.endSession();
     session = null;
 
-    // Non-critical steps: Paystack customer creation
+    // Non-critical: Create Paystack customer
     let customerCode;
     try {
-      console.timeLog('Register Process', 'Before creating Paystack customer');
       const customerResponse = await axios.post(
         'https://api.paystack.co/customer',
         {
@@ -461,9 +420,10 @@ exports.register = async (req, res) => {
         },
         {
           headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+            Authorization: `Bearer ${exports.getPaystackSecretKey()}`,
             'Content-Type': 'application/json',
           },
+          timeout: 15000,
         }
       );
 
@@ -472,96 +432,124 @@ exports.register = async (req, res) => {
       }
 
       customerCode = customerResponse.data.data.customer_code;
-      console.log('Paystack customer created:', { userId: savedUser._id, customerCode });
+      await User.findByIdAndUpdate(savedUser._id, { paystackCustomerCode: customerCode });
+      logger.info('Paystack customer created', { userId: savedUser._id, customerCode });
     } catch (error) {
-      console.error('Error creating Paystack customer:', error.response?.data || error.message);
-      // Create notification for Paystack failure (non-critical, outside transaction)
-      try {
-        await Notification.create({
-          userId: savedUser._id,
-          title: 'Account Setup Failed',
-          message: 'Unable to create payment profile. Please update your profile to enable funding.',
-          type: 'registration',
-          status: 'failed',
-        });
-        console.log('Notification created for Paystack failure:', { userId: savedUser._id });
-      } catch (notificationError) {
-        console.warn('Failed to create notification for Paystack customer error:', notificationError.message);
-      }
-    }
-
-    // Non-critical steps: Create dedicated virtual account
-    if (customerCode) {
-      try {
-        console.timeLog('Register Process', 'Before creating virtual account');
-        const accountResponse = await axios.post(
-          'https://api.paystack.co/dedicated_account',
-          {
-            customer: customerCode,
-            preferred_bank: 'wema-bank',
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (!accountResponse.data.status) {
-          throw new Error(accountResponse.data.message || 'Failed to create virtual account');
-        }
-
-        wallet.virtualAccount = {
-          account_name: accountResponse.data.data.account_name,
-          account_number: accountResponse.data.data.account_number,
-          bank_name: accountResponse.data.data.bank.name,
-          provider: 'Paystack',
-          provider_reference: accountResponse.data.data.id,
-        };
-        await wallet.save(); // No session needed, transaction is already committed
-        console.log('Virtual account created:', {
-          userId: savedUser._id,
-          accountNumber: wallet.virtualAccount.account_number,
-        });
-      } catch (error) {
-        console.error('Error creating virtual account:', error.response?.data || error.message);
-        // Create notification for virtual account failure (non-critical, outside transaction)
-        try {
-          await Notification.create({
-            userId: savedUser._id,
-            title: 'Account Setup Failed',
-            message: 'Unable to create virtual account. Please update your profile to enable funding.',
-            type: 'registration',
-            status: 'failed',
-          });
-          console.log('Notification created for virtual account failure:', { userId: savedUser._id });
-        } catch (notificationError) {
-          console.warn('Failed to create notification for virtual account error:', notificationError.message);
-        }
-      }
-    }
-
-    // Non-critical: Create welcome notification
-    console.timeLog('Register Process', 'Before creating welcome notification');
-    try {
+      logger.error('Error creating Paystack customer', {
+        userId: savedUser._id,
+        error: error.response?.data?.message || error.message,
+        response: error.response?.data,
+      });
       await Notification.create({
         userId: savedUser._id,
-        title: 'Welcome to the Platform',
-        message: `Welcome, ${firstName}! Your account has been created successfully.`,
+        title: 'Account Setup Warning',
+        message: 'Unable to create payment profile. Please try funding your wallet to enable this feature.',
         type: 'registration',
-        status: 'completed',
+        status: 'warning',
       });
-      console.log('Welcome notification created:', { userId: savedUser._id });
-    } catch (notificationError) {
-      console.warn('Failed to create welcome notification:', notificationError.message);
     }
 
-    // Generate JWT
-    console.timeLog('Register Process', 'Before generating JWT');
-    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    console.log('Registration successful:', { userId: savedUser._id, token: '[REDACTED]' });
+    // Non-critical: Create dedicated virtual account
+    if (customerCode) {
+      let accountResponse = null;
+      let lastError = null;
 
+      // Use mock data in test mode if enabled
+      if (isTestMode && process.env.ENABLE_MOCK_VERIFICATION) {
+        logger.info('Using mock virtual account for test mode', { userId: savedUser._id });
+        wallet.virtualAccount = {
+          account_name: `${firstName} ${lastName}`.trim(),
+          account_number: `TEST${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+          bank_name: 'Mock Bank',
+          provider: 'Paystack',
+          provider_reference: `MOCK_${crypto.randomBytes(8).toString('hex')}`,
+          created_at: new Date(),
+          active: true,
+        };
+        await wallet.save();
+      } else {
+        // Use CRITICAL_BANKS in live mode, FALLBACK_BANKS in test mode
+        const banksToTry = isTestMode ? FALLBACK_BANKS : CRITICAL_BANKS.map(bank => bank.name.toLowerCase().replace(' ', '-'));
+        for (const bank of banksToTry) {
+          try {
+            accountResponse = await axios.post(
+              'https://api.paystack.co/dedicated_account',
+              {
+                customer: customerCode,
+                preferred_bank: bank,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${exports.getPaystackSecretKey()}`,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 15000,
+              }
+            );
+            if (accountResponse.data.status) {
+              logger.info('Virtual account created', {
+                userId: savedUser._id,
+                bank,
+                accountNumber: accountResponse.data.data.account_number,
+              });
+              break;
+            }
+          } catch (error) {
+            lastError = error;
+            logger.warn(`Failed to create virtual account with ${bank}`, {
+              userId: savedUser._id,
+              customerCode,
+              error: error.response?.data?.message || error.message,
+              status: error.response?.status,
+              response: error.response?.data,
+            });
+          }
+        }
+
+        if (!accountResponse?.data?.status) {
+          logger.error('Failed to create virtual account with all banks', {
+            userId: savedUser._id,
+            customerCode,
+            lastError: lastError?.response?.data?.message || lastError?.message,
+          });
+          await Notification.create({
+            userId: savedUser._id,
+            title: 'Account Setup Warning',
+            message: isTestMode
+              ? 'Virtual account creation is not supported in test mode. Please try funding your wallet in live mode or contact support.'
+              : 'Unable to create virtual account. Please try funding your wallet to enable this feature.',
+            type: 'registration',
+            status: 'warning',
+          });
+        } else {
+          wallet.virtualAccount = {
+            account_name: accountResponse.data.data.account_name,
+            account_number: accountResponse.data.data.account_number,
+            bank_name: accountResponse.data.data.bank.name,
+            provider: 'Paystack',
+            provider_reference: accountResponse.data.data.id,
+            created_at: new Date(),
+            active: true,
+          };
+          await wallet.save();
+          logger.info('Virtual account created', {
+            userId: savedUser._id,
+            accountNumber: wallet.virtualAccount.account_number,
+          });
+        }
+      }
+    }
+
+    // Create welcome notification
+    await Notification.create({
+      userId: savedUser._id,
+      title: 'Welcome to the Platform',
+      message: `Welcome, ${firstName}! Your account has been created successfully.`,
+      type: 'registration',
+      status: 'completed',
+    });
+
+    const token = jwt.sign({ id: savedUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({
       data: {
         message: 'User and wallet registered successfully',
@@ -574,32 +562,25 @@ exports.register = async (req, res) => {
           phoneNumber: savedUser.phoneNumber,
           dateOfBirth: savedUser.dateOfBirth,
         },
-        walletId: savedWallet._id,
+        wallet: {
+          walletId: savedWallet._id,
+          virtualAccount: wallet.virtualAccount,
+        },
       },
     });
     console.timeEnd('Register Process');
   } catch (error) {
-    console.error('Registration error:', {
+    logger.error('Registration error', {
       message: error.message,
       stack: error.stack,
-      body: req.body,
-      savedUserState: savedUser ? { _id: savedUser._id, email: savedUser.email } : 'undefined',
+      body: { ...req.body, password: '[REDACTED]' },
     });
 
-    // Rollback transaction if session exists
     if (session) {
-      try {
-        await session.abortTransaction();
-        console.log('Transaction aborted');
-      } catch (abortError) {
-        console.error('Error aborting transaction:', abortError.message);
-      } finally {
-        session.endSession();
-        console.log('Session ended');
-      }
+      await session.abortTransaction();
+      session.endSession();
     }
 
-    // Handle specific errors
     if (error.code === 11000) {
       if (error.keyPattern?.email) {
         return res.status(400).json({ error: 'Email already in use', details: error.keyValue });
@@ -610,15 +591,16 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Database error: Duplicate key', details: error.keyValue });
     }
 
-    // Handle validation errors
-    if (error.message.includes('All fields are required') ||
+    if (
+      error.message.includes('All fields are required') ||
       error.message.includes('Invalid email format') ||
       error.message.includes('Phone number must be') ||
       error.message.includes('Invalid date of birth') ||
       error.message.includes('You must be at least 18') ||
       error.message.includes('Password must be at least') ||
       error.message.includes('Email already in use') ||
-      error.message.includes('Wallet already exists')) {
+      error.message.includes('Wallet already exists')
+    ) {
       return res.status(400).json({ error: error.message });
     }
 

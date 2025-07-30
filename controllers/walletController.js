@@ -189,24 +189,35 @@ exports.checkFundingReadiness = async (req, res) => {
   try {
     await session.withTransaction(async () => {
       const { id: userId } = req.user;
+      const isTestMode = process.env.NODE_ENV !== 'production';
 
+      // Validate user
       const user = await User.findById(userId).session(session);
       if (!user) {
         logger.warn('User not found', { userId });
         throw new Error('User not found');
       }
 
-      const balanceResponse = await axios.get('https://api.paystack.co/balance', {
-        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-        timeout: 10000,
-      });
+      // Skip balance check if bypassed
+      if (!process.env.BYPASS_PAYSTACK_BALANCE_CHECK) {
+        const balanceResponse = await axios.get('https://api.paystack.co/balance', {
+          headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+          timeout: 15000,
+        });
 
-      if (!balanceResponse.data?.status) {
-        logger.error('Paystack API key invalid', { response: balanceResponse.data });
-        throw new Error('Payment provider configuration issue');
+        if (!balanceResponse.data?.status) {
+          logger.error('Paystack API key invalid', {
+            userId,
+            response: balanceResponse.data,
+            error: balanceResponse.data.message,
+          });
+          throw new Error('Payment provider configuration issue');
+        }
       }
 
-      if (!user.paystackCustomerCode) {
+      // Create or validate Paystack customer
+      let customerCode = user.paystackCustomerCode;
+      if (!customerCode) {
         const customerResponse = await axios.post(
           'https://api.paystack.co/customer',
           {
@@ -216,20 +227,54 @@ exports.checkFundingReadiness = async (req, res) => {
             phone: user.phoneNumber || '',
           },
           {
-            headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-            timeout: 10000,
+            headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+            timeout: 15000,
           }
         );
 
         if (!customerResponse.data.status) {
-          logger.error('Failed to create Paystack customer', { response: customerResponse.data });
+          logger.error('Failed to create Paystack customer', {
+            userId,
+            email: user.email,
+            response: customerResponse.data,
+            error: customerResponse.data.message,
+          });
           throw new Error('Failed to initialize payment profile');
         }
 
-        user.paystackCustomerCode = customerResponse.data.data.customer_code;
+        customerCode = customerResponse.data.data.customer_code;
+        user.paystackCustomerCode = customerCode;
         await user.save({ session });
+        logger.info('Paystack customer created', { userId, customerCode });
       }
 
+      // Validate customer code
+      try {
+        const customerValidation = await axios.get(
+          `https://api.paystack.co/customer/${customerCode}`,
+          {
+            headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+            timeout: 15000,
+          }
+        );
+        if (!customerValidation.data.status) {
+          logger.error('Invalid Paystack customer code', {
+            userId,
+            customerCode,
+            response: customerValidation.data,
+          });
+          throw new Error('Invalid payment profile');
+        }
+      } catch (error) {
+        logger.error('Failed to validate Paystack customer', {
+          userId,
+          customerCode,
+          error: error.response?.data?.message || error.message,
+        });
+        throw new Error('Failed to validate payment profile');
+      }
+
+      // Create wallet if it doesn't exist
       let wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
         wallet = new Wallet({
@@ -239,50 +284,102 @@ exports.checkFundingReadiness = async (req, res) => {
           currency: 'NGN',
           transactions: [],
           lastSynced: new Date(),
+          virtualAccount: null,
         });
         await wallet.save({ session });
+        logger.info('Wallet created for user', { userId, walletId: wallet._id });
       }
 
-      if (!wallet.virtualAccount?.account_number) {
-        const banksToTry = process.env.NODE_ENV === 'production'
-          ? ['wema-bank', 'access-bank']
-          : ['wema-bank'];
-
+      // Create virtual account if not exists or if mock in live mode
+      if (!wallet.virtualAccount?.account_number || (process.env.NODE_ENV === 'production' && wallet.virtualAccount.account_number.startsWith('TEST'))) {
         let accountResponse = null;
-        for (const bank of banksToTry) {
-          try {
-            accountResponse = await axios.post(
-              'https://api.paystack.co/dedicated_account',
-              {
-                customer: user.paystackCustomerCode,
-                preferred_bank: bank,
-              },
-              {
-                headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-                timeout: 10000,
+        let lastError = null;
+
+        // Use mock data in test mode if enabled
+        if (isTestMode && process.env.ENABLE_MOCK_VERIFICATION) {
+          logger.info('Using mock virtual account for test mode', { userId });
+          wallet.virtualAccount = {
+            account_name: `${user.firstName} ${user.lastName}`.trim() || 'Test User',
+            account_number: `TEST${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+            bank_name: 'Mock Bank',
+            provider: 'Paystack',
+            provider_reference: `MOCK_${crypto.randomBytes(8).toString('hex')}`,
+            created_at: new Date(),
+            active: true,
+          };
+          await wallet.save({ session });
+        } else {
+          // Use CRITICAL_BANKS in live mode, FALLBACK_BANKS in test mode
+          const banksToTry = isTestMode ? FALLBACK_BANKS : CRITICAL_BANKS.map(bank => bank.name.toLowerCase().replace(' ', '-'));
+          for (const bank of banksToTry) {
+            try {
+              accountResponse = await axios.post(
+                'https://api.paystack.co/dedicated_account',
+                {
+                  customer: customerCode,
+                  preferred_bank: bank,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${exports.getPaystackSecretKey()}`,
+                    'Content-Type': 'application/json',
+                  },
+                  timeout: 15000,
+                }
+              );
+              if (accountResponse.data.status) {
+                logger.info('Virtual account created', {
+                  userId,
+                  bank,
+                  accountNumber: accountResponse.data.data.account_number,
+                });
+                break;
               }
-            );
-            if (accountResponse.data.status) break;
-          } catch (error) {
-            logger.warn(`Failed to create virtual account with ${bank}`, { error: error.message });
+            } catch (error) {
+              lastError = error;
+              logger.warn(`Failed to create virtual account with ${bank}`, {
+                userId,
+                customerCode,
+                error: error.response?.data?.message || error.message,
+                status: error.response?.status,
+                response: error.response?.data,
+              });
+            }
           }
-        }
 
-        if (!accountResponse?.data?.status) {
-          logger.error('Failed to create virtual account', { userId });
-          throw new Error('Unable to create virtual account');
-        }
+          if (!accountResponse?.data?.status) {
+            logger.error('Failed to create virtual account with all banks', {
+              userId,
+              customerCode,
+              lastError: lastError?.response?.data?.message || lastError?.message,
+            });
+            await Notification.create(
+              [{
+                userId,
+                title: 'Funding Setup Failed',
+                message: isTestMode
+                  ? 'Virtual account creation is not supported in test mode. Please use live mode or contact support.'
+                  : 'Unable to create virtual account. Please contact support.',
+                type: 'funding',
+                status: 'error',
+                createdAt: new Date(),
+              }],
+              { session }
+            );
+            throw new Error('Unable to create virtual account');
+          }
 
-        wallet.virtualAccount = {
-          account_name: accountResponse.data.data.account_name,
-          account_number: accountResponse.data.data.account_number,
-          bank_name: accountResponse.data.data.bank.name,
-          provider: 'Paystack',
-          provider_reference: accountResponse.data.data.id,
-          created_at: new Date(),
-          active: true,
-        };
-        await wallet.save({ session });
+          wallet.virtualAccount = {
+            account_name: accountResponse.data.data.account_name,
+            account_number: accountResponse.data.data.account_number,
+            bank_name: accountResponse.data.data.bank.name,
+            provider: 'Paystack',
+            provider_reference: accountResponse.data.data.id,
+            created_at: new Date(),
+            active: true,
+          };
+          await wallet.save({ session });
+        }
       }
 
       return res.status(200).json({
@@ -299,8 +396,9 @@ exports.checkFundingReadiness = async (req, res) => {
     logger.error('Funding readiness check error', {
       userId: req.user?.id,
       message: error.message,
+      stack: error.stack,
     });
-    return res.status(500).json({
+    return res.status(error.message === 'Unable to create virtual account' ? 400 : 500).json({
       success: false,
       error: error.message || 'Failed to check funding readiness',
     });
@@ -616,19 +714,20 @@ exports.initiateFunding = async (req, res) => {
     await session.withTransaction(async () => {
       const { amount, email, phoneNumber, userId } = req.body;
       const amountNum = parseFloat(amount);
+      const isTestMode = process.env.NODE_ENV !== 'production';
 
+      // Input validation
       if (!amountNum || amountNum < 100) {
         throw new Error('Invalid or missing amount. Minimum is ₦100.');
       }
-
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         throw new Error('Invalid or missing email');
       }
-
       if (!phoneNumber || !/^(0\d{10}|\+234\d{10})$/.test(phoneNumber)) {
         throw new Error('Invalid or missing phone number');
       }
 
+      // Check and create wallet if it doesn't exist
       let wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
         wallet = new Wallet({
@@ -638,7 +737,10 @@ exports.initiateFunding = async (req, res) => {
           currency: 'NGN',
           transactions: [],
           lastSynced: new Date(),
+          virtualAccount: null,
         });
+        await wallet.save({ session });
+        logger.info('Wallet created for user', { userId, walletId: wallet._id });
       }
 
       const user = await User.findById(userId).session(session);
@@ -646,6 +748,7 @@ exports.initiateFunding = async (req, res) => {
         throw new Error('User not found');
       }
 
+      // Create Paystack customer if not exists
       let customerCode = user.paystackCustomerCode;
       if (!customerCode) {
         const customerResponse = await axios.post(
@@ -658,63 +761,143 @@ exports.initiateFunding = async (req, res) => {
           },
           {
             headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
-            timeout: 10000,
+            timeout: 15000,
           }
         );
 
         if (!customerResponse.data.status) {
-          logger.error('Failed to create Paystack customer', { response: customerResponse.data });
+          logger.error('Failed to create Paystack customer', {
+            userId,
+            response: customerResponse.data,
+            error: customerResponse.data.message,
+          });
           throw new Error('Failed to create Paystack customer');
         }
 
         customerCode = customerResponse.data.data.customer_code;
         user.paystackCustomerCode = customerCode;
         await user.save({ session });
+        logger.info('Paystack customer created', { userId, customerCode });
       }
 
-      let virtualAccount = wallet.virtualAccount;
-      if (!virtualAccount?.account_number) {
-        const banksToTry = process.env.NODE_ENV === 'production'
-          ? ['wema-bank', 'access-bank']
-          : ['wema-bank'];
-
-        let accountResponse = null;
-        for (const bank of banksToTry) {
-          try {
-            accountResponse = await axios.post(
-              'https://api.paystack.co/dedicated_account',
-              {
-                customer: customerCode,
-                preferred_bank: bank,
-              },
-              {
-                headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
-                timeout: 10000,
-              }
-            );
-            if (accountResponse.data.status) break;
-          } catch (error) {
-            logger.warn(`Failed to create virtual account with ${bank}`, { error: error.message });
+      // Validate customer code
+      try {
+        const customerValidation = await axios.get(
+          `https://api.paystack.co/customer/${customerCode}`,
+          {
+            headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+            timeout: 15000,
           }
+        );
+        if (!customerValidation.data.status) {
+          logger.error('Invalid Paystack customer code', {
+            userId,
+            customerCode,
+            response: customerValidation.data,
+          });
+          throw new Error('Invalid payment profile');
         }
-
-        if (!accountResponse?.data?.status) {
-          logger.error('Failed to create virtual account', { userId });
-          throw new Error('Unable to create virtual account');
-        }
-
-        virtualAccount = {
-          account_name: accountResponse.data.data.account_name,
-          account_number: accountResponse.data.data.account_number,
-          bank_name: accountResponse.data.data.bank.name,
-          provider: 'Paystack',
-          provider_reference: accountResponse.data.data.id,
-          created_at: new Date().toISOString(),
-          active: true,
-        };
-        wallet.virtualAccount = virtualAccount;
+      } catch (error) {
+        logger.error('Failed to validate Paystack customer', {
+          userId,
+          customerCode,
+          error: error.response?.data?.message || error.message,
+        });
+        throw new Error('Failed to validate payment profile');
       }
 
+      // Create virtual account if not exists or if mock in live mode
+      let virtualAccount = wallet.virtualAccount;
+      if (!virtualAccount?.account_number || (process.env.NODE_ENV === 'production' && virtualAccount.account_number.startsWith('TEST'))) {
+        let accountResponse = null;
+        let lastError = null;
+
+        // Use mock data in test mode if enabled
+        if (isTestMode && process.env.ENABLE_MOCK_VERIFICATION) {
+          logger.info('Using mock virtual account for test mode', { userId });
+          virtualAccount = {
+            account_name: `${user.firstName} ${user.lastName}`.trim() || 'Test User',
+            account_number: `TEST${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+            bank_name: 'Mock Bank',
+            provider: 'Paystack',
+            provider_reference: `MOCK_${crypto.randomBytes(8).toString('hex')}`,
+            created_at: new Date(),
+            active: true,
+          };
+          wallet.virtualAccount = virtualAccount;
+          await wallet.save({ session });
+        } else {
+          // Use CRITICAL_BANKS in live mode, FALLBACK_BANKS in test mode
+          const banksToTry = isTestMode ? FALLBACK_BANKS : CRITICAL_BANKS.map(bank => bank.name.toLowerCase().replace(' ', '-'));
+          for (const bank of banksToTry) {
+            try {
+              accountResponse = await axios.post(
+                'https://api.paystack.co/dedicated_account',
+                {
+                  customer: customerCode,
+                  preferred_bank: bank,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${exports.getPaystackSecretKey()}`,
+                    'Content-Type': 'application/json',
+                  },
+                  timeout: 15000,
+                }
+              );
+              if (accountResponse.data.status) {
+                logger.info('Virtual account created', { userId, bank, accountNumber: accountResponse.data.data.account_number });
+                break;
+              }
+            } catch (error) {
+              lastError = error;
+              logger.warn(`Failed to create virtual account with ${bank}`, {
+                userId,
+                customerCode,
+                error: error.response?.data?.message || error.message,
+                status: error.response?.status,
+                response: error.response?.data,
+              });
+            }
+          }
+
+          if (!accountResponse?.data?.status) {
+            logger.error('Failed to create virtual account with all banks', {
+              userId,
+              customerCode,
+              lastError: lastError?.response?.data?.message || lastError?.message,
+            });
+            await Notification.create(
+              [{
+                userId,
+                title: 'Funding Setup Failed',
+                message: isTestMode
+                  ? 'Virtual account creation is not supported in test mode. Please use live mode or contact support.'
+                  : 'Unable to create virtual account. Please contact support.',
+                type: 'funding',
+                status: 'error',
+                createdAt: new Date(),
+              }],
+              { session }
+            );
+            throw new Error('Unable to create virtual account');
+          }
+
+          virtualAccount = {
+            account_name: accountResponse.data.data.account_name,
+            account_number: accountResponse.data.data.account_number,
+            bank_name: accountResponse.data.data.bank.name,
+            provider: 'Paystack',
+            provider_reference: accountResponse.data.data.id,
+            created_at: new Date(),
+            active: true,
+          };
+          wallet.virtualAccount = virtualAccount;
+          await wallet.save({ session });
+        }
+      }
+
+      // Create transaction
       const reference = `FUND_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const transaction = {
         type: 'deposit',
@@ -737,12 +920,13 @@ exports.initiateFunding = async (req, res) => {
           virtualAccountId: virtualAccount.provider_reference,
           customerCode,
         },
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       };
 
       wallet.transactions.push(transaction);
       await wallet.save({ session });
 
+      // Create notification
       await Notification.create(
         [{
           userId,
@@ -751,12 +935,11 @@ exports.initiateFunding = async (req, res) => {
           transactionId: reference,
           type: 'funding',
           status: 'pending',
-          createdAt: new Date().toISOString(),
+          createdAt: new Date(),
         }],
         { session }
       );
 
-      // Serialize the wallet data to remove Mongoose metadata
       const serializedWallet = serializeWalletData(wallet);
 
       res.status(200).json({
@@ -787,21 +970,23 @@ exports.initiateFunding = async (req, res) => {
                 ...tx.metadata,
                 virtualAccount: tx.metadata.virtualAccount
                   ? {
-                    account_name: tx.metadata.virtualAccount.account_name,
-                    account_number: tx.metadata.virtualAccount.account_number,
-                    bank_name: tx.metadata.virtualAccount.bank_name,
-                    provider: tx.metadata.virtualAccount.provider,
-                    provider_reference: tx.metadata.virtualAccount.provider_reference,
-                    created_at: tx.metadata.virtualAccount.created_at,
-                    active: tx.metadata.virtualAccount.active,
-                  }
+                      account_name: tx.metadata.virtualAccount.account_name,
+                      account_number: tx.metadata.virtualAccount.account_number,
+                      bank_name: tx.metadata.virtualAccount.bank_name,
+                      provider: tx.metadata.virtualAccount.provider,
+                      provider_reference: tx.metadata.virtualAccount.provider_reference,
+                      created_at: tx.metadata.virtualAccount.created_at,
+                      active: tx.metadata.virtualAccount.active,
+                    }
                   : undefined,
               },
             })),
           instructions: {
             step1: `Transfer ₦${amountNum.toFixed(2)} to the account details below`,
-            step2: 'Your wallet will be credited automatically within 5 minutes',
-            step3: 'You will receive a notification once payment is confirmed',
+            step2: isTestMode
+              ? 'In test mode, use Paystack’s test bank details to simulate a transfer.'
+              : 'Your wallet will be credited automatically within 5 minutes.',
+            step3: 'You will receive a notification once payment is confirmed.',
           },
         },
       });
@@ -812,7 +997,10 @@ exports.initiateFunding = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ success: false, error: error.message || 'Failed to initiate funding' });
+    res.status(error.message === 'Unable to create virtual account' ? 400 : 500).json({
+      success: false,
+      error: error.message || 'Failed to initiate funding',
+    });
   } finally {
     await session.endSession();
   }

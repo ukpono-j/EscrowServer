@@ -53,4 +53,4 @@ const KYCSchema = new mongoose.Schema({
 KYCSchema.index({ user: 1 });
 KYCSchema.index({ status: 1 });
 
-module.exports = mongoose.model("KYC", KYCSchema);
+module.exports = mongoose.models.KYC || mongoose.model('KYC', KYCSchema);
