@@ -217,7 +217,37 @@ exports.checkFundingReadiness = async (req, res) => {
 
       // Create or validate Paystack customer
       let customerCode = user.paystackCustomerCode;
-      if (!customerCode) {
+      let isValidCustomer = false;
+
+      if (customerCode) {
+        try {
+          const customerValidation = await axios.get(
+            `https://api.paystack.co/customer/${customerCode}`,
+            {
+              headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+              timeout: 15000,
+            }
+          );
+          if (customerValidation.data.status) {
+            isValidCustomer = true;
+          } else {
+            logger.warn('Invalid Paystack customer code', {
+              userId,
+              customerCode,
+              response: customerValidation.data,
+            });
+          }
+        } catch (error) {
+          logger.warn('Failed to validate Paystack customer', {
+            userId,
+            customerCode,
+            error: error.response?.data?.message || error.message,
+            status: error.response?.status,
+          });
+        }
+      }
+
+      if (!customerCode || !isValidCustomer) {
         const customerResponse = await axios.post(
           'https://api.paystack.co/customer',
           {
@@ -246,32 +276,6 @@ exports.checkFundingReadiness = async (req, res) => {
         user.paystackCustomerCode = customerCode;
         await user.save({ session });
         logger.info('Paystack customer created', { userId, customerCode });
-      }
-
-      // Validate customer code
-      try {
-        const customerValidation = await axios.get(
-          `https://api.paystack.co/customer/${customerCode}`,
-          {
-            headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
-            timeout: 15000,
-          }
-        );
-        if (!customerValidation.data.status) {
-          logger.error('Invalid Paystack customer code', {
-            userId,
-            customerCode,
-            response: customerValidation.data,
-          });
-          throw new Error('Invalid payment profile');
-        }
-      } catch (error) {
-        logger.error('Failed to validate Paystack customer', {
-          userId,
-          customerCode,
-          error: error.response?.data?.message || error.message,
-        });
-        throw new Error('Failed to validate payment profile');
       }
 
       // Create wallet if it doesn't exist
@@ -748,9 +752,39 @@ exports.initiateFunding = async (req, res) => {
         throw new Error('User not found');
       }
 
-      // Create Paystack customer if not exists
+      // Create Paystack customer if not exists or invalid
       let customerCode = user.paystackCustomerCode;
-      if (!customerCode) {
+      let isValidCustomer = false;
+
+      if (customerCode) {
+        try {
+          const customerValidation = await axios.get(
+            `https://api.paystack.co/customer/${customerCode}`,
+            {
+              headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
+              timeout: 15000,
+            }
+          );
+          if (customerValidation.data.status) {
+            isValidCustomer = true;
+          } else {
+            logger.warn('Invalid Paystack customer code', {
+              userId,
+              customerCode,
+              response: customerValidation.data,
+            });
+          }
+        } catch (error) {
+          logger.warn('Failed to validate Paystack customer', {
+            userId,
+            customerCode,
+            error: error.response?.data?.message || error.message,
+            status: error.response?.status,
+          });
+        }
+      }
+
+      if (!customerCode || !isValidCustomer) {
         const customerResponse = await axios.post(
           'https://api.paystack.co/customer',
           {
@@ -778,32 +812,6 @@ exports.initiateFunding = async (req, res) => {
         user.paystackCustomerCode = customerCode;
         await user.save({ session });
         logger.info('Paystack customer created', { userId, customerCode });
-      }
-
-      // Validate customer code
-      try {
-        const customerValidation = await axios.get(
-          `https://api.paystack.co/customer/${customerCode}`,
-          {
-            headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
-            timeout: 15000,
-          }
-        );
-        if (!customerValidation.data.status) {
-          logger.error('Invalid Paystack customer code', {
-            userId,
-            customerCode,
-            response: customerValidation.data,
-          });
-          throw new Error('Invalid payment profile');
-        }
-      } catch (error) {
-        logger.error('Failed to validate Paystack customer', {
-          userId,
-          customerCode,
-          error: error.response?.data?.message || error.message,
-        });
-        throw new Error('Failed to validate payment profile');
       }
 
       // Create virtual account if not exists or if mock in live mode
@@ -884,11 +892,11 @@ exports.initiateFunding = async (req, res) => {
           }
 
           virtualAccount = {
-            account_name: accountResponse.data.data.account_name,
-            account_number: accountResponse.data.data.account_number,
-            bank_name: accountResponse.data.data.bank.name,
+            account_name: liveAccountResponse.data.data.account_name,
+            account_number: liveAccountResponse.data.data.account_number,
+            bank_name: liveAccountResponse.data.data.bank.name,
             provider: 'Paystack',
-            provider_reference: accountResponse.data.data.id,
+            provider_reference: liveAccountResponse.data.data.id,
             created_at: new Date(),
             active: true,
           };
