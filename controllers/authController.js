@@ -400,9 +400,6 @@ exports.login = async (req, res) => {
   }
 };
 
-
-
-
 exports.refreshToken = async (req, res) => {
   const requestId = uuidv4();
   console.time(`Refresh Token Process ${requestId}`);
@@ -540,111 +537,5 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Error in resetPassword:', error);
     res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-exports.getProfile = async (req, res) => {
-  console.time('GetProfile Process');
-  try {
-    const user = await User.findById(req.user.id).select('-password');
-    if (!user) {
-      console.timeEnd('GetProfile Process');
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.status(200).json({
-      success: true,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        dateOfBirth: user.dateOfBirth,
-        bank: user.bank,
-        accountNumber: user.accountNumber,
-      },
-    });
-    console.timeEnd('GetProfile Process');
-  } catch (error) {
-    console.error('Get profile error:', { userId: req.user.id, message: error.message });
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-    console.timeEnd('GetProfile Process');
-  }
-};
-
-exports.updateProfile = async (req, res) => {
-  console.time('UpdateProfile Process');
-  try {
-    const { firstName, lastName, dateOfBirth, bank, accountNumber, phoneNumber } = req.body;
-    const sanitizedInputs = {
-      firstName: firstName ? sanitizeInput(firstName) : undefined,
-      lastName: lastName ? sanitizeInput(lastName) : undefined,
-      dateOfBirth: dateOfBirth ? sanitizeInput(dateOfBirth) : undefined,
-      bank: bank ? sanitizeInput(bank) : undefined,
-      accountNumber: accountNumber ? sanitizeInput(accountNumber) : undefined,
-      phoneNumber: phoneNumber ? sanitizeInput(phoneNumber) : undefined,
-    };
-
-    if (sanitizedInputs.phoneNumber && !/^(0\d{10}|\+234\d{10})$/.test(sanitizedInputs.phoneNumber)) {
-      console.timeEnd('UpdateProfile Process');
-      return res.status(400).json({ error: 'Phone number must be 11 digits starting with 0 or +234' });
-    }
-
-    if (sanitizedInputs.dateOfBirth) {
-      const dob = new Date(sanitizedInputs.dateOfBirth);
-      if (isNaN(dob.getTime())) {
-        console.timeEnd('UpdateProfile Process');
-        return res.status(400).json({ error: 'Invalid date of birth' });
-      }
-      const today = new Date();
-      let age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-        age--;
-      }
-      if (age < 18) {
-        console.timeEnd('UpdateProfile Process');
-        return res.status(400).json({ error: 'You must be at least 18 years old' });
-      }
-    }
-
-    const updates = {};
-    if (sanitizedInputs.firstName) updates.firstName = sanitizedInputs.firstName;
-    if (sanitizedInputs.lastName) updates.lastName = sanitizedInputs.lastName;
-    if (sanitizedInputs.dateOfBirth) updates.dateOfBirth = sanitizedInputs.dateOfBirth;
-    if (sanitizedInputs.bank) updates.bank = sanitizedInputs.bank;
-    if (sanitizedInputs.accountNumber) updates.accountNumber = sanitizedInputs.accountNumber;
-    if (sanitizedInputs.phoneNumber) updates.phoneNumber = sanitizedInputs.phoneNumber;
-
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    if (!user) {
-      console.timeEnd('UpdateProfile Process');
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.status(200).json({
-      success: true,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        dateOfBirth: user.dateOfBirth,
-        bank: user.bank,
-        accountNumber: user.accountNumber,
-      },
-    });
-    console.timeEnd('UpdateProfile Process');
-  } catch (error) {
-    console.error('Update profile error:', { userId: req.user.id, message: error.message });
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-    console.timeEnd('UpdateProfile Process');
   }
 };

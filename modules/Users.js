@@ -1,10 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-// utils function to generate a random seed
-const generateRandomSeed = () => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`; // Timestamp + random string
-};
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -50,10 +46,7 @@ const userSchema = new mongoose.Schema({
   },
   avatarSeed: {
     type: String,
-    default: function () {
-      return generateRandomSeed(); // Generate on creation
-    },
-    unique: true, // Ensure uniqueness
+    default: () => require('uuid').v4(),
   },
   createdAt: {
     type: Date,

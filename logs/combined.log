@@ -1887,3 +1887,35 @@
 {"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","timestamp":"2025-07-30T08:49:33.539Z"}
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T08:49:33.568Z"}
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T08:49:34.277Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:40.749Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:40.860Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:40.935Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:41.629Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","timestamp":"2025-07-30T10:12:41.980Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","timestamp":"2025-07-30T10:12:42.618Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T10:12:43.305Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T10:12:43.636Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","timestamp":"2025-07-30T10:12:48.617Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","timestamp":"2025-07-30T10:12:49.388Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T10:12:49.784Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:50.289Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753437927113_4ffe8eec","status":400,"timestamp":"2025-07-30T10:12:50.575Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","timestamp":"2025-07-30T10:12:51.524Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","status":400,"timestamp":"2025-07-30T10:12:52.183Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:52.745Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","timestamp":"2025-07-30T10:12:52.795Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:53.449Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:53.453Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","timestamp":"2025-07-30T10:12:53.513Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","status":400,"timestamp":"2025-07-30T10:12:54.159Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","timestamp":"2025-07-30T10:12:55.692Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-30T10:12:55.700Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","timestamp":"2025-07-30T10:12:55.939Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","status":400,"timestamp":"2025-07-30T10:12:56.333Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","timestamp":"2025-07-30T10:12:56.632Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","timestamp":"2025-07-30T10:12:56.909Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:57.127Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753454075927_1b3af0de","status":400,"timestamp":"2025-07-30T10:12:57.235Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:57.567Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","timestamp":"2025-07-30T10:12:57.771Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:58.459Z"}
