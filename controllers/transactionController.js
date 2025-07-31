@@ -816,6 +816,7 @@ exports.createChatRoom = async (req, res) => {
     const userId = req.user.id;
     console.log('Creating chatroom for transaction:', { transactionId, userId });
 
+    // Validate transaction
     const transaction = await Transaction.findById(transactionId)
       .populate("userId", "firstName lastName email avatarImage")
       .populate("participants", "firstName lastName email avatarImage");
@@ -825,21 +826,30 @@ exports.createChatRoom = async (req, res) => {
       return res.status(404).json({ success: false, error: "Transaction not found" });
     }
 
+    // Check user authorization
     const isCreator = transaction.userId._id.toString() === userId;
     const isParticipant = transaction.participants.some(
       (p) => p._id.toString() === userId
     );
-
     if (!isCreator && !isParticipant) {
       console.warn('Unauthorized to create chatroom:', { userId, transactionId });
       return res.status(403).json({ success: false, error: "Unauthorized to create chatroom for this transaction" });
     }
 
-    if (transaction.chatroomId) {
-      console.log('Chatroom already exists:', transaction.chatroomId);
-      return res.status(200).json({ success: true, chatroomId: transaction.chatroomId });
+    // Check for existing chatroom by transactionId
+    const existingChatroom = await Chatroom.findOne({ transactionId });
+    if (existingChatroom) {
+      console.log('Chatroom already exists for transaction:', { transactionId, chatroomId: existingChatroom._id });
+      // Ensure transaction has the correct chatroomId
+      if (!transaction.chatroomId || transaction.chatroomId.toString() !== existingChatroom._id.toString()) {
+        transaction.chatroomId = existingChatroom._id;
+        await transaction.save();
+        console.log('Transaction updated with existing chatroomId:', transaction._id);
+      }
+      return res.status(200).json({ success: true, chatroomId: existingChatroom._id });
     }
 
+    // Create new chatroom
     const chatroom = new Chatroom({
       transactionId,
       participants: [transaction.userId._id, ...transaction.participants.map(p => p._id)],
@@ -847,10 +857,12 @@ exports.createChatRoom = async (req, res) => {
     await chatroom.save();
     console.log('Chatroom created:', chatroom._id);
 
+    // Update transaction with chatroomId
     transaction.chatroomId = chatroom._id;
     await transaction.save();
     console.log('Transaction updated with chatroomId:', transaction._id);
 
+    // Emit socket event
     const io = req.app.get("io");
     io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
       transactionId,

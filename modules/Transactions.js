@@ -19,23 +19,6 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  messages: [
-    {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-      message: {
-        type: String,
-        required: true,
-      },
-      timestamp: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
   paymentBank: {
     type: String,
     required: [function () { return this.selectedUserType === "seller"; }, "Payment bank is required for sellers"],
@@ -82,6 +65,14 @@ const transactionSchema = new mongoose.Schema({
   chatroomId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Chatroom",
+    validate: {
+      validator: async function (value) {
+        if (!value) return true; // Allow null until chatroom is created
+        const chatroom = await mongoose.model("Chatroom").findById(value);
+        return !!chatroom;
+      },
+      message: "Invalid chatroom ID",
+    },
   },
   createdAt: {
     type: Date,
@@ -125,7 +116,7 @@ const transactionSchema = new mongoose.Schema({
     ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null/undefined
+        if (!value) return true;
         const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
@@ -137,7 +128,7 @@ const transactionSchema = new mongoose.Schema({
     ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null/undefined
+        if (!value) return true;
         const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
@@ -154,7 +145,6 @@ const transactionSchema = new mongoose.Schema({
   },
 });
 
-// Removed the unique index on transactionId since it's removed
 transactionSchema.pre('save', async function (next) {
   if (this.status === 'completed' || this.funded) {
     if (!this.buyerWalletId && this.selectedUserType === "buyer") {

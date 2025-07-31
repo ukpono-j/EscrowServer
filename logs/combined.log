@@ -1919,3 +1919,194 @@
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:57.567Z"}
 {"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","timestamp":"2025-07-30T10:12:57.771Z"}
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_687bda699635303a0a2eec6e_1753536942093_db97e927","status":400,"timestamp":"2025-07-30T10:12:58.459Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:41:36.853Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:41:36.873Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:41:37.382Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:41:37.405Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T07:41:40.390Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:41:40.393Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:40.693Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:40.864Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:41.920Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:42.049Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:54.718Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:54.774Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:56.268Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:57.248Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:41:57.275Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:42:49.346Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:42:49.395Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:42:49.401Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:42:49.487Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:42:56.498Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:42:56.530Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:42:57.193Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:42:58.753Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:42:58.796Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:43.666Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:43.703Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:44.483Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:45.664Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:45.733Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:51.197Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:51.302Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:52.415Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:53.281Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:43:53.326Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T07:56:28.955Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T07:56:28.959Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:29.254Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:29.296Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:30.696Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:30.745Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:39.280Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:39.350Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:40.481Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:42.512Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T07:56:42.535Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T08:01:07.059Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:01:07.066Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:01:07.371Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:01:08.205Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:01:10.261Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:01:10.292Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:08.605Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:08.914Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:09.535Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:10.827Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:11.009Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:37.636Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:37.684Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:38.321Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:40.983Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:40.992Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:57.836Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:58.023Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:02:58.740Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:03:00.569Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:03:00.651Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T08:18:15.277Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:18:15.293Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:15.713Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:17.999Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:18.092Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:19.179Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:19.907Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:20.099Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:43.343Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:43.410Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:44.299Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:45.378Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:18:45.525Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T08:41:12.784Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:41:12.795Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:41:13.130Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:41:13.147Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:41:14.763Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:41:14.811Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:41:27.317Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:41:27.327Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:41:27.338Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:41:27.345Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:42:07.739Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:42:07.910Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:42:07.927Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T08:42:07.939Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:42:11.695Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:42:11.914Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:42:12.607Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:42:13.977Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:42:14.369Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:23.339Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:23.556Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:24.518Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:27.032Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:27.161Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:51.951Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:52.099Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:53.269Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:55.283Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T08:43:55.307Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T09:12:35.434Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:12:35.442Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:35.736Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:37.585Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:37.984Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:38.473Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:40.536Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:12:40.552Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:15:23.541Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:15:23.686Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:15:24.424Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:15:27.833Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:15:27.935Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T09:19:42.128Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:19:42.325Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:43.061Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:45.030Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:45.291Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:46.136Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:47.454Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:19:47.476Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:07.298Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:08.088Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:10.714Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:10.933Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:11.575Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:12.930Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:21:12.954Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:23:56.149Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:23:56.186Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:23:57.020Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:23:58.037Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:23:58.179Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:24:40.849Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:24:40.963Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:24:41.824Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:24:43.223Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:24:43.268Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:24:58.230Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:24:58.729Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:24:58.736Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:24:58.761Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T09:25:51.593Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:25:51.594Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:25:51.897Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:25:51.976Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:25:53.228Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:25:53.248Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:26:12.112Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:26:12.633Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:26:12.646Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:26:12.657Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:14.362Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:14.399Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:14.579Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:15.300Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:16.480Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:26:16.531Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T09:37:29.494Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:37:29.540Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:32.154Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:32.167Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:32.229Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:32.984Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:35.687Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:37:35.716Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:29.374Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:29.524Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:32.276Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:32.688Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:33.213Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:34.775Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:38:34.926Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T09:51:01.482Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T09:51:01.486Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:51:01.771Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:51:01.805Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:51:03.336Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T09:51:03.413Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Cached wallet balance","timestamp":"2025-07-31T10:14:50.751Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-07-31T10:14:50.765Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T10:14:51.021Z","userId":"6889bb39a78f5240932d8ebd"}
+{"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-07-31T10:14:51.039Z","userId":"6889bb39a78f5240932d8ebd"}
