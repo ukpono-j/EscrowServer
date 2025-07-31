@@ -9,17 +9,14 @@ const { v4: uuidv4 } = require("uuid");
 const nigeriaBanks = require("../data/banksList");
 const { getBankNameFromCode } = require('../data/banksList');
 const cache = require("../cache");
-const NodeCache = require('node-cache');
-// const cache = new NodeCache({ stdTTL: 600, checkperiod: 120 }); // 10min TTL
 const fs = require("fs");
-
+const axios = require("axios");
 
 // Ensure the Uploads directory exists
 const uploadDir = path.join(__dirname, "../Uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
-
 
 exports.createTransaction = async (req, res) => {
   const {
@@ -289,39 +286,6 @@ exports.getBanks = async (req, res) => {
   }
 };
 
-exports.getUserAndWallet = async (req, res) => {
-  const userId = req.user.id;
-  const cacheKey = `user_wallet_${userId}`;
-
-  try {
-    let data = cache.get(cacheKey);
-    if (data) {
-      console.log("Returning cached user and wallet data:", userId);
-      return res.status(200).json({ success: true, data });
-    }
-
-    const [user, wallet] = await Promise.all([
-      User.findById(userId).select("firstName lastName email phoneNumber"),
-      Wallet.findOne({ userId }).select("balance currency transactions"),
-    ]);
-
-    if (!user) {
-      return res.status(404).json({ success: false, error: "User not found" });
-    }
-
-    data = {
-      user: user || null,
-      wallet: wallet || { balance: 0, currency: "NGN", transactions: [] },
-    };
-
-    cache.set(cacheKey, data, 600); // Cache for 10 minutes
-    return res.status(200).json({ success: true, data });
-  } catch (error) {
-    console.error("Error fetching user and wallet:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
-  }
-};
-
 exports.getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -569,7 +533,6 @@ exports.cancelTransaction = async (req, res) => {
   }
 };
 
-
 exports.joinTransaction = async (req, res) => {
   try {
     const { id } = req.body;
@@ -622,8 +585,7 @@ exports.joinTransaction = async (req, res) => {
     const notification = new Notification({
       userId: transaction.userId.toString(),
       title: "User Joined Transaction",
-      message: `${user.firstName} has joined your transaction ${transaction._id} as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"
-        }.`,
+      message: `${user.firstName} has joined your transaction ${transaction._id} as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"}.`,
       transactionId: transaction._id.toString(),
       type: "transaction",
       status: "pending",
@@ -632,8 +594,7 @@ exports.joinTransaction = async (req, res) => {
     const io = req.app.get("io");
     io.to(transaction.userId.toString()).emit("transactionUpdated", {
       transactionId: transaction._id,
-      message: `${user.firstName} has joined your transaction as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"
-        }.`,
+      message: `${user.firstName} has joined your transaction as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"}.`,
     });
 
     return res.status(200).json({
@@ -704,8 +665,7 @@ exports.acceptAndUpdateTransaction = async (req, res) => {
     const notification = new Notification({
       userId: creatorId,
       title: "User Joined and Updated Transaction",
-      message: `A user has joined your transaction ${transaction._id} as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"
-        } and updated the details.`,
+      message: `A user has joined your transaction ${transaction._id} as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"} and updated the details.`,
       transactionId: transaction._id.toString(),
       type: "transaction",
       status: "accepted",
@@ -715,8 +675,7 @@ exports.acceptAndUpdateTransaction = async (req, res) => {
     const io = req.app.get("io");
     io.to(creatorId).emit("transactionUpdated", {
       transactionId: transaction._id,
-      message: `A user has joined and updated your transaction as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"
-        }.`,
+      message: `A user has joined and updated your transaction as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"}.`,
     });
 
     return res.status(200).json({
@@ -734,7 +693,7 @@ exports.acceptAndUpdateTransaction = async (req, res) => {
 
 exports.rejectTransaction = async (req, res) => {
   try {
-    const { id } = req.body; // Changed transactionId to id
+    const { id } = req.body;
     const userId = req.user.id;
 
     const transaction = await Transaction.findById(id);
@@ -816,6 +775,7 @@ exports.createChatRoom = async (req, res) => {
     const userId = req.user.id;
     console.log('Creating chatroom for transaction:', { transactionId, userId });
 
+    // Validate transaction
     const transaction = await Transaction.findById(transactionId)
       .populate("userId", "firstName lastName email avatarImage")
       .populate("participants", "firstName lastName email avatarImage");
@@ -825,21 +785,30 @@ exports.createChatRoom = async (req, res) => {
       return res.status(404).json({ success: false, error: "Transaction not found" });
     }
 
+    // Check user authorization
     const isCreator = transaction.userId._id.toString() === userId;
     const isParticipant = transaction.participants.some(
       (p) => p._id.toString() === userId
     );
-
     if (!isCreator && !isParticipant) {
       console.warn('Unauthorized to create chatroom:', { userId, transactionId });
       return res.status(403).json({ success: false, error: "Unauthorized to create chatroom for this transaction" });
     }
 
-    if (transaction.chatroomId) {
-      console.log('Chatroom already exists:', transaction.chatroomId);
-      return res.status(200).json({ success: true, chatroomId: transaction.chatroomId });
+    // Check for existing chatroom by transactionId
+    const existingChatroom = await Chatroom.findOne({ transactionId });
+    if (existingChatroom) {
+      console.log('Chatroom already exists for transaction:', { transactionId, chatroomId: existingChatroom._id });
+      // Ensure transaction has the correct chatroomId
+      if (!transaction.chatroomId || transaction.chatroomId.toString() !== existingChatroom._id.toString()) {
+        transaction.chatroomId = existingChatroom._id;
+        await transaction.save();
+        console.log('Transaction updated with existing chatroomId:', transaction._id);
+      }
+      return res.status(200).json({ success: true, chatroomId: existingChatroom._id });
     }
 
+    // Create new chatroom
     const chatroom = new Chatroom({
       transactionId,
       participants: [transaction.userId._id, ...transaction.participants.map(p => p._id)],
@@ -847,10 +816,12 @@ exports.createChatRoom = async (req, res) => {
     await chatroom.save();
     console.log('Chatroom created:', chatroom._id);
 
+    // Update transaction with chatroomId
     transaction.chatroomId = chatroom._id;
     await transaction.save();
     console.log('Transaction updated with chatroomId:', transaction._id);
 
+    // Emit socket event
     const io = req.app.get("io");
     io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
       transactionId,
@@ -870,56 +841,6 @@ exports.createChatRoom = async (req, res) => {
   }
 };
 
-exports.getTransactionById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const transaction = await Transaction.findById(id)
-      .populate("userId", "firstName lastName email")
-      .populate("participants", "firstName lastName email");
-
-    if (!transaction) {
-      return res.status(404).json({ success: false, error: "Transaction not found" });
-    }
-
-    const isCreator = transaction.userId._id.toString() === userId;
-    const isParticipant = transaction.participants.some(
-      (p) => p._id.toString() === userId
-    );
-    const canPreview = transaction.status === "pending" && transaction.participants.length === 0;
-
-    if (!isCreator && !isParticipant && !canPreview) {
-      return res.status(403).json({ success: false, error: "Unauthorized to view this transaction" });
-    }
-
-    if (!isCreator && !isParticipant && canPreview) {
-      const limitedTransaction = {
-        _id: transaction._id,
-        userId: {
-          firstName: transaction.userId.firstName,
-          lastName: transaction.userId.lastName,
-          email: transaction.userId.email,
-        },
-        productDetails: {
-          description: transaction.productDetails.description,
-        },
-        paymentAmount: transaction.paymentAmount,
-        status: transaction.status,
-        selectedUserType: transaction.selectedUserType,
-      };
-      return res.status(200).json({ success: true, data: limitedTransaction });
-    }
-
-    return res.status(200).json({ success: true, data: transaction });
-  } catch (error) {
-    console.error("Error fetching transaction by ID:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
-  }
-};
-
-
-// Submit Waybill Details
 exports.submitWaybillDetails = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -988,7 +909,6 @@ exports.submitWaybillDetails = async (req, res, next) => {
   }
 };
 
-// Get Waybill Details
 exports.getWaybillDetails = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -1121,7 +1041,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
-        message: 'Insufficient funds in wallet',
+        message: 'Insufficient wallet balance. Please top up your wallet in your Profile to fund this transaction.',
         shortfall: amount - buyerWallet.balance,
         balance: buyerWallet.balance
       });
@@ -1139,14 +1059,33 @@ exports.fundTransactionWithWallet = async (req, res) => {
       createdAt: new Date(),
     });
 
-    await buyerWallet.recalculateBalance();
+    buyerWallet.balance -= parseFloat(amount);
     await buyerWallet.save({ session });
 
     transaction.locked = true;
     transaction.lockedAmount = amount;
     transaction.buyerWalletId = buyerWallet._id;
     transaction.funded = true;
+    transaction.status = 'funded';
     await transaction.save({ session });
+
+    // Create notifications for both parties
+    const usersToNotify = [
+      transaction.userId.toString(),
+      ...transaction.participants.map((p) => p.toString()),
+    ];
+    const notificationPromises = usersToNotify.map((notifyUserId) =>
+      Notification.create([{
+        userId: notifyUserId,
+        title: 'Transaction Funded',
+        message: `Transaction ${transaction._id} has been funded with ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} and is now in escrow.`,
+        transactionId: transaction._id.toString(),
+        type: 'transaction',
+        status: 'funded',
+        createdAt: new Date(),
+      }], { session })
+    );
+    await Promise.all(notificationPromises);
 
     const io = req.app.get('io');
     io.to(userId).emit('balanceUpdate', {
@@ -1157,14 +1096,11 @@ exports.fundTransactionWithWallet = async (req, res) => {
       },
     });
 
-    const usersToNotify = [
-      transaction.userId.toString(),
-      ...transaction.participants.map((p) => p.toString()),
-    ];
     usersToNotify.forEach((userId) => {
       io.to(userId).emit('transactionUpdated', {
         transactionId: transaction._id,
         message: 'Transaction has been funded.',
+        status: 'funded',
       });
     });
 
@@ -1180,7 +1116,6 @@ exports.fundTransactionWithWallet = async (req, res) => {
   }
 };
 
-// New Paystack callback handler
 exports.handlePaystackCallback = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -1206,7 +1141,7 @@ exports.handlePaystackCallback = async (req, res) => {
       return res.status(400).json({ message: 'Payment verification failed' });
     }
 
-    const amount = paystackResponse.data.data.amount / 100; // Paystack returns amount in kobo
+    const amount = paystackResponse.data.data.amount / 100;
     const wallet = await Wallet.findOne({ userId }).session(session);
     if (!wallet) {
       await session.abortTransaction();
@@ -1227,7 +1162,7 @@ exports.handlePaystackCallback = async (req, res) => {
       createdAt: new Date(),
     });
 
-    await wallet.recalculateBalance();
+    wallet.balance += amount;
     await wallet.save({ session });
 
     const transaction = await Transaction.findById(transactionId).session(session);
@@ -1242,7 +1177,7 @@ exports.handlePaystackCallback = async (req, res) => {
         body: { transactionId, amount: transaction.paymentAmount },
         user: { id: userId },
         app: req.app,
-      }, null, session); // Pass session to fundTransactionWithWallet
+      }, null, session);
     } else {
       await session.abortTransaction();
       session.endSession();
@@ -1270,7 +1205,6 @@ exports.handlePaystackCallback = async (req, res) => {
   }
 };
 
-// Update wallet funding to include transactionId in metadata
 exports.fundWallet = async (req, res) => {
   try {
     const { amount, email, phoneNumber, transactionId } = req.body;
@@ -1284,7 +1218,7 @@ exports.fundWallet = async (req, res) => {
     const response = await axios.post(
       'https://api.paystack.co/transaction/initialize',
       {
-        amount: Math.ceil(amount * 100), // Convert to kobo
+        amount: Math.ceil(amount * 100),
         email,
         reference: `FUND-${uuidv4()}`,
         metadata: { userId, transactionId },
@@ -1368,7 +1302,6 @@ exports.updatePaymentDetails = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 exports.confirmTransaction = async (req, res) => {
   const session = await mongoose.startSession();
@@ -1484,7 +1417,7 @@ exports.confirmTransaction = async (req, res) => {
       }
 
       // Transfer funds to seller
-      const payoutAmount = transaction.lockedAmount; // Store before resetting
+      const payoutAmount = transaction.lockedAmount;
       sellerWallet.balance += payoutAmount;
       sellerWallet.transactions.push({
         type: "deposit",
@@ -1605,8 +1538,5 @@ exports.confirmTransaction = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-
-
-
 
 module.exports = exports;

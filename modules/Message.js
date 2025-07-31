@@ -7,7 +7,8 @@ const messageSchema = new mongoose.Schema({
     required: true,
   },
   userId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId, // Changed from String to ObjectId
+    ref: 'User',
     required: true,
   },
   userFirstName: {
@@ -31,7 +32,7 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-// Added index for efficient querying
+// Index for efficient querying
 messageSchema.index({ chatroomId: 1, timestamp: 1 });
 
 module.exports = mongoose.model('Message', messageSchema);

@@ -13,6 +13,8 @@ require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
 const Chatroom = require("./modules/Chatroom");
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger-output.json'); // Generated Swagger JSON
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -45,7 +47,7 @@ const io = socketIo(server, {
   cors: {
     origin: [
       process.env.VITE_BASE_URL || "http://localhost:5173",
-      "http://localhost:5174", // Add this line
+      "http://localhost:5174",
       "https://res.cloudinary.com",
       "https://api.multiavatar.com",
       "https://escrow-app.onrender.com",
@@ -121,7 +123,7 @@ async function manageIndexes() {
 const corsOptions = {
   origin: [
     process.env.VITE_BASE_URL || "http://localhost:5173",
-    "http://localhost:5174", // Add this line
+    "http://localhost:5174",
     "https://res.cloudinary.com",
     "https://api.multiavatar.com",
     "https://escrow-app.onrender.com",
@@ -322,6 +324,10 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(responseFormatter);
 
+// Serve Swagger UI at /api-docs
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Initialize routes
 const initializeRoutes = () => {
   const authRoutes = require("./routes/authRoutes");
   const userRoutes = require("./routes/userRoutes");
@@ -401,6 +407,7 @@ async function startServer() {
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Server is running on port ${PORT}`);
       console.log("Paystack Secret Key Mode:", process.env.NODE_ENV === "production" ? "Live" : "Test");
+      console.log(`Swagger UI available at http://localhost:${PORT}/api-docs`);
     });
   } catch (error) {
     console.error("Failed to start server:", {

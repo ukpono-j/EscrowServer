@@ -67,6 +67,5 @@ router.post('/fund-transaction', authenticateUser, async (req, res) => {
 });
 
 router.put('/update-payment-details/:transactionId', authenticateUser, transactionController.updatePaymentDetails);
-router.get('/user-wallet', authenticateUser, transactionController.getUserAndWallet);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const waybillSchema = new mongoose.Schema({
   item: { type: String, required: true },
   image: { type: String },
-  price: { type: Number, required: true },
+  price: { type: Number }, // Made optional to align with frontend
   shippingAddress: { type: String, required: true },
   trackingNumber: { type: String, required: true },
   deliveryDate: { type: Date, required: true },
@@ -19,23 +19,6 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  messages: [
-    {
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: true,
-      },
-      message: {
-        type: String,
-        required: true,
-      },
-      timestamp: {
-        type: Date,
-        default: Date.now,
-      },
-    },
-  ],
   paymentBank: {
     type: String,
     required: [function () { return this.selectedUserType === "seller"; }, "Payment bank is required for sellers"],
@@ -82,6 +65,14 @@ const transactionSchema = new mongoose.Schema({
   chatroomId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Chatroom",
+    validate: {
+      validator: async function (value) {
+        if (!value) return true;
+        const chatroom = await mongoose.model("Chatroom").findById(value);
+        return !!chatroom;
+      },
+      message: "Invalid chatroom ID",
+    },
   },
   createdAt: {
     type: Date,
@@ -89,14 +80,9 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["active", "cancelled", "completed", "pending"],
+    enum: ["pending", "funded", "completed", "cancelled"], // Consolidated status
     default: "pending",
     index: true,
-  },
-  paymentStatus: {
-    type: String,
-    enum: ["active", "paid"],
-    default: "active",
   },
   buyerConfirmed: {
     type: Boolean,
@@ -125,7 +111,7 @@ const transactionSchema = new mongoose.Schema({
     ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null/undefined
+        if (!value) return true;
         const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
@@ -137,7 +123,7 @@ const transactionSchema = new mongoose.Schema({
     ref: "Wallet",
     validate: {
       validator: async function (value) {
-        if (!value) return true; // Allow null/undefined
+        if (!value) return true;
         const wallet = await mongoose.model("Wallet").findById(value);
         return !!wallet;
       },
@@ -154,9 +140,8 @@ const transactionSchema = new mongoose.Schema({
   },
 });
 
-// Removed the unique index on transactionId since it's removed
 transactionSchema.pre('save', async function (next) {
-  if (this.status === 'completed' || this.funded) {
+  if (this.funded || this.status === 'completed') {
     if (!this.buyerWalletId && this.selectedUserType === "buyer") {
       return next(new Error('Buyer wallet is required for funded or completed transactions'));
     }
@@ -166,6 +151,7 @@ transactionSchema.pre('save', async function (next) {
   }
   if (this.buyerConfirmed && this.sellerConfirmed && this.status !== 'completed') {
     this.status = 'completed';
+    this.payoutReleased = true; // Ensure payout is marked as released
   }
   next();
 });

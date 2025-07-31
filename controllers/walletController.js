@@ -641,8 +641,7 @@ exports.getWalletBalance = async (req, res) => {
     await session.withTransaction(async () => {
       const user = await User.findById(req.user.id).session(session);
       if (!user) {
-        logger.error('User not found', { userId: req.user.id });
-        return res.status(404).json({ success: false, error: 'User not found' });
+        throw new Error('User not found');
       }
 
       let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
@@ -682,12 +681,6 @@ exports.getWalletBalance = async (req, res) => {
       }
     });
 
-    // Ensure session is ended before sending response
-    if (session) {
-      await session.endSession();
-      session = null;
-    }
-
     return res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     logger.error('Get wallet balance error', {
@@ -695,19 +688,22 @@ exports.getWalletBalance = async (req, res) => {
       message: error.message,
       stack: error.stack,
       errorName: error.name,
+      mongoErrorCode: error.name === 'MongoServerError' ? error.code : null,
     });
 
+    const statusCode = error.message === 'User not found' ? 404 :
+      error.name === 'MongoServerError' ? 503 :
+      error instanceof TypeError && error.message.includes('Converting circular structure to JSON') ? 500 : 500;
+
+    const errorMessage = error.name === 'MongoServerError' ? 'Database error: Unable to fetch wallet data' :
+      error.message.includes('Converting circular structure to JSON') ? 'Internal server error: Invalid response data format' :
+      error.message || 'Failed to fetch wallet balance';
+
+    return res.status(statusCode).json({ success: false, error: errorMessage });
+  } finally {
     if (session) {
       await session.endSession();
     }
-
-    if (error.name === 'MongoServerError') {
-      return res.status(503).json({ success: false, error: 'Database error: Unable to fetch wallet data' });
-    }
-    if (error instanceof TypeError && error.message.includes('Converting circular structure to JSON')) {
-      return res.status(500).json({ success: false, error: 'Internal server error: Invalid response data format' });
-    }
-    return res.status(500).json({ success: false, error: 'Failed to fetch wallet balance' });
   }
 };
 
@@ -1640,219 +1636,6 @@ const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
   }
   throw lastError;
 };
-
-// Previous withdrawFunds function 
-// exports.withdrawFunds = async (req, res) => {
-//   const session = await mongoose.startSession();
-//   try {
-//     await session.withTransaction(async () => {
-//       const { amount, bankCode, accountNumber, accountName } = req.body;
-//       const userId = req.user?.id;
-
-//       if (!userId) {
-//         logger.error('User ID not found in request', { url: req.originalUrl, headers: req.headers });
-//         throw new Error('Unauthorized: User ID not found in request');
-//       }
-//       if (!amount || amount < 100 || !bankCode || !accountNumber || !accountName) {
-//         throw new Error('All fields are required. Minimum withdrawal is ₦100.');
-//       }
-
-//       logger.info('Withdraw funds request', { userId, amount, bankCode, accountNumber: accountNumber.slice(-4) });
-
-//       const wallet = await Wallet.findOne({ userId }).session(session);
-//       if (!wallet) {
-//         throw new Error('Wallet not found');
-//       }
-//       if (wallet.balance < amount) {
-//         throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance}, Requested: ₦${amount}`);
-//       }
-
-//       // Check Paystack balance with retries and delay
-//       let balanceResponse;
-//       let attempts = 0;
-//       const maxAttempts = 3;
-//       const delay = 2000; // 2 seconds delay between retries
-
-//       while (attempts < maxAttempts) {
-//         try {
-//           balanceResponse = await retryAsync(() =>
-//             axios.get('https://api.paystack.co/balance', {
-//               headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//               timeout: 10000,
-//             })
-//           );
-//           logger.info('Paystack balance response', {
-//             status: balanceResponse.data.status,
-//             data: balanceResponse.data.data,
-//           });
-//           break;
-//         } catch (error) {
-//           attempts++;
-//           logger.warn('Paystack balance check failed', {
-//             attempt: attempts,
-//             error: error.message,
-//             status: error.response?.status,
-//           });
-//           if (attempts === maxAttempts) {
-//             throw new Error('Failed to retrieve Paystack balance after retries');
-//           }
-//           await new Promise(resolve => setTimeout(resolve, delay));
-//         }
-//       }
-
-//       // Handle malformed balance response
-//       if (!balanceResponse.data?.status || !Array.isArray(balanceResponse.data.data)) {
-//         logger.error('Invalid Paystack balance response', { response: balanceResponse.data });
-//         throw new Error('Invalid response from Paystack balance check');
-//       }
-
-//       const transferBalance = balanceResponse.data.data.find(b => b.balance_type === 'transfers')?.balance / 100 || 0;
-//       const revenueBalance = balanceResponse.data.data.find(b => b.balance_type === 'revenue')?.balance / 100 || 0;
-//       const transferFee = amount > 5000 ? 10 + amount * 0.005 : amount > 500 ? 25 : 10;
-//       const totalAmount = amount + transferFee;
-
-//       logger.info('Paystack balance check', {
-//         transferBalance,
-//         revenueBalance,
-//         required: totalAmount,
-//         transferFee,
-//       });
-
-//       // Ensure sufficient funds in transfer balance or revenue balance
-//       if (totalAmount > transferBalance + revenueBalance) {
-//         throw new Error(
-//           `Insufficient Paystack balance. Transfer balance: ₦${transferBalance}, Revenue balance: ₦${revenueBalance}, Required: ₦${totalAmount} (including ₦${transferFee} fee)`
-//         );
-//       }
-
-//       // Validate bank details
-//       const banksResponse = await retryAsync(() =>
-//         axios.get('https://api.paystack.co/bank', {
-//           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//           timeout: 10000,
-//         })
-//       );
-//       const validBank = banksResponse.data.data.find((bank) => bank.code === bankCode);
-//       if (!validBank) {
-//         throw new Error(`Invalid bank code: ${bankCode}`);
-//       }
-
-//       const verifyResponse = await retryAsync(() =>
-//         axios.get(`https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${bankCode}`, {
-//           headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
-//           timeout: 10000,
-//         })
-//       );
-//       if (!verifyResponse.data.status || verifyResponse.data.data.account_name.toUpperCase() !== accountName.toUpperCase()) {
-//         throw new Error('Account verification failed or name mismatch');
-//       }
-
-//       // Create transfer recipient
-//       let recipientCode;
-//       try {
-//         const recipientResponse = await retryAsync(() =>
-//           axios.post(
-//             'https://api.paystack.co/transferrecipient',
-//             {
-//               type: 'nuban',
-//               name: accountName,
-//               account_number: accountNumber,
-//               bank_code: bankCode,
-//               currency: 'NGN',
-//             },
-//             { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }, timeout: 10000 }
-//           )
-//         );
-//         recipientCode = recipientResponse.data.data.recipient_code;
-//       } catch (error) {
-//         throw new Error(`Failed to create transfer recipient: ${error.response?.data?.message || error.message}`);
-//       }
-
-//       // Record transaction
-//       const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-//       const transaction = {
-//         type: 'withdrawal',
-//         amount,
-//         reference,
-//         status: 'pending',
-//         metadata: {
-//           paymentGateway: 'Paystack',
-//           bankCode,
-//           accountNumber: accountNumber.slice(-4),
-//           accountName,
-//           recipientCode,
-//         },
-//         createdAt: new Date(),
-//       };
-//       wallet.transactions.push(transaction);
-//       wallet.balance -= amount;
-//       await wallet.save({ session });
-
-//       // Create notification
-//       await Notification.create(
-//         [
-//           {
-//             userId,
-//             title: 'Withdrawal Initiated',
-//             message: `Withdrawal request of ₦${amount.toFixed(2)} to ${accountName} initiated.`,
-//             transactionId: reference,
-//             type: 'withdrawal',
-//             status: 'pending',
-//             createdAt: new Date(),
-//           },
-//         ],
-//         { session }
-//       );
-
-//       // Initiate transfer
-//       const transferResponse = await retryAsync(() =>
-//         axios.post(
-//           'https://api.paystack.co/transfer',
-//           {
-//             source: 'balance',
-//             amount: Math.round(amount * 100), // Convert to kobo
-//             recipient: recipientCode,
-//             reason: `Withdrawal from wallet (Ref: ${reference})`,
-//           },
-//           { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }, timeout: 10000 }
-//         )
-//       );
-
-//       if (!transferResponse.data.status) {
-//         throw new Error(transferResponse.data.message || 'Failed to initiate transfer');
-//       }
-
-//       // Update transaction status
-//       wallet.transactions = wallet.transactions.map((tx) =>
-//         tx.reference === reference ? { ...tx, status: 'completed', updatedAt: new Date() } : tx
-//       );
-//       await wallet.save({ session });
-
-//       // Emit balance update
-//       const { emitBalanceUpdate } = require('../utils/socket');
-//       emitBalanceUpdate(userId, {
-//         balance: wallet.balance,
-//         reference,
-//         transaction,
-//       });
-
-//       res.status(200).json({
-//         success: true,
-//         message: `Withdrawal of ₦${amount.toFixed(2)} initiated`,
-//         data: { reference, amount, bankCode, accountName, status: 'completed' },
-//       });
-//     });
-//   } catch (error) {
-//     logger.error('Withdraw funds error', {
-//       userId: req.user?.id,
-//       message: error.message,
-//       stack: error.stack,
-//     });
-//     res.status(400).json({ success: false, error: error.message });
-//   } finally {
-//     await session.endSession();
-//   }
-// };
 
 
 // Helper function to calculate business days (excludes Saturday and Sunday)
