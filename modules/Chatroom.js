@@ -1,4 +1,3 @@
-// modules/Chatroom.js
 const mongoose = require("mongoose");
 
 const chatroomSchema = new mongoose.Schema({
@@ -6,11 +5,19 @@ const chatroomSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Transaction",
     required: true,
-    unique: true, // Ensure one chatroom per transaction
+    unique: true,
   },
   participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["buyer", "seller"],
+      required: true,
+    },
   }],
 });
 

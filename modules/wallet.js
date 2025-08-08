@@ -38,6 +38,8 @@ const withdrawalRequestSchema = new mongoose.Schema({
   metadata: {
     accountNumber: { type: String, required: true },
     accountName: { type: String, required: true },
+    bankName: { type: String, required: true },
+    bankCode: { type: String, required: true },
     requestDate: { type: Date, required: true },
     expectedPayoutDate: { type: Date, required: true },
     manualProcessing: { type: Boolean, default: true },
@@ -114,6 +116,12 @@ walletSchema.pre('save', function (next) {
       }
       if (!wr.metadata?.accountName) {
         throw new Error(`Withdrawal request at index ${index} has invalid account name`);
+      }
+      if (!wr.metadata?.bankName) {
+        throw new Error(`Withdrawal request at index ${index} has invalid bank name`);
+      }
+      if (!wr.metadata?.bankCode) {
+        throw new Error(`Withdrawal request at index ${index} has invalid bank code`);
       }
       withdrawalRefs.add(wr.reference.toLowerCase());
       wr.updatedAt = new Date();

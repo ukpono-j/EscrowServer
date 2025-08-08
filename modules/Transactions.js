@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const waybillSchema = new mongoose.Schema({
   item: { type: String, required: true },
   image: { type: String },
-  price: { type: Number }, // Made optional to align with frontend
+  price: { type: Number },
   shippingAddress: { type: String, required: true },
   trackingNumber: { type: String, required: true },
   deliveryDate: { type: Date, required: true },
@@ -58,9 +58,16 @@ const transactionSchema = new mongoose.Schema({
     default: "pending",
   },
   participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    index: true
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["buyer", "seller"],
+      required: true,
+    },
   }],
   chatroomId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -80,7 +87,7 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "funded", "completed", "cancelled"], // Consolidated status
+    enum: ["pending", "funded", "completed", "cancelled"],
     default: "pending",
     index: true,
   },
@@ -151,7 +158,7 @@ transactionSchema.pre('save', async function (next) {
   }
   if (this.buyerConfirmed && this.sellerConfirmed && this.status !== 'completed') {
     this.status = 'completed';
-    this.payoutReleased = true; // Ensure payout is marked as released
+    this.payoutReleased = true;
   }
   next();
 });

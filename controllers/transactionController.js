@@ -294,38 +294,64 @@ exports.getUserTransactions = async (req, res) => {
     const skip = (page - 1) * limit;
 
     console.log("Fetching transactions for user:", userId, { page, limit });
+
+    // Removed cache.get/cache.set since caching is causing errors
     const [transactions, total] = await Promise.all([
       Transaction.find({
-        $or: [{ userId }, { participants: userId }],
+        $or: [
+          { userId },
+          { 'participants.userId': userId },
+        ],
       })
-        .populate("userId", "firstName lastName email")
-        .populate("participants", "firstName lastName email")
+        .populate("userId", "firstName lastName email avatarImage")
+        .populate("participants.userId", "firstName lastName email avatarImage")
         .skip(skip)
         .limit(limit)
         .lean(),
       Transaction.countDocuments({
-        $or: [{ userId }, { participants: userId }],
+        $or: [
+          { userId },
+          { 'participants.userId': userId },
+        ],
       }),
     ]);
 
-    const cleanedTransactions = transactions.map((t) => {
-      const isCreator = t.userId._id.toString() === userId;
-      const isParticipant = t.participants.some((p) => p && p._id.toString() === userId);
-      const userRole = isCreator
-        ? t.selectedUserType
-        : t.selectedUserType === "buyer"
-          ? "seller"
-          : "buyer";
+    const cleanedTransactions = transactions
+      .filter(t => {
+        if (!t || !t._id) {
+          console.warn("Invalid transaction filtered out:", t);
+          return false;
+        }
+        return true;
+      })
+      .map(t => {
+        const isCreator = t.userId?._id?.toString() === userId;
+        const isParticipant = t.participants.some(p => p.userId && p.userId._id?.toString() === userId);
+        const userRole = isCreator
+          ? t.selectedUserType
+          : t.selectedUserType === "buyer"
+            ? "seller"
+            : "buyer";
 
-      t.participants = t.participants.filter((p) => p && p._id && p.email);
+        t.participants = t.participants.filter(p => {
+          if (!p.userId || !p.userId._id) {
+            console.warn("Invalid participant filtered out:", p);
+            return false;
+          }
+          return true;
+        });
 
-      return {
-        ...t,
-        userRole,
-      };
-    });
+        return {
+          ...t,
+          userRole,
+        };
+      });
 
-    console.log("Transactions fetched:", cleanedTransactions.length, "Response data:", cleanedTransactions);
+    if (cleanedTransactions.length === 0 && transactions.length > 0) {
+      console.warn("All transactions were invalid for user:", userId);
+    }
+
+    console.log("Transactions fetched:", cleanedTransactions.length);
     return res.status(200).json({
       success: true,
       data: cleanedTransactions,
@@ -337,8 +363,16 @@ exports.getUserTransactions = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error fetching transactions:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    console.error("Error fetching transactions:", {
+      message: error.message,
+      stack: error.stack,
+      userId: req.user.id,
+    });
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch transactions. Please try again later.",
+      details: error.message,
+    });
   }
 };
 
@@ -382,27 +416,49 @@ exports.getCompletedTransactions = async (req, res) => {
   }
 };
 
+
 exports.getTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
+    console.log('Fetching transaction:', { transactionId: id, userId });
+
     const transaction = await Transaction.findById(id)
       .populate("userId", "firstName lastName email avatarImage")
-      .populate("participants", "firstName lastName email avatarImage");
+      .populate("participants.userId", "firstName lastName email avatarImage");
 
     if (!transaction) {
+      console.log('Transaction not found:', id);
       return res.status(404).json({ success: false, error: "Transaction not found" });
     }
 
+    transaction.participants = transaction.participants.filter(
+      (p) => p.userId && mongoose.Types.ObjectId.isValid(p.userId)
+    );
+    await transaction.save();
+
     const isCreator = transaction.userId._id.toString() === userId;
     const isParticipant = transaction.participants.some(
-      (p) => p._id.toString() === userId
+      (p) => p.userId && p.userId._id.toString() === userId
     );
     const canPreview = transaction.status === "pending" && transaction.participants.length === 0;
 
+    console.log('Authorization check:', {
+      isCreator,
+      isParticipant,
+      canPreview,
+      transactionStatus: transaction.status,
+      participantsCount: transaction.participants.length,
+      creatorId: transaction.userId._id.toString(),
+      participantIds: transaction.participants.map(p => p.userId?._id.toString()),
+    });
+
     if (!isCreator && !isParticipant && !canPreview) {
-      return res.status(403).json({ success: false, error: "Unauthorized to view this transaction" });
+      return res.status(403).json({
+        success: false,
+        error: `Unauthorized to view this transaction. Status: ${transaction.status}, Participants: ${transaction.participants.length}`,
+      });
     }
 
     if (!isCreator && !isParticipant && canPreview) {
@@ -421,13 +477,15 @@ exports.getTransactionById = async (req, res) => {
         status: transaction.status,
         selectedUserType: transaction.selectedUserType,
       };
+      console.log('Returning limited transaction data for preview');
       return res.status(200).json({ success: true, data: limitedTransaction });
     }
 
+    console.log('Returning full transaction data');
     return res.status(200).json({ success: true, data: transaction });
   } catch (error) {
-    console.error("Error fetching transaction by ID:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    console.error("Error fetching transaction by ID:", error.message, error.stack);
+    return res.status(500).json({ success: false, error: "Internal server error", details: error.message });
   }
 };
 
@@ -537,6 +595,11 @@ exports.joinTransaction = async (req, res) => {
   try {
     const { id } = req.body;
     const userId = req.user.id;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, error: "Invalid user ID" });
+    }
+
     const transaction = await Transaction.findById(id);
     if (!transaction) {
       return res.status(404).json({ success: false, error: "Transaction not found" });
@@ -544,7 +607,7 @@ exports.joinTransaction = async (req, res) => {
     if (transaction.userId.toString() === userId) {
       return res.status(400).json({ success: false, error: "You cannot join your own transaction" });
     }
-    if (transaction.participants.includes(userId)) {
+    if (transaction.participants.some(p => p.userId && p.userId.toString() === userId)) {
       return res.status(400).json({ success: false, error: "You are already a participant" });
     }
     if (transaction.status !== "pending") {
@@ -553,12 +616,12 @@ exports.joinTransaction = async (req, res) => {
     if (transaction.participants.length >= 1) {
       return res.status(400).json({ success: false, error: "Transaction already has a participant" });
     }
+
     const user = await User.findById(userId);
     if (!user || !user.email || !user.firstName) {
       return res.status(400).json({ success: false, error: "User profile incomplete (missing email or firstName)" });
     }
 
-    // Assign wallet based on role
     let wallet = await Wallet.findOne({ userId });
     if (!wallet) {
       wallet = new Wallet({
@@ -571,42 +634,42 @@ exports.joinTransaction = async (req, res) => {
       await wallet.save();
     }
 
-    // Set wallet ID for the participant (opposite role)
-    if (transaction.selectedUserType === "buyer") {
+    const participantRole = transaction.selectedUserType === "buyer" ? "seller" : "buyer";
+    if (participantRole === "seller") {
       transaction.sellerWalletId = wallet._id;
     } else {
       transaction.buyerWalletId = wallet._id;
     }
 
-    transaction.participants.push(userId);
+    transaction.participants.push({ userId, role: participantRole });
     await transaction.save();
 
-    // Notify creator
     const notification = new Notification({
       userId: transaction.userId.toString(),
       title: "User Joined Transaction",
-      message: `${user.firstName} has joined your transaction ${transaction._id} as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"}.`,
+      message: `${user.firstName} has joined your transaction ${transaction._id} as ${participantRole}.`,
       transactionId: transaction._id.toString(),
       type: "transaction",
       status: "pending",
     });
     await notification.save();
+
     const io = req.app.get("io");
     io.to(transaction.userId.toString()).emit("transactionUpdated", {
       transactionId: transaction._id,
-      message: `${user.firstName} has joined your transaction as ${transaction.selectedUserType === "buyer" ? "seller" : "buyer"}.`,
+      message: `${user.firstName} has joined your transaction as ${participantRole}.`,
     });
 
     return res.status(200).json({
       success: true,
       data: {
         message: "Joined transaction successfully",
-        role: transaction.selectedUserType === "buyer" ? "seller" : "buyer",
+        role: participantRole,
       },
     });
   } catch (error) {
-    console.error("Error joining transaction:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    console.error("Error joining transaction:", error.message, error.stack);
+    return res.status(500).json({ success: false, error: "Internal server error", details: error.message });
   }
 };
 
@@ -775,46 +838,71 @@ exports.createChatRoom = async (req, res) => {
     const userId = req.user.id;
     console.log('Creating chatroom for transaction:', { transactionId, userId });
 
-    // Validate transaction
-    const transaction = await Transaction.findById(transactionId)
-      .populate("userId", "firstName lastName email avatarImage")
-      .populate("participants", "firstName lastName email avatarImage");
+    // Validate input
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.warn('Invalid transactionId format:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
 
+    // Find transaction with populated userId and participants.userId
+    const transaction = await Transaction.findById(transactionId)
+      .populate('userId', 'firstName lastName email avatarSeed')
+      .populate('participants.userId', 'firstName lastName email avatarSeed');
     if (!transaction) {
       console.warn('Transaction not found:', transactionId);
-      return res.status(404).json({ success: false, error: "Transaction not found" });
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
     // Check user authorization
     const isCreator = transaction.userId._id.toString() === userId;
     const isParticipant = transaction.participants.some(
-      (p) => p._id.toString() === userId
+      (p) => p.userId && p.userId._id.toString() === userId
     );
     if (!isCreator && !isParticipant) {
       console.warn('Unauthorized to create chatroom:', { userId, transactionId });
-      return res.status(403).json({ success: false, error: "Unauthorized to create chatroom for this transaction" });
+      return res.status(403).json({ success: false, error: 'Unauthorized to create chatroom for this transaction' });
     }
 
     // Check for existing chatroom by transactionId
-    const existingChatroom = await Chatroom.findOne({ transactionId });
-    if (existingChatroom) {
-      console.log('Chatroom already exists for transaction:', { transactionId, chatroomId: existingChatroom._id });
+    let chatroom = await Chatroom.findOne({ transactionId })
+      .populate('participants.userId', 'firstName lastName email avatarSeed');
+    if (chatroom) {
+      console.log('Chatroom already exists for transaction:', { transactionId, chatroomId: chatroom._id });
       // Ensure transaction has the correct chatroomId
-      if (!transaction.chatroomId || transaction.chatroomId.toString() !== existingChatroom._id.toString()) {
-        transaction.chatroomId = existingChatroom._id;
+      if (!transaction.chatroomId || transaction.chatroomId.toString() !== chatroom._id.toString()) {
+        transaction.chatroomId = chatroom._id;
         await transaction.save();
         console.log('Transaction updated with existing chatroomId:', transaction._id);
       }
-      return res.status(200).json({ success: true, chatroomId: existingChatroom._id });
+      return res.status(200).json({
+        success: true,
+        chatroomId: chatroom._id,
+        participants: chatroom.participants.map(p => ({
+          userId: p.userId ? {
+            _id: p.userId._id,
+            firstName: p.userId.firstName || 'User',
+            lastName: p.userId.lastName || '',
+            email: p.userId.email || 'N/A',
+            avatarSeed: p.userId.avatarSeed || p.userId._id,
+          } : null,
+          role: p.role,
+        })).filter(p => p.userId),
+      });
     }
 
-    // Create new chatroom
-    const chatroom = new Chatroom({
+    // Create new chatroom with participants matching Transaction schema
+    chatroom = new Chatroom({
       transactionId,
-      participants: [transaction.userId._id, ...transaction.participants.map(p => p._id)],
+      participants: [
+        { userId: transaction.userId._id, role: transaction.selectedUserType },
+        ...transaction.participants.map(p => ({
+          userId: p.userId._id,
+          role: p.role,
+        })),
+      ],
     });
     await chatroom.save();
-    console.log('Chatroom created:', chatroom._id);
+    console.log('Chatroom created:', JSON.stringify(chatroom, null, 2));
 
     // Update transaction with chatroomId
     transaction.chatroomId = chatroom._id;
@@ -822,33 +910,55 @@ exports.createChatRoom = async (req, res) => {
     console.log('Transaction updated with chatroomId:', transaction._id);
 
     // Emit socket event
-    const io = req.app.get("io");
-    io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
-      transactionId,
-      message: "Chatroom created for the transaction",
-      chatroomId: chatroom._id,
-    });
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`transaction_${transactionId}`).emit('transactionUpdated', {
+        transactionId,
+        message: 'Chatroom created for the transaction',
+        chatroomId: chatroom._id,
+      });
+    } else {
+      console.warn('Socket.io instance not available');
+    }
 
-    return res.status(201).json({ success: true, chatroomId: chatroom._id });
+    // Populate participants for response
+    await chatroom.populate('participants.userId', 'firstName lastName email avatarSeed');
+    return res.status(201).json({
+      success: true,
+      chatroomId: chatroom._id,
+      participants: chatroom.participants.map(p => ({
+        userId: p.userId ? {
+          _id: p.userId._id,
+          firstName: p.userId.firstName || 'User',
+          lastName: p.userId.lastName || '',
+          email: p.userId.email || 'N/A',
+          avatarSeed: p.userId.avatarSeed || p.userId._id,
+        } : null,
+        role: p.role,
+      })).filter(p => p.userId),
+    });
   } catch (error) {
-    console.error("Error creating chatroom:", {
+    console.error('Error creating chatroom:', {
       transactionId: req.body.transactionId,
       userId,
       message: error.message,
       stack: error.stack,
     });
-    return res.status(500).json({ success: false, error: "Internal server error", details: error.message });
+    return res.status(500).json({ success: false, error: 'Internal server error', details: error.message });
   }
 };
 
 exports.submitWaybillDetails = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { transactionId, item, price, shippingAddress, trackingNumber, deliveryDate } = req.body;
+    const { transactionId, item, shippingAddress, trackingNumber, deliveryDate } = req.body;
 
     // Validate required fields
-    if (!transactionId || !item || !price || !shippingAddress || !trackingNumber || !deliveryDate || !req.file) {
-      return res.status(400).json({ error: "All fields and image are required" });
+    if (!transactionId || !item || !shippingAddress || !trackingNumber || !deliveryDate) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "Image is required" });
     }
 
     // Find the transaction
@@ -861,12 +971,6 @@ exports.submitWaybillDetails = async (req, res, next) => {
     const isSeller = transaction.selectedUserType === "buyer" ? transaction.participants.some(p => p.toString() === userId) : transaction.userId.toString() === userId;
     if (!isSeller) {
       return res.status(403).json({ error: "Only the seller can submit waybill details" });
-    }
-
-    // Validate price
-    const parsedPrice = parseFloat(price);
-    if (isNaN(parsedPrice) || parsedPrice <= 0) {
-      return res.status(400).json({ error: "Invalid price" });
     }
 
     // Validate delivery date
@@ -882,7 +986,6 @@ exports.submitWaybillDetails = async (req, res, next) => {
     transaction.waybillDetails = {
       item,
       image: imagePath,
-      price: parsedPrice,
       shippingAddress,
       trackingNumber,
       deliveryDate: parsedDate,
@@ -928,7 +1031,7 @@ exports.getWaybillDetails = async (req, res, next) => {
     }
 
     if (!transaction.waybillDetails) {
-      return res.status(404).json({ error: "No waybill details found for this transaction" });
+      return res.status(200).json({ success: true, data: {} });
     }
 
     return res.status(200).json({
@@ -936,7 +1039,6 @@ exports.getWaybillDetails = async (req, res, next) => {
       data: {
         item: transaction.waybillDetails.item,
         image: transaction.waybillDetails.image,
-        price: transaction.waybillDetails.price,
         shippingAddress: transaction.waybillDetails.shippingAddress,
         trackingNumber: transaction.waybillDetails.trackingNumber,
         deliveryDate: transaction.waybillDetails.deliveryDate,
@@ -953,32 +1055,66 @@ exports.getTransactionByChatroomId = async (req, res) => {
     const { chatroomId } = req.params;
     const userId = req.user.id;
 
+    // Validate chatroomId
+    if (!mongoose.Types.ObjectId.isValid(chatroomId)) {
+      console.warn('Invalid chatroomId format:', chatroomId);
+      return res.status(400).json({ success: false, error: 'Invalid chatroom ID format' });
+    }
+
+    // Find chatroom
     const chatroom = await Chatroom.findById(chatroomId);
     if (!chatroom) {
-      return res.status(404).json({ success: false, error: "Chatroom not found" });
+      console.warn('Chatroom not found:', chatroomId);
+      return res.status(404).json({ success: false, error: 'Chatroom not found' });
     }
 
+    // Find transaction and populate userId and participants.userId
     const transaction = await Transaction.findById(chatroom.transactionId)
-      .populate("userId", "firstName lastName email avatarSeed")
-      .populate("participants", "firstName lastName email avatarSeed");
+      .populate('userId', 'firstName lastName email avatarSeed')
+      .populate('participants.userId', 'firstName lastName email avatarSeed')
+      .lean();
 
     if (!transaction) {
-      return res.status(404).json({ success: false, error: "Transaction not found" });
+      console.warn('Transaction not found for chatroom:', { chatroomId, transactionId: chatroom.transactionId });
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
+    // Verify user access
     const isCreator = transaction.userId._id.toString() === userId;
     const isParticipant = transaction.participants.some(
-      (p) => p._id.toString() === userId
+      (p) => p.userId && p.userId._id.toString() === userId
     );
 
     if (!isCreator && !isParticipant) {
-      return res.status(403).json({ success: false, error: "Unauthorized to view this transaction" });
+      console.warn('Unauthorized access:', { userId, chatroomId, transactionId: transaction._id });
+      return res.status(403).json({ success: false, error: 'Unauthorized to view this transaction' });
     }
 
-    return res.status(200).json({ success: true, data: transaction });
+    // Ensure participants array includes role and populated user details
+    const formattedTransaction = {
+      ...transaction,
+      participants: transaction.participants.map((p) => ({
+        userId: p.userId ? {
+          _id: p.userId._id,
+          firstName: p.userId.firstName || 'User',
+          lastName: p.userId.lastName || '',
+          email: p.userId.email || 'N/A',
+          avatarSeed: p.userId.avatarSeed || p.userId._id,
+        } : null,
+        role: p.role,
+      })).filter(p => p.userId),
+    };
+
+    console.log('Transaction data sent:', JSON.stringify(formattedTransaction, null, 2));
+    return res.status(200).json({ success: true, data: formattedTransaction });
   } catch (error) {
-    console.error("Error fetching transaction by chatroom ID:", error);
-    return res.status(500).json({ success: false, error: "Internal server error" });
+    console.error('Error fetching transaction by chatroom ID:', {
+      chatroomId,
+      userId,
+      message: error.message,
+      stack: error.stack,
+    });
+    return res.status(500).json({ success: false, error: 'Internal server error' });
   }
 };
 
@@ -1255,51 +1391,95 @@ exports.updatePaymentDetails = async (req, res) => {
     const { paymentAmount } = req.body;
     const userId = req.user.id;
 
-    const transaction = await Transaction.findById(transactionId);
-    if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+    console.log('updatePaymentDetails called:', { transactionId, paymentAmount, userId });
+
+    // Validate transaction ID
+    if (!transactionId || !/^[0-9a-fA-F]{24}$/.test(transactionId)) {
+      console.warn('Invalid transaction ID:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID' });
     }
 
-    console.log('User ID from token:', userId);
-    console.log('Transaction User ID:', transaction.userId.toString());
+    // Find transaction with error handling
+    let transaction;
+    try {
+      transaction = await Transaction.findById(transactionId);
+    } catch (dbError) {
+      console.error('Database error finding transaction:', dbError);
+      return res.status(500).json({ success: false, error: 'Database error occurred while fetching transaction' });
+    }
+
+    if (!transaction) {
+      console.warn('Transaction not found:', transactionId);
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+
+    // Check creator permissions
     const isCreator = transaction.userId.toString() === userId;
     if (!isCreator) {
-      console.log('Authorization failed: User is not the transaction creator');
-      return res.status(403).json({ message: "Only the transaction creator can update payment details" });
+      console.log('Unauthorized update attempt:', { userId, transactionCreator: transaction.userId.toString() });
+      return res.status(403).json({ success: false, error: 'Only the transaction creator can update payment details' });
     }
 
+    // Validate transaction state
     if (transaction.locked) {
-      return res.status(400).json({ message: "Cannot update payment details for a funded transaction" });
+      console.log('Attempt to update locked transaction:', transactionId);
+      return res.status(400).json({ success: false, error: 'Cannot update payment details for a funded transaction' });
     }
 
-    if (transaction.status !== "pending") {
-      return res.status(400).json({ message: "Only pending transactions can be updated" });
+    if (transaction.status !== 'pending') {
+      console.log('Attempt to update non-pending transaction:', { transactionId, status: transaction.status });
+      return res.status(400).json({ success: false, error: 'Only pending transactions can be updated' });
     }
 
-    if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
-      return res.status(400).json({ message: "Invalid payment amount" });
+    // Validate payment amount
+    if (!paymentAmount || isNaN(paymentAmount) || parseFloat(paymentAmount) <= 0) {
+      console.log('Invalid payment amount:', paymentAmount);
+      return res.status(400).json({ success: false, error: 'Invalid payment amount' });
     }
 
-    transaction.paymentAmount = parseFloat(paymentAmount);
-    transaction.productDetails.amount = parseFloat(paymentAmount);
-    await transaction.save();
+    // Update transaction
+    try {
+      transaction.paymentAmount = parseFloat(paymentAmount);
+      transaction.productDetails.amount = parseFloat(paymentAmount);
+      await transaction.save();
+      console.log('Transaction updated successfully:', transactionId);
+    } catch (dbError) {
+      console.error('Database error saving transaction:', dbError);
+      return res.status(500).json({ success: false, error: 'Database error occurred while saving transaction' });
+    }
 
-    const io = req.app.get("io");
-    const usersToNotify = [
-      transaction.userId.toString(),
-      ...transaction.participants.map((p) => p.toString()),
-    ];
-    usersToNotify.forEach((userId) => {
-      io.to(userId).emit("transactionUpdated", {
-        transactionId: transaction._id,
-        message: `Payment amount updated to ₦${parseFloat(paymentAmount).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`,
+    // Emit socket event
+    try {
+      const io = req.app.get('io');
+      const usersToNotify = [
+        transaction.userId.toString(),
+        ...transaction.participants.map(p => p.userId.toString()),
+      ];
+      usersToNotify.forEach(notifyUserId => {
+        io.to(notifyUserId).emit('transactionUpdated', {
+          transactionId: transaction._id,
+          message: `Payment amount updated to ₦${parseFloat(paymentAmount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+        });
       });
-    });
+      console.log('Socket event emitted to users:', usersToNotify);
+    } catch (socketError) {
+      console.error('Error emitting socket event:', socketError);
+      // Continue despite socket error to avoid failing the request
+    }
 
-    return res.status(200).json({ message: "Payment details updated successfully", transaction });
+    return res.status(200).json({
+      success: true,
+      message: 'Payment details updated successfully',
+      transaction,
+    });
   } catch (error) {
-    console.error("Error updating payment details:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    console.error('Error updating payment details:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.code === 'ECONNRESET'
+        ? 'Network error occurred. Please try again.'
+        : error.message || 'Internal server error',
+    });
   }
 };
 
@@ -1538,5 +1718,6 @@ exports.confirmTransaction = async (req, res) => {
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
 
 module.exports = exports;

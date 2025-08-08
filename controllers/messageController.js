@@ -1,15 +1,15 @@
-const Message = require('../modules/Message');
-const Chatroom = require('../modules/Chatroom');
-const Transaction = require('../modules/Transactions');
-const User = require('../modules/Users');
 const mongoose = require('mongoose');
+const Transaction = require('../modules/Transactions');
+const Chatroom = require('../modules/Chatroom');
+const User = require('../modules/Users');
+const Message = require('../modules/Message');
 const transactionController = require('./transactionController');
 
 exports.addMessage = async (req, res) => {
-  try {
-    const { transactionId, userId, userFirstName, message, avatarSeed } = req.body;
-    console.log('Adding message:', { transactionId, userId, userFirstName, message });
+  const { transactionId, userId, userFirstName, message, avatarSeed } = req.body;
+  console.log('Adding message:', { transactionId, userId, userFirstName, message });
 
+  try {
     // Validate input
     if (!transactionId || !userId || !message) {
       console.warn('Missing required fields:', req.body);
@@ -33,8 +33,9 @@ exports.addMessage = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Find transaction
-    const transaction = await Transaction.findById(transactionId);
+    // Find transaction with populated participants
+    const transaction = await Transaction.findById(transactionId)
+      .populate('participants.userId', 'firstName lastName email avatarSeed');
     if (!transaction) {
       console.warn('Transaction not found:', transactionId);
       return res.status(404).json({ message: 'Transaction not found' });
@@ -43,7 +44,7 @@ exports.addMessage = async (req, res) => {
     // Validate user is a participant
     const isParticipant =
       transaction.userId.toString() === userId ||
-      (Array.isArray(transaction.participants) && transaction.participants.some(p => p && p.toString() === userId));
+      (Array.isArray(transaction.participants) && transaction.participants.some(p => p.userId && p.userId._id.toString() === userId));
     if (!isParticipant) {
       console.warn('Unauthorized user:', { userId, transactionId });
       return res.status(403).json({ message: 'Unauthorized to send messages in this transaction' });
@@ -81,13 +82,24 @@ exports.addMessage = async (req, res) => {
       userId: new mongoose.Types.ObjectId(userId),
       userFirstName: user.firstName || userFirstName || 'User',
       userLastName: user.lastName || '',
-      message,
+      message: message.trim(),
       avatarSeed: user.avatarSeed || avatarSeed || userId,
       timestamp: new Date(),
     });
-    await newMessage.save();
 
-    console.log('Message saved to database:', JSON.stringify(newMessage, null, 2));
+    try {
+      await newMessage.save();
+      console.log('Message saved to database:', JSON.stringify(newMessage, null, 2));
+    } catch (error) {
+      console.error('Failed to save message to database:', {
+        transactionId,
+        userId,
+        chatroomId: chatroom._id,
+        message: error.message,
+        stack: error.stack,
+      });
+      return res.status(500).json({ message: 'Failed to save message to database', details: error.message });
+    }
 
     // Emit the message via Socket.io
     const io = req.app.get('io');
@@ -107,7 +119,7 @@ exports.addMessage = async (req, res) => {
       timestamp: newMessage.timestamp,
     });
 
-    res.status(201).json(newMessage);
+    return res.status(201).json(newMessage);
   } catch (error) {
     console.error('Error adding message:', {
       transactionId: req.body.transactionId,
@@ -115,7 +127,7 @@ exports.addMessage = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: 'Failed to add message', details: error.message });
+    return res.status(500).json({ message: 'Failed to add message', details: error.message });
   }
 };
 
@@ -137,8 +149,9 @@ exports.getMessages = async (req, res) => {
       return res.status(404).json({ error: 'Chatroom not found' });
     }
 
-    // Find transaction
-    const transaction = await Transaction.findById(chatroom.transactionId);
+    // Find transaction with populated participants
+    const transaction = await Transaction.findById(chatroom.transactionId)
+      .populate('participants.userId', 'firstName lastName email avatarSeed');
     if (!transaction) {
       console.warn('Transaction not found for chatroom:', { chatroomId, transactionId: chatroom.transactionId });
       return res.status(404).json({ error: 'Transaction not found' });
@@ -164,20 +177,20 @@ exports.getMessages = async (req, res) => {
     // Check if user is a participant
     const isParticipant =
       transaction.userId.toString() === userId ||
-      (Array.isArray(transaction.participants) && transaction.participants.some(p => p && p.toString() === userId));
+      (Array.isArray(transaction.participants) && transaction.participants.some(p => p.userId && p.userId._id.toString() === userId));
     if (!isParticipant) {
       console.warn('Unauthorized access:', { userId, chatroomId, transactionId: transaction._id });
       return res.status(403).json({ error: 'Unauthorized to view messages' });
     }
 
-    // Fetch messages
+    // Fetch messages with populated userId
     const messages = await Message.find({ chatroomId: new mongoose.Types.ObjectId(chatroomId) })
+      .populate('userId', 'firstName lastName email avatarSeed')
       .sort({ timestamp: 1 })
       .lean();
 
     console.log(`Fetched ${messages.length} messages for chatroom ${chatroomId}:`, JSON.stringify(messages, null, 2));
-    // Ensure response is an array
-    res.json(messages);
+    return res.status(200).json(messages);
   } catch (error) {
     console.error('Error fetching messages:', {
       chatroomId: req.params.chatroomId,
@@ -185,7 +198,7 @@ exports.getMessages = async (req, res) => {
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
+    return res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
   }
 };
 

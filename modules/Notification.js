@@ -36,8 +36,23 @@ const notificationSchema = new mongoose.Schema({
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["buyer", "seller"],
+      required: true,
     },
   }],
+  transactionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Transaction",
+    required: false, // Already set to false, kept for compatibility
+  },
+  reference: { // New field for string-based references
+    type: String,
+    required: false,
+  },
 });
 
 const Notification = mongoose.model("Notification", notificationSchema);

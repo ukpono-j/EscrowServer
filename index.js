@@ -13,17 +13,19 @@ require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
 const Chatroom = require("./modules/Chatroom");
+const User = require("./modules/Users");
+const Message = require("./modules/Message");
 const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require('./swagger-output.json'); // Generated Swagger JSON
+const swaggerDocument = require('./swagger-output.json');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "Uploads/"); // Save files to uploads folder
+    cb(null, "Uploads/");
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${uniqueSuffix}-${file.originalname}`); // Unique filename
+    cb(null, `${uniqueSuffix}-${file.originalname}`);
   },
 });
 const upload = multer({
@@ -38,7 +40,7 @@ const upload = multer({
     }
     cb(null, true);
   },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 const app = express();
@@ -144,7 +146,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Serve uploads folder statically
-app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
+app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
 
 app.use((req, res, next) => {
   res.on("finish", () => {
@@ -206,7 +208,8 @@ const setupSocket = (io) => {
             socket.emit("error", { message: "Chatroom not found" });
             return;
           }
-          const transaction = await Transaction.findById(chatroom.transactionId);
+          const transaction = await Transaction.findById(chatroom.transactionId)
+            .populate('participants.userId', 'firstName lastName email avatarSeed');
           if (!transaction) {
             console.error("Transaction not found:", {
               chatroomId,
@@ -218,7 +221,7 @@ const setupSocket = (io) => {
             return;
           }
           const isCreator = transaction.userId.toString() === userId;
-          const isParticipant = transaction.participants.some((p) => p.toString() === userId);
+          const isParticipant = transaction.participants.some(p => p.userId && p.userId._id.toString() === userId);
           if (!isCreator && !isParticipant) {
             console.error("Unauthorized room join attempt:", {
               userId,
@@ -257,14 +260,58 @@ const setupSocket = (io) => {
       }
     });
 
-    socket.on("message", (message) => {
+    socket.on("message", async (message) => {
       console.log("Message received:", {
         userId: socket.user.id,
         chatroomId: message.chatroomId,
         socketId: socket.id,
         time: new Date().toISOString(),
       });
-      io.to(`transaction_${message.chatroomId}`).emit("message", message);
+
+      // Validate message
+      try {
+        if (!mongoose.Types.ObjectId.isValid(message.chatroomId) || !mongoose.Types.ObjectId.isValid(message.userId)) {
+          console.error("Invalid message data:", { message, userId: socket.user.id });
+          socket.emit("error", { message: "Invalid message data" });
+          return;
+        }
+
+        const chatroom = await Chatroom.findById(message.chatroomId);
+        if (!chatroom) {
+          console.error("Chatroom not found for message:", { chatroomId: message.chatroomId, userId: socket.user.id });
+          socket.emit("error", { message: "Chatroom not found" });
+          return;
+        }
+
+        const user = await User.findById(message.userId).select('firstName lastName avatarSeed');
+        if (!user) {
+          console.error("User not found for message:", { userId: message.userId });
+          socket.emit("error", { message: "User not found" });
+          return;
+        }
+
+        // Broadcast the message to the room
+        io.to(`transaction_${message.chatroomId}`).emit("message", {
+          _id: message._id,
+          chatroomId: message.chatroomId,
+          userId: message.userId,
+          userFirstName: message.userFirstName,
+          userLastName: message.userLastName,
+          message: message.message,
+          avatarSeed: message.avatarSeed,
+          timestamp: message.timestamp,
+          tempId: message.tempId, // Include tempId for deduplication
+        });
+        console.log("Message broadcasted to room:", `transaction_${message.chatroomId}`);
+      } catch (error) {
+        console.error("Error broadcasting socket message:", {
+          userId: socket.user.id,
+          chatroomId: message.chatroomId,
+          message: error.message,
+          stack: error.stack,
+        });
+        socket.emit("error", { message: "Failed to broadcast message" });
+      }
     });
 
     socket.on("balanceUpdate", (data) => {
@@ -276,6 +323,18 @@ const setupSocket = (io) => {
         time: new Date().toISOString(),
       });
       io.to(`user_${socket.user.id}`).emit("balanceUpdate", data);
+    });
+
+    socket.on("typing", (data) => {
+      io.to(`transaction_${data.chatroomId}`).emit("typing", data);
+    });
+
+    socket.on("stop-typing", (data) => {
+      io.to(`transaction_${data.chatroomId}`).emit("stop-typing", data);
+    });
+
+    socket.on("ping", (data) => {
+      socket.emit("pong", { userId: data.userId });
     });
 
     socket.on("reconnect", (attempt) => {

@@ -13,12 +13,10 @@ const NodeCache = require('node-cache');
 const cache = new NodeCache({ stdTTL: 600 });
 const Bottleneck = require('bottleneck');
 
-
 const limiter = new Bottleneck({
-  maxConcurrent: 5, // Reduced to minimize race conditions
-  minTime: 200, // Increased delay for better control
+  maxConcurrent: 5,
+  minTime: 200,
 });
-
 
 const CRITICAL_BANKS = [
   { name: 'Access Bank', code: '044' },
@@ -90,7 +88,6 @@ axiosRetry(axios, {
   },
 });
 
-// Helper function to serialize dates and remove MongoDB circular references
 const serializeWalletData = (wallet) => {
   if (!wallet) {
     return {
@@ -157,7 +154,6 @@ const serializeWalletData = (wallet) => {
   };
 };
 
-// Helper function to serialize user data and remove MongoDB metadata
 const serializeUserData = (user) => {
   if (!user) {
     return {
@@ -170,7 +166,6 @@ const serializeUserData = (user) => {
     };
   }
 
-  // Convert Mongoose document to plain object
   const userObj = user.toObject ? user.toObject({ getters: true, virtuals: false }) : user;
 
   return {
@@ -183,7 +178,6 @@ const serializeUserData = (user) => {
   };
 };
 
-
 exports.checkFundingReadiness = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -191,14 +185,12 @@ exports.checkFundingReadiness = async (req, res) => {
       const { id: userId } = req.user;
       const isTestMode = process.env.NODE_ENV !== 'production';
 
-      // Validate user
       const user = await User.findById(userId).session(session);
       if (!user) {
         logger.warn('User not found', { userId });
         throw new Error('User not found');
       }
 
-      // Skip balance check if bypassed
       if (!process.env.BYPASS_PAYSTACK_BALANCE_CHECK) {
         const balanceResponse = await axios.get('https://api.paystack.co/balance', {
           headers: { Authorization: `Bearer ${exports.getPaystackSecretKey()}` },
@@ -215,7 +207,6 @@ exports.checkFundingReadiness = async (req, res) => {
         }
       }
 
-      // Create or validate Paystack customer
       let customerCode = user.paystackCustomerCode;
       let isValidCustomer = false;
 
@@ -278,7 +269,6 @@ exports.checkFundingReadiness = async (req, res) => {
         logger.info('Paystack customer created', { userId, customerCode });
       }
 
-      // Create wallet if it doesn't exist
       let wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
         wallet = new Wallet({
@@ -294,12 +284,10 @@ exports.checkFundingReadiness = async (req, res) => {
         logger.info('Wallet created for user', { userId, walletId: wallet._id });
       }
 
-      // Create virtual account if not exists or if mock in live mode
       if (!wallet.virtualAccount?.account_number || (process.env.NODE_ENV === 'production' && wallet.virtualAccount.account_number.startsWith('TEST'))) {
         let accountResponse = null;
         let lastError = null;
 
-        // Use mock data in test mode if enabled
         if (isTestMode && process.env.ENABLE_MOCK_VERIFICATION) {
           logger.info('Using mock virtual account for test mode', { userId });
           wallet.virtualAccount = {
@@ -313,7 +301,6 @@ exports.checkFundingReadiness = async (req, res) => {
           };
           await wallet.save({ session });
         } else {
-          // Use CRITICAL_BANKS in live mode, FALLBACK_BANKS in test mode
           const banksToTry = isTestMode ? FALLBACK_BANKS : CRITICAL_BANKS.map(bank => bank.name.toLowerCase().replace(' ', '-'));
           for (const bank of banksToTry) {
             try {
@@ -366,6 +353,7 @@ exports.checkFundingReadiness = async (req, res) => {
                   : 'Unable to create virtual account. Please contact support.',
                 type: 'funding',
                 status: 'error',
+                reference: null,
                 createdAt: new Date(),
               }],
               { session }
@@ -422,16 +410,16 @@ exports.verifyFunding = async (req, res) => {
           return res.status(200).json({ status: 'success' });
         }
 
-        // Handle balance warning/critical events
         if (['balance.warning', 'balance.critical'].includes(event)) {
           const balance = data?.balance ? parseFloat(data.balance) / 100 : 0;
           await Notification.create(
             [{
-              userId: null, // System-level notification
+              userId: null,
               title: event === 'balance.warning' ? 'Low Balance Warning' : 'Critical Balance Alert',
               message: `Paystack balance is ₦${balance.toFixed(2)}. Please top up to ensure smooth operations.`,
               type: 'system',
               status: 'warning',
+              reference: null,
               createdAt: new Date(),
             }],
             { session }
@@ -440,7 +428,6 @@ exports.verifyFunding = async (req, res) => {
           return res.status(200).json({ status: 'success' });
         }
 
-        // Funding event handling
         const { reference, amount, status, customer, account_details } = data;
         if (!reference || !amount || !status || !customer?.email) {
           logger.error('Invalid webhook payload', { event, data });
@@ -481,14 +468,12 @@ exports.verifyFunding = async (req, res) => {
           return res.status(200).json({ status: 'success' });
         }
 
-        // Ensure amount is in kobo and convert to naira
         const amountInNaira = parseFloat(amount) / 100;
         if (isNaN(amountInNaira) || amountInNaira <= 0) {
           logger.error('Invalid amount in webhook', { reference, amount });
           throw new Error('Invalid amount received from Paystack');
         }
 
-        // Verify transaction with Paystack to ensure correct amount
         const paystackResponse = await axios.get(
           `https://api.paystack.co/transaction/verify/${reference}`,
           {
@@ -535,7 +520,7 @@ exports.verifyFunding = async (req, res) => {
           wallet.transactions.push(transaction);
         } else if (!transaction.paystackReference) {
           transaction.paystackReference = reference;
-          transaction.amount = verifiedAmount; // Update amount if mismatched
+          transaction.amount = verifiedAmount;
         }
 
         if (status === 'success') {
@@ -591,7 +576,7 @@ exports.verifyFunding = async (req, res) => {
                 transaction.status === 'completed'
                   ? `Wallet funded with ₦${verifiedAmount.toFixed(2)}. Ref: ${transaction.reference}`
                   : `Funding of ₦${verifiedAmount.toFixed(2)} failed. Ref: ${transaction.reference}`,
-              transactionId: transaction.reference,
+              reference: transaction.reference,
               type: 'funding',
               status: transaction.status,
               createdAt: new Date(),
@@ -707,7 +692,6 @@ exports.getWalletBalance = async (req, res) => {
   }
 };
 
-
 exports.initiateFunding = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -716,7 +700,6 @@ exports.initiateFunding = async (req, res) => {
       const amountNum = parseFloat(amount);
       const isTestMode = process.env.NODE_ENV !== 'production';
 
-      // Input validation
       if (!amountNum || amountNum < 100) {
         throw new Error('Invalid or missing amount. Minimum is ₦100.');
       }
@@ -727,7 +710,6 @@ exports.initiateFunding = async (req, res) => {
         throw new Error('Invalid or missing phone number');
       }
 
-      // Check and create wallet if it doesn't exist
       let wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
         wallet = new Wallet({
@@ -748,7 +730,6 @@ exports.initiateFunding = async (req, res) => {
         throw new Error('User not found');
       }
 
-      // Create Paystack customer if not exists or invalid
       let customerCode = user.paystackCustomerCode;
       let isValidCustomer = false;
 
@@ -810,13 +791,11 @@ exports.initiateFunding = async (req, res) => {
         logger.info('Paystack customer created', { userId, customerCode });
       }
 
-      // Create virtual account if not exists or if mock in live mode
       let virtualAccount = wallet.virtualAccount;
       if (!virtualAccount?.account_number || (process.env.NODE_ENV === 'production' && virtualAccount.account_number.startsWith('TEST'))) {
         let accountResponse = null;
         let lastError = null;
 
-        // Use mock data in test mode if enabled
         if (isTestMode && process.env.ENABLE_MOCK_VERIFICATION) {
           logger.info('Using mock virtual account for test mode', { userId });
           virtualAccount = {
@@ -831,7 +810,6 @@ exports.initiateFunding = async (req, res) => {
           wallet.virtualAccount = virtualAccount;
           await wallet.save({ session });
         } else {
-          // Use CRITICAL_BANKS in live mode, FALLBACK_BANKS in test mode
           const banksToTry = isTestMode ? FALLBACK_BANKS : CRITICAL_BANKS.map(bank => bank.name.toLowerCase().replace(' ', '-'));
           for (const bank of banksToTry) {
             try {
@@ -880,6 +858,7 @@ exports.initiateFunding = async (req, res) => {
                   : 'Unable to create virtual account. Please contact support.',
                 type: 'funding',
                 status: 'error',
+                reference: null,
                 createdAt: new Date(),
               }],
               { session }
@@ -888,11 +867,11 @@ exports.initiateFunding = async (req, res) => {
           }
 
           virtualAccount = {
-            account_name: liveAccountResponse.data.data.account_name,
-            account_number: liveAccountResponse.data.data.account_number,
-            bank_name: liveAccountResponse.data.data.bank.name,
+            account_name: accountResponse.data.data.account_name,
+            account_number: accountResponse.data.data.account_number,
+            bank_name: accountResponse.data.data.bank.name,
             provider: 'Paystack',
-            provider_reference: liveAccountResponse.data.data.id,
+            provider_reference: accountResponse.data.data.id,
             created_at: new Date(),
             active: true,
           };
@@ -901,7 +880,6 @@ exports.initiateFunding = async (req, res) => {
         }
       }
 
-      // Create transaction
       const reference = `FUND_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
       const transaction = {
         type: 'deposit',
@@ -930,13 +908,12 @@ exports.initiateFunding = async (req, res) => {
       wallet.transactions.push(transaction);
       await wallet.save({ session });
 
-      // Create notification
       await Notification.create(
         [{
           userId,
           title: 'Funding Initiated',
           message: `Funding request of ₦${amountNum.toFixed(2)} initiated.`,
-          transactionId: reference,
+          reference,
           type: 'funding',
           status: 'pending',
           createdAt: new Date(),
@@ -1041,7 +1018,7 @@ exports.retryPendingTransactions = async () => {
                     userId: wallet.userId,
                     title: 'Wallet Funded',
                     message: `Wallet funded with ₦${amountInNaira.toFixed(2)} after retry. Ref: ${transaction.reference}`,
-                    transactionId: transaction.reference,
+                    reference: transaction.reference,
                     type: 'funding',
                     status: 'completed',
                     createdAt: new Date(),
@@ -1056,7 +1033,7 @@ exports.retryPendingTransactions = async () => {
                       userId: wallet.userId,
                       title: 'Funding Failed',
                       message: `Funding of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
-                      transactionId: transaction.reference,
+                      reference: transaction.reference,
                       type: 'funding',
                       status: 'failed',
                       createdAt: new Date(),
@@ -1074,7 +1051,7 @@ exports.retryPendingTransactions = async () => {
                   userId: wallet.userId,
                   title: 'Transaction Failed',
                   message: `Transaction of ₦${transaction.amount.toFixed(2)} failed after retries. Ref: ${transaction.reference}`,
-                  transactionId: transaction.reference,
+                  reference: transaction.reference,
                   type: transaction.type,
                   status: 'failed',
                   createdAt: new Date(),
@@ -1128,7 +1105,7 @@ exports.manualReconcileTransaction = async (req, res) => {
       transaction.status = 'completed';
       transaction.paystackReference = paystackResponse.data.data.reference;
       transaction.metadata.reconciledManually = true;
-      transaction.metadata.reconciledAt = new Date().toISOString(); // Serialize reconciledAt
+      transaction.metadata.reconciledAt = new Date().toISOString();
       wallet.balance += amountInNaira;
       wallet.totalDeposits += amountInNaira;
 
@@ -1140,10 +1117,10 @@ exports.manualReconcileTransaction = async (req, res) => {
           userId,
           title: 'Funding Confirmed',
           message: `Funding of ₦${amountInNaira.toFixed(2)} confirmed. Ref: ${reference}`,
-          transactionId: reference,
+          reference,
           type: 'funding',
           status: 'completed',
-          createdAt: new Date().toISOString(), // Serialize createdAt
+          createdAt: new Date().toISOString(),
         }],
         { session }
       );
@@ -1237,16 +1214,16 @@ exports.checkFundingStatus = async (req, res) => {
                 customerEmail: customer.email,
                 virtualAccount: wallet.virtualAccount,
                 reconciledManually: true,
-                reconciledAt: new Date().toISOString(), // Serialize reconciledAt
+                reconciledAt: new Date().toISOString(),
               },
-              createdAt: new Date().toISOString(), // Serialize createdAt
+              createdAt: new Date().toISOString(),
             };
             wallet.transactions.push(transaction);
           } else {
             transaction.status = 'completed';
             transaction.paystackReference = paystackReference;
             transaction.metadata.reconciledManually = true;
-            transaction.metadata.reconciledAt = new Date().toISOString(); // Serialize reconciledAt
+            transaction.metadata.reconciledAt = new Date().toISOString();
           }
 
           wallet.balance += amountInNaira;
@@ -1277,7 +1254,7 @@ exports.checkFundingStatus = async (req, res) => {
           transaction.status = 'completed';
           transaction.paystackReference = response.data.data.reference;
           transaction.metadata.reconciledManually = true;
-          transaction.metadata.reconciledAt = new Date().toISOString(); // Serialize reconciledAt
+          transaction.metadata.reconciledAt = new Date().toISOString();
           wallet.balance += amountInNaira;
           wallet.totalDeposits += amountInNaira;
         }
@@ -1295,10 +1272,10 @@ exports.checkFundingStatus = async (req, res) => {
               transaction.status === 'completed'
                 ? `Your wallet has been funded with ₦${transaction.amount.toFixed(2)} NGN. Ref: ${transaction.reference}`
                 : `Funding of ₦${transaction.amount.toFixed(2)} failed. Ref: ${transaction.reference}`,
-            transactionId: transaction.reference,
+            reference: transaction.reference,
             type: 'funding',
             status: transaction.status,
-            createdAt: new Date().toISOString(), // Serialize createdAt
+            createdAt: new Date().toISOString(),
           }],
           { session }
         );
@@ -1364,7 +1341,7 @@ exports.reconcileTransactions = async (req, res) => {
         'transactions.status': 'pending',
       }).session(session);
 
-      const timeoutThreshold = 24 * 60 * 60 * 1000; // 24 hours
+      const timeoutThreshold = 24 * 60 * 60 * 1000;
 
       for (const wallet of wallets) {
         for (const tx of wallet.transactions.filter((t) => t.status === 'pending')) {
@@ -1379,7 +1356,7 @@ exports.reconcileTransactions = async (req, res) => {
               userId: wallet.userId,
               title: 'Wallet Funding Timed Out',
               message: `Your wallet funding of ${tx.amount} NGN has timed out. Transaction reference: ${tx.reference}.`,
-              transactionId: tx.reference,
+              reference: tx.reference,
               type: 'funding',
               status: 'failed',
               createdAt: new Date(),
@@ -1420,7 +1397,7 @@ exports.reconcileTransactions = async (req, res) => {
                 userId: wallet.userId,
                 title: 'Wallet Funded Successfully',
                 message: `Your wallet has been funded with ${amountInNaira} NGN. Transaction reference: ${tx.reference}.`,
-                transactionId: tx.reference,
+                reference: tx.reference,
                 type: 'funding',
                 status: 'completed',
                 createdAt: new Date(),
@@ -1438,7 +1415,7 @@ exports.reconcileTransactions = async (req, res) => {
                 userId: wallet.userId,
                 title: 'Wallet Funding Failed',
                 message: `Your wallet funding of ${tx.amount} NGN failed. Transaction reference: ${tx.reference}.`,
-                transactionId: tx.reference,
+                reference: tx.reference,
                 type: 'funding',
                 status: 'failed',
                 createdAt: new Date(),
@@ -1460,7 +1437,7 @@ exports.reconcileTransactions = async (req, res) => {
                 userId: wallet.userId,
                 title: 'Reconciliation Error',
                 message: `Failed to reconcile transaction ${tx.reference} due to invalid Paystack API key.`,
-                transactionId: tx.reference,
+                reference: tx.reference,
                 type: 'system',
                 status: 'error',
                 createdAt: new Date(),
@@ -1497,6 +1474,137 @@ exports.reconcileTransactions = async (req, res) => {
     return res.status(500).json({ success: false, error: 'Internal server error during reconciliation' });
   } finally {
     session.endSession();
+  }
+};
+
+
+exports.withdrawFunds = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const { amount, accountNumber, accountName, bankCode } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        pino.error('User ID not found in request', { url: req.originalUrl, headers: req.headers });
+        throw new Error('Unauthorized: User ID not found in request');
+      }
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        pino.error('Invalid user ID format', { userId });
+        throw new Error('Invalid user ID format');
+      }
+      if (!amount || amount < 100 || !accountNumber || !accountName || !bankCode) {
+        throw new Error('All fields are required. Minimum withdrawal is ₦100.');
+      }
+      if (!/^\d{10}$/.test(accountNumber)) {
+        throw new Error('Account number must be exactly 10 digits');
+      }
+      const bank = PAYSTACK_BANKS.find(b => b.code === bankCode);
+      if (!bank) {
+        throw new Error('Invalid bank code');
+      }
+
+      pino.info('Withdrawal request submission', { userId, amount, accountNumber: accountNumber.slice(-4), bankCode });
+
+      let wallet = await Wallet.findOne({ userId }).session(session);
+      if (!wallet) {
+        pino.warn('No wallet found for user, creating new wallet', { userId });
+        wallet = new Wallet({
+          userId,
+          balance: 0,
+          transactions: [],
+          withdrawalRequests: [],
+        });
+        await wallet.save({ session });
+      }
+      if (wallet.balance < amount) {
+        throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance.toFixed(2)}, Requested: ₦${amount.toFixed(2)}`);
+      }
+
+      const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+      const expectedPayoutDate = addBusinessDays(new Date(), 2);
+
+      const withdrawalRequest = {
+        type: 'withdrawal',
+        amount,
+        reference,
+        status: 'pending',
+        metadata: {
+          accountNumber,
+          accountName,
+          bankName: bank.name,
+          bankCode,
+          requestDate: moment.tz('Africa/Lagos').toDate(),
+          expectedPayoutDate,
+          manualProcessing: true,
+        },
+        createdAt: moment.tz('Africa/Lagos').toDate(),
+      };
+      wallet.withdrawalRequests = wallet.withdrawalRequests || [];
+      wallet.withdrawalRequests.push(withdrawalRequest);
+      wallet.balance -= amount;
+      wallet.markModified('withdrawalRequests');
+      await wallet.save({ session });
+
+      await Notification.create(
+        [
+          {
+            userId,
+            title: 'Withdrawal Request Submitted',
+            message: `Withdrawal request of ₦${amount.toFixed(2)} to ${accountName} at ${bank.name} submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}.`,
+            reference,
+            type: 'withdrawal',
+            status: 'pending',
+            createdAt: moment.tz('Africa/Lagos').toDate(),
+          },
+        ],
+        { session }
+      );
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(userId.toString()).emit('balanceUpdate', {
+          balance: wallet.balance,
+          withdrawalRequest: {
+            amount,
+            reference,
+            status: 'pending',
+            accountNumber,
+            accountName,
+            bankName: bank.name,
+            expectedPayoutDate,
+          },
+        });
+      } else {
+        pino.warn('WebSocket not available for balance update', { userId, reference });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Withdrawal request submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}. If you don’t receive your payout after this date, please contact support.`,
+        data: {
+          reference,
+          amount,
+          accountNumber: accountNumber.slice(-4),
+          accountName,
+          bankName: bank.name,
+          expectedPayoutDate,
+        },
+      });
+    });
+  } catch (error) {
+    pino.error('Withdraw funds error', {
+      userId: req.user?.id,
+      message: error.message,
+      stack: error.stack,
+    });
+    const statusCode = error.message.includes('Unauthorized') ? 401 :
+      error.message.includes('Invalid user ID') ? 400 :
+        error.message.includes('Wallet not found') ? 404 :
+          error.message.includes('Invalid bank code') ? 400 : 400;
+    res.status(statusCode).json({ success: false, error: error.message });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -1637,15 +1745,13 @@ const retryAsync = async (fn, maxRetries = 3, initialDelay = 1000) => {
   throw lastError;
 };
 
-
-// Helper function to calculate business days (excludes Saturday and Sunday)
 const addBusinessDays = (date, days) => {
   let currentDate = moment.tz(date, 'Africa/Lagos').startOf('day');
   let businessDaysAdded = 0;
 
   while (businessDaysAdded < days) {
     currentDate.add(1, 'day');
-    if (currentDate.day() !== 0 && currentDate.day() !== 6) { // Not Sunday (0) or Saturday (6)
+    if (currentDate.day() !== 0 && currentDate.day() !== 6) {
       businessDaysAdded++;
     }
   }
@@ -1653,7 +1759,6 @@ const addBusinessDays = (date, days) => {
   return currentDate.toDate();
 };
 
-// Get pending withdrawal requests with countdown
 exports.getPendingWithdrawals = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -1714,133 +1819,6 @@ exports.getPendingWithdrawals = async (req, res) => {
   }
 };
 
-// Withdraw funds
-exports.withdrawFunds = async (req, res) => {
-  const session = await mongoose.startSession();
-  try {
-    await session.withTransaction(async () => {
-      const { amount, accountNumber, accountName } = req.body;
-      const userId = req.user?.id;
-
-      // Input validation
-      if (!userId) {
-        pino.error('User ID not found in request', { url: req.originalUrl, headers: req.headers });
-        throw new Error('Unauthorized: User ID not found in request');
-      }
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
-        pino.error('Invalid user ID format', { userId });
-        throw new Error('Invalid user ID format');
-      }
-      if (!amount || amount < 100 || !accountNumber || !accountName) {
-        throw new Error('All fields are required. Minimum withdrawal is ₦100.');
-      }
-      if (!/^\d{10}$/.test(accountNumber)) {
-        throw new Error('Account number must be exactly 10 digits');
-      }
-
-      pino.info('Withdrawal request submission', { userId, amount, accountNumber: accountNumber.slice(-4) });
-
-      // Check or create wallet
-      let wallet = await Wallet.findOne({ userId }).session(session);
-      if (!wallet) {
-        pino.warn('No wallet found for user, creating new wallet', { userId });
-        wallet = new Wallet({
-          userId,
-          balance: 0,
-          transactions: [],
-          withdrawalRequests: [],
-        });
-        await wallet.save({ session });
-      }
-      if (wallet.balance < amount) {
-        throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance.toFixed(2)}, Requested: ₦${amount.toFixed(2)}`);
-      }
-
-      // Generate unique reference
-      const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-      const expectedPayoutDate = addBusinessDays(new Date(), 2);
-
-      // Record withdrawal request
-      const withdrawalRequest = {
-        type: 'withdrawal',
-        amount,
-        reference,
-        status: 'pending',
-        metadata: {
-          accountNumber,
-          accountName,
-          requestDate: moment.tz('Africa/Lagos').toDate(),
-          expectedPayoutDate,
-          manualProcessing: true,
-        },
-        createdAt: moment.tz('Africa/Lagos').toDate(),
-      };
-      wallet.withdrawalRequests = wallet.withdrawalRequests || [];
-      wallet.withdrawalRequests.push(withdrawalRequest);
-      wallet.balance -= amount; // Deduct balance immediately
-      wallet.markModified('withdrawalRequests');
-      await wallet.save({ session });
-
-      // Create notification
-      await Notification.create(
-        [
-          {
-            userId,
-            title: 'Withdrawal Request Submitted',
-            message: `Withdrawal request of ₦${amount.toFixed(2)} to ${accountName} submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}.`,
-            transactionId: reference,
-            type: 'withdrawal',
-            status: 'pending',
-            createdAt: moment.tz('Africa/Lagos').toDate(),
-          },
-        ],
-        { session }
-      );
-
-      // Emit balance update
-      const io = req.app.get('io');
-      if (io) {
-        io.to(userId.toString()).emit('balanceUpdate', {
-          balance: wallet.balance,
-          withdrawalRequest: {
-            amount,
-            reference,
-            status: 'pending',
-            expectedPayoutDate,
-          },
-        });
-      } else {
-        pino.warn('WebSocket not available for balance update', { userId, reference });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: `Withdrawal request submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}. If you don’t receive your payout after this date, please contact support.`,
-        data: {
-          reference,
-          amount,
-          accountNumber: accountNumber.slice(-4),
-          accountName,
-          expectedPayoutDate,
-        },
-      });
-    });
-  } catch (error) {
-    pino.error('Withdraw funds error', {
-      userId: req.user?.id,
-      message: error.message,
-      stack: error.stack,
-    });
-    const statusCode = error.message.includes('Unauthorized') ? 401 :
-      error.message.includes('Invalid user ID') ? 400 :
-        error.message.includes('Wallet not found') ? 404 : 400;
-    res.status(statusCode).json({ success: false, error: error.message });
-  } finally {
-    await session.endSession();
-  }
-};
-
-
 exports.checkPaystackBalance = async (req, res) => {
   try {
     const response = await axios.get('https://api.paystack.co/balance', {
@@ -1856,7 +1834,6 @@ exports.checkPaystackBalance = async (req, res) => {
     }
 
     const balanceData = response.data.data;
-    // Handle both array and object balance responses
     let transferBalance = 0;
     let revenueBalance = 0;
     let currency = 'NGN';
@@ -1942,7 +1919,7 @@ exports.verifyWithdrawal = async (req, res) => {
         message: event === 'transfer.success'
           ? `Withdrawal of ₦${amountInNaira.toFixed(2)} completed. Ref: ${reference}`
           : `Withdrawal of ₦${amountInNaira.toFixed(2)} failed and refunded. Ref: ${reference}`,
-        transactionId: reference,
+        reference,
         type: 'withdrawal',
         status: event === 'transfer.success' ? 'completed' : 'failed',
       };
@@ -2090,6 +2067,7 @@ exports.monitorPaystackBalance = async () => {
         message: `Paystack revenue balance is ₦${revenueBalance.toFixed(2)}. Please top up to ensure smooth operations.`,
         type: 'system',
         status: 'warning',
+        reference: null,
       });
     }
 
@@ -2106,6 +2084,7 @@ exports.monitorPaystackBalance = async () => {
       message: `Failed to check Paystack balance: ${error.message}`,
       type: 'system',
       status: 'error',
+      reference: null,
     });
   }
 };
