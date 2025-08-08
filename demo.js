@@ -470,18 +470,18 @@ app.post("/cancel-transaction", authenticateUser, async (req, res) => {
   try {
     const { transactionId } = req.body;
 
-    // Find the transaction by ID and update its status to "cancelled"
-    const cancelledTransaction = await Transaction.findOneAndUpdate(
+    // Find the transaction by ID and update its status to "canceled"
+    const canceledTransaction = await Transaction.findOneAndUpdate(
       { transactionId: transactionId },
-      { status: "cancelled" },
+      { status: "canceled" },
       { new: true }
     );
 
-    if (!cancelledTransaction) {
+    if (!canceledTransaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    res.status(200).json(cancelledTransaction);
+    res.status(200).json(canceledTransaction);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -496,12 +496,12 @@ app.get("/cancel-transactions", authenticateUser, async (req, res) => {
     const { id: userId } = req.user;
 
     // Fetch canceled transactions from the database
-    const cancelledTransactions = await Transaction.find({
+    const canceledTransactions = await Transaction.find({
       userId: userId,
-      status: "cancelled",
+      status: "canceled",
     });
 
-    res.status(200).json(cancelledTransactions);
+    res.status(200).json(canceledTransactions);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -540,12 +540,12 @@ app.get("/complete-transaction", authenticateUser, async (req, res) => {
     const { id: userId } = req.user;
 
     // Fetch canceled transactions from the database
-    const cancelledTransactions = await Transaction.find({
+    const canceledTransactions = await Transaction.find({
       userId: userId,
       status: "completed",
     });
 
-    res.status(200).json(cancelledTransactions);
+    res.status(200).json(canceledTransactions);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal Server Error" });

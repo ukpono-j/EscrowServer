@@ -27,21 +27,21 @@ const mongoose = require('mongoose');
             createdAt: transaction.createdAt,
           });
 
-          transaction.status = 'cancelled';
+          transaction.status = 'canceled';
           transaction.metadata.error = 'Transaction timed out';
           wallet.balance += transaction.amount; // Refund to wallet
           wallet.markModified('transactions');
 
           await Notification.create([{
             userId: wallet.userId,
-            title: 'Transaction Cancelled',
-            message: `Transaction ${transaction.reference} was cancelled due to inactivity. ₦${transaction.amount.toFixed(2)} refunded.`,
+            title: 'Transaction Canceled',
+            message: `Transaction ${transaction.reference} was canceled due to inactivity. ₦${transaction.amount.toFixed(2)} refunded.`,
             transactionId: transaction.reference,
             type: 'funding',
-            status: 'cancelled',
+            status: 'canceled',
           }], { session });
 
-          console.log(`Transaction cancelled and refunded: ${transaction.reference}`, {
+          console.log(`Transaction canceled and refunded: ${transaction.reference}`, {
             userId: wallet.userId,
             status: transaction.status,
             refundedAmount: transaction.amount,

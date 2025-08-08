@@ -25,9 +25,9 @@ const notificationService = {
           title = 'Transaction Completed';
           message = `Your transaction for ${transaction.paymentDescription} has been completed successfully.`;
           break;
-        case 'cancelled':
-          title = 'Transaction Cancelled';
-          message = `Your transaction for ${transaction.paymentDescription} has been cancelled.`;
+        case 'canceled':
+          title = 'Transaction Canceled';
+          message = `Your transaction for ${transaction.paymentDescription} has been canceled.`;
           break;
         case 'active':
           title = 'Transaction Activated';

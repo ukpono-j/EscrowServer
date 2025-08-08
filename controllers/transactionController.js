@@ -289,32 +289,18 @@ exports.getBanks = async (req, res) => {
 exports.getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
 
-    console.log("Fetching transactions for user:", userId, { page, limit });
+    console.log("Fetching transactions for user:", userId);
 
-    // Removed cache.get/cache.set since caching is causing errors
-    const [transactions, total] = await Promise.all([
-      Transaction.find({
-        $or: [
-          { userId },
-          { 'participants.userId': userId },
-        ],
-      })
-        .populate("userId", "firstName lastName email avatarImage")
-        .populate("participants.userId", "firstName lastName email avatarImage")
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Transaction.countDocuments({
-        $or: [
-          { userId },
-          { 'participants.userId': userId },
-        ],
-      }),
-    ]);
+    const transactions = await Transaction.find({
+      $or: [
+        { userId },
+        { 'participants.userId': userId },
+      ],
+    })
+      .populate("userId", "firstName lastName email avatarImage")
+      .populate("participants.userId", "firstName lastName email avatarImage")
+      .lean();
 
     const cleanedTransactions = transactions
       .filter(t => {
@@ -355,12 +341,6 @@ exports.getUserTransactions = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: cleanedTransactions,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
     });
   } catch (error) {
     console.error("Error fetching transactions:", {
@@ -504,7 +484,9 @@ exports.cancelTransaction = async (req, res) => {
     }
 
     const isCreator = transaction.userId.toString() === userId;
-    const isParticipant = transaction.participants.includes(userId);
+    const isParticipant = transaction.participants.some(
+      (p) => p.userId.toString() === userId
+    );
 
     if (!isCreator && !isParticipant) {
       await session.abortTransaction();
@@ -512,67 +494,115 @@ exports.cancelTransaction = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized to cancel this transaction" });
     }
 
-    if (transaction.status !== "pending") {
+    if (transaction.status !== "pending" && transaction.status !== "funded") {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: "Only pending transactions can be cancelled" });
+      return res.status(400).json({ message: "Only pending or funded transactions can be cancelled" });
     }
 
-    let refundedAmount = 0;
-    if (transaction.locked && transaction.buyerWalletId && transaction.lockedAmount > 0) {
-      const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
-      if (buyerWallet) {
-        refundedAmount = transaction.lockedAmount;
-        buyerWallet.balance += transaction.lockedAmount;
-        buyerWallet.transactions.push({
-          type: "deposit",
-          amount: transaction.lockedAmount,
-          reference: `REFUND-${transaction._id}`,
-          status: "completed",
-          metadata: {
-            purpose: "Transaction cancellation refund",
-            transactionId: transaction._id,
-          },
-          createdAt: new Date(),
-        });
-        await buyerWallet.save({ session });
+    // Initialize cancelConfirmations if not present
+    if (!transaction.cancelConfirmations) {
+      transaction.cancelConfirmations = { creator: false, participant: false };
+    }
 
-        const refundNotification = new Notification({
-          userId: buyerWallet.userId.toString(),
-          title: "Transaction Refund",
-          message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
-          transactionId: transaction._id.toString(),
-          type: "transaction",
-          status: "completed",
-        });
-        await refundNotification.save({ session });
+    const userRole = isCreator ? "creator" : "participant";
+    transaction.cancelConfirmations[userRole] = true;
+
+    let responseMessage = "";
+    let refundedAmount = 0;
+
+    // For non-funded (pending) transactions, cancel immediately
+    if (transaction.status === "pending" && !transaction.locked) {
+      transaction.status = "canceled";
+      responseMessage = "Transaction cancelled successfully";
+    } else if (transaction.status === "funded" && transaction.locked) {
+      // For funded transactions, require both confirmations
+      if (transaction.cancelConfirmations.creator && transaction.cancelConfirmations.participant) {
+        transaction.status = "canceled";
+        responseMessage = "Transaction cancelled successfully with both confirmations";
+
+        // Handle refund if transaction is funded
+        if (transaction.buyerWalletId && transaction.lockedAmount > 0) {
+          const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
+          if (buyerWallet) {
+            refundedAmount = transaction.lockedAmount;
+            buyerWallet.balance += transaction.lockedAmount;
+            buyerWallet.transactions.push({
+              type: "deposit",
+              amount: transaction.lockedAmount,
+              reference: `REFUND-${transaction._id}`,
+              status: "completed",
+              metadata: {
+                purpose: "Transaction cancellation refund",
+                transactionId: transaction._id,
+              },
+              createdAt: new Date(),
+            });
+            await buyerWallet.save({ session });
+
+            const refundNotification = new Notification({
+              userId: buyerWallet.userId.toString(),
+              title: "Transaction Refund",
+              message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
+              transactionId: transaction._id.toString(),
+              type: "transaction",
+              status: "completed",
+            });
+            await refundNotification.save({ session });
+
+            const io = req.app.get("io");
+            io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
+              balance: buyerWallet.balance,
+              transaction: {
+                amount: transaction.lockedAmount,
+                reference: `REFUND-${transaction._id}`,
+              },
+            });
+          }
+        }
+        transaction.locked = false;
+        transaction.lockedAmount = 0;
+      } else {
+        // Only one party has confirmed cancellation
+        responseMessage = `Cancellation request recorded. Waiting for ${isCreator ? "participant" : "creator"} confirmation.`;
+        await transaction.save({ session });
+        await session.commitTransaction();
+        session.endSession();
 
         const io = req.app.get("io");
-        io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
-          balance: buyerWallet.balance,
-          transaction: {
-            amount: transaction.lockedAmount,
-            reference: `REFUND-${transaction._id}`,
-          },
+        const usersToNotify = [
+          transaction.userId.toString(),
+          ...transaction.participants.map((p) => p.userId.toString()),
+        ];
+        usersToNotify.forEach((userId) => {
+          io.to(userId).emit("transactionUpdated", {
+            transactionId: transaction._id,
+            status: transaction.status,
+            message: responseMessage,
+            cancelConfirmations: transaction.cancelConfirmations,
+          });
+        });
+
+        return res.status(200).json({
+          message: responseMessage,
+          refunded: 0,
+          transaction: transaction.toObject(),
         });
       }
     }
 
-    transaction.status = "cancelled";
-    transaction.locked = false;
-    transaction.lockedAmount = 0;
     await transaction.save({ session });
 
     const io = req.app.get("io");
     const usersToNotify = [
       transaction.userId.toString(),
-      ...transaction.participants.map((p) => p.toString()),
+      ...transaction.participants.map((p) => p.userId.toString()),
     ];
     usersToNotify.forEach((userId) => {
       io.to(userId).emit("transactionUpdated", {
         transactionId: transaction._id,
-        status: "cancelled",
-        message: "Transaction has been cancelled.",
+        status: transaction.status,
+        message: responseMessage,
       });
     });
 
@@ -580,96 +610,182 @@ exports.cancelTransaction = async (req, res) => {
     session.endSession();
 
     return res.status(200).json({
-      message: "Transaction cancelled successfully",
-      refunded: refundedAmount
+      message: responseMessage,
+      refunded: refundedAmount,
+      transaction: transaction.toObject(),
     });
   } catch (error) {
     console.error("Error cancelling transaction:", error);
     await session.abortTransaction();
     session.endSession();
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error: " + error.message });
   }
 };
 
 exports.joinTransaction = async (req, res) => {
   try {
+    // Destructure and validate request body
     const { id } = req.body;
-    const userId = req.user.id;
+    const userId = req.user?.id;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ success: false, error: "Invalid user ID" });
+    // Validate request body structure
+    if (!req.body || typeof id !== 'string' || !id.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Transaction ID is required and must be a non-empty string',
+      });
     }
 
-    const transaction = await Transaction.findById(id);
+    // Validate userId from authentication middleware
+    if (!userId || typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or missing user authentication',
+      });
+    }
+
+    // Validate transaction ID format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid transaction ID format',
+      });
+    }
+
+    // Fetch transaction with necessary fields
+    const transaction = await Transaction.findById(id).select(
+      'userId participants status selectedUserType buyerWalletId sellerWalletId'
+    );
     if (!transaction) {
-      return res.status(404).json({ success: false, error: "Transaction not found" });
+      return res.status(404).json({
+        success: false,
+        error: 'Transaction not found',
+      });
     }
+
+    // Prevent creator from joining their own transaction
     if (transaction.userId.toString() === userId) {
-      return res.status(400).json({ success: false, error: "You cannot join your own transaction" });
+      return res.status(400).json({
+        success: false,
+        error: 'You cannot join your own transaction',
+      });
     }
-    if (transaction.participants.some(p => p.userId && p.userId.toString() === userId)) {
-      return res.status(400).json({ success: false, error: "You are already a participant" });
+
+    // Check if user is already a participant
+    if (transaction.participants.some((p) => p.userId && p.userId.toString() === userId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'You are already a participant in this transaction',
+      });
     }
-    if (transaction.status !== "pending") {
-      return res.status(400).json({ success: false, error: "Only pending transactions can be joined" });
+
+    // Ensure transaction is pending
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        error: 'Only pending transactions can be joined',
+      });
     }
+
+    // Limit to one participant
     if (transaction.participants.length >= 1) {
-      return res.status(400).json({ success: false, error: "Transaction already has a participant" });
+      return res.status(400).json({
+        success: false,
+        error: 'Transaction already has a participant',
+      });
     }
 
-    const user = await User.findById(userId);
+    // Verify user profile completeness
+    const user = await User.findById(userId).select('email firstName');
     if (!user || !user.email || !user.firstName) {
-      return res.status(400).json({ success: false, error: "User profile incomplete (missing email or firstName)" });
+      return res.status(400).json({
+        success: false,
+        error: 'User profile incomplete (missing email or firstName)',
+      });
     }
 
-    let wallet = await Wallet.findOne({ userId });
+    // Ensure user has a wallet
+    let wallet = await Wallet.findOne({ userId }).select('_id');
     if (!wallet) {
       wallet = new Wallet({
         userId,
         balance: 0,
         totalDeposits: 0,
-        currency: "NGN",
+        currency: 'NGN',
         transactions: [],
       });
       await wallet.save();
     }
 
-    const participantRole = transaction.selectedUserType === "buyer" ? "seller" : "buyer";
-    if (participantRole === "seller") {
+    // Determine participant role
+    const participantRole = transaction.selectedUserType === 'buyer' ? 'seller' : 'buyer';
+
+    // Assign wallet ID based on role
+    if (participantRole === 'seller') {
       transaction.sellerWalletId = wallet._id;
     } else {
       transaction.buyerWalletId = wallet._id;
     }
 
+    // Add participant to transaction
     transaction.participants.push({ userId, role: participantRole });
     await transaction.save();
 
+    // Create notification for transaction creator
     const notification = new Notification({
       userId: transaction.userId.toString(),
-      title: "User Joined Transaction",
+      title: 'User Joined Transaction',
       message: `${user.firstName} has joined your transaction ${transaction._id} as ${participantRole}.`,
       transactionId: transaction._id.toString(),
-      type: "transaction",
-      status: "pending",
+      type: 'transaction',
+      status: 'pending',
     });
     await notification.save();
 
-    const io = req.app.get("io");
-    io.to(transaction.userId.toString()).emit("transactionUpdated", {
-      transactionId: transaction._id,
-      message: `${user.firstName} has joined your transaction as ${participantRole}.`,
-    });
+    // Emit WebSocket event
+    const io = req.app.get('io');
+    if (io) {
+      io.to(transaction.userId.toString()).emit('transactionUpdated', {
+        transactionId: transaction._id,
+        message: `${user.firstName} has joined your transaction as ${participantRole}.`,
+      });
+    } else {
+      console.warn('Socket.io instance not found');
+    }
+
+    // Log successful join for debugging
+    console.log(`User ${userId} joined transaction ${id} as ${participantRole}`);
 
     return res.status(200).json({
       success: true,
       data: {
-        message: "Joined transaction successfully",
+        message: 'Joined transaction successfully',
         role: participantRole,
       },
     });
   } catch (error) {
-    console.error("Error joining transaction:", error.message, error.stack);
-    return res.status(500).json({ success: false, error: "Internal server error", details: error.message });
+    // Enhanced error logging
+    console.error('Error joining transaction:', {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+      userId: req.user?.id,
+    });
+
+    // Handle specific Mongoose errors
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid ID format',
+        details: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: error.message,
+    });
   }
 };
 

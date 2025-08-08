@@ -31,7 +31,7 @@ module.exports = () => {
           for (const transaction of wallet.transactions.filter(
             (t) => t.status === 'pending' && new Date(t.createdAt) < new Date(Date.now() - timeoutThreshold)
           )) {
-            transaction.status = 'cancelled';
+            transaction.status = 'canceled';
             transaction.metadata.error = 'Transaction timed out after 7 days';
             wallet.markModified('transactions');
             await wallet.save({ session });
@@ -39,11 +39,11 @@ module.exports = () => {
             await Notification.create(
               {
                 userId: wallet.userId,
-                title: 'Transaction Cancelled',
-                message: `Transaction ${transaction.reference} was cancelled due to inactivity.`,
+                title: 'Transaction Canceled',
+                message: `Transaction ${transaction.reference} was canceled due to inactivity.`,
                 transactionId: transaction.reference,
                 type: 'funding',
-                status: 'cancelled',
+                status: 'canceled',
               },
               { session }
             );

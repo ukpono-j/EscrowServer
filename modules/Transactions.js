@@ -87,7 +87,7 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "funded", "completed", "cancelled"],
+    enum: ["pending", "funded", "completed", "canceled"],
     default: "pending",
     index: true,
   },
@@ -144,6 +144,10 @@ const transactionSchema = new mongoose.Schema({
   lockedAmount: {
     type: Number,
     default: 0,
+  },
+  cancelConfirmations: {
+    creator: { type: Boolean, default: false },
+    participant: { type: Boolean, default: false },
   },
 });
 

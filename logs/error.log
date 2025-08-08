@@ -266,3 +266,7 @@
 {"level":"error","message":"Check funding status error read ECONNRESET","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-07T10:37:58.953Z"}
 {"level":"error","message":"Check funding status error read ECONNRESET","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-07T10:38:00.412Z"}
 {"errorName":"Error","level":"error","message":"Get wallet balance error read ECONNRESET","mongoErrorCode":null,"stack":"Error: read ECONNRESET\n    at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20)","timestamp":"2025-08-07T10:38:00.700Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-08T15:12:21.211Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-08T15:12:21.215Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-08T15:12:21.566Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-08T15:12:21.857Z"}
