@@ -217,7 +217,7 @@ exports.register = async (req, res) => {
         userId: savedUser._id,
         title: 'Account Setup Failed',
         message: 'Unable to create payment profile. Please update your profile to enable funding.',
-        transactionId: `REG_${Date.now()}`,
+        reference: `REG_${Date.now()}`,
         type: 'registration',
         status: 'failed',
       }, { session });
@@ -253,7 +253,7 @@ exports.register = async (req, res) => {
           userId: savedUser._id,
           title: 'Account Setup Failed',
           message: 'Unable to create virtual account. Please update your profile to enable funding.',
-          transactionId: `REG_${Date.now()}`,
+          reference: `REG_${Date.now()}`,
           type: 'registration',
           status: 'failed',
         }, { session });
@@ -264,7 +264,7 @@ exports.register = async (req, res) => {
       userId: savedUser._id,
       title: 'Welcome to the Platform',
       message: `Welcome, ${sanitizedInputs.firstName}! Your account has been created successfully.`,
-      transactionId: `REG_${Date.now()}`,
+      reference: `REG_${Date.now()}`,
       type: 'registration',
       status: 'completed',
     }, { session });
