@@ -476,7 +476,16 @@ exports.cancelTransaction = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      await session.abortTransaction();
+      session.endSession();
+      console.warn('Invalid transaction ID:', id);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
+
     const transaction = await Transaction.findById(id).session(session);
+
     if (!transaction) {
       await session.abortTransaction();
       session.endSession();
@@ -794,6 +803,12 @@ exports.acceptAndUpdateTransaction = async (req, res) => {
     const { id, description, price } = req.body;
     const userId = req.user.id;
 
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.warn('Invalid transaction ID:', id);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
+
     if (!description || !price || parseFloat(price) <= 0) {
       return res.status(400).json({ success: false, error: "Description and a positive price are required" });
     }
@@ -875,7 +890,14 @@ exports.rejectTransaction = async (req, res) => {
     const { id } = req.body;
     const userId = req.user.id;
 
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.warn('Invalid transaction ID:', id);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
+
     const transaction = await Transaction.findById(id);
+
     if (!transaction) {
       return res.status(404).json({ success: false, error: "Transaction not found" });
     }
@@ -927,6 +949,12 @@ exports.updatePaymentStatus = async (req, res) => {
   try {
     const { transactionId, status } = req.body;
     const userId = req.user.id;
+
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.warn('Invalid transaction ID:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
 
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
@@ -1069,6 +1097,12 @@ exports.submitWaybillDetails = async (req, res, next) => {
     const userId = req.user.id;
     const { transactionId, item, shippingAddress, trackingNumber, deliveryDate } = req.body;
 
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.warn('Invalid transaction ID:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
+
     // Validate required fields
     if (!transactionId || !item || !shippingAddress || !trackingNumber || !deliveryDate) {
       return res.status(400).json({ error: "All fields are required" });
@@ -1132,6 +1166,12 @@ exports.getWaybillDetails = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { transactionId } = req.params;
+
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.warn('Invalid transaction ID:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
 
     // Find the transaction
     const transaction = await Transaction.findById(transactionId).populate("userId participants");
@@ -1240,6 +1280,14 @@ exports.fundTransactionWithWallet = async (req, res) => {
   try {
     const { transactionId, amount } = req.body;
     const userId = req.user.id;
+
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      await session.abortTransaction();
+      session.endSession();
+      console.warn('Invalid transaction ID:', transactionId);
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
 
     const transaction = await Transaction.findById(transactionId).session(session);
     if (!transaction) {
@@ -1607,6 +1655,14 @@ exports.confirmTransaction = async (req, res) => {
     const userId = req.user.id;
 
     console.log('Confirm transaction request:', { transactionId, userId });
+
+    // Validate transaction ID
+    if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+      console.warn('Invalid transaction ID:', transactionId);
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+    }
 
     const transaction = await Transaction.findById(transactionId)
       .populate("userId", "firstName lastName email")

@@ -63,6 +63,10 @@ router.post('/fund-transaction', authenticateUser, async (req, res) => {
   if (!transactionId || !amount) {
     return res.status(400).json({ message: "Transaction ID and amount are required" });
   }
+  if (!mongoose.Types.ObjectId.isValid(transactionId)) {
+    console.warn('Invalid transaction ID:', transactionId);
+    return res.status(400).json({ message: "Invalid transaction ID format" });
+  }
   await transactionController.fundTransactionWithWallet(req, res);
 });
 

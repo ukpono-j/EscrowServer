@@ -9907,3 +9907,154 @@
 {"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-08T19:29:32.219Z","userId":"6889bb39a78f5240932d8ebd"}
 {"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-08T19:29:32.225Z","userId":"6889bb39a78f5240932d8ebd"}
 {"cacheKey":"wallet_balance_6889bb39a78f5240932d8ebd","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-08T19:29:32.232Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:52:29.904Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:52:29.935Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:52:30.927Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:52:32.154Z","userId":"6889bb39a78f5240932d8ebd"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-09T12:54:02.832Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:54:03.265Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-09T12:54:03.335Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-09T12:54:03.354Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:54:03.697Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-09T12:54:03.848Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:54:03.981Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-09T12:54:04.387Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-09T12:54:04.404Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-09T12:54:04.435Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-09T12:54:04.484Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-09T12:54:04.725Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:05:45.002Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:05:45.344Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:05:46.033Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:05:46.372Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:05:46.622Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:05:46.878Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:05:47.110Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:05:47.143Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:05:47.412Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:05:47.928Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:05:47.968Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:05:48.230Z"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Cached wallet balance","timestamp":"2025-08-10T18:06:19.058Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:19.059Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:06:19.336Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:06:19.348Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:06:19.591Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:06:19.794Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:06:19.861Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:28.132Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:28.152Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:28.412Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:28.503Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:28.706Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:29.006Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:29.164Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:29.218Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:29.270Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:29.528Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:29.748Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:29.871Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:30.546Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:30.574Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:30.595Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:30.848Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:30.857Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:30.859Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:31.140Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:31.181Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:31.200Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-10T18:06:31.381Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-10T18:06:31.691Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-10T18:06:31.982Z"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:14.015Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:14.071Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:14.115Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:14.142Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:18.333Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:18.386Z","userId":"689744dc441aebba3cbb5c2a"}
+{"cacheKey":"wallet_balance_689744dc441aebba3cbb5c2a","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-10T18:07:18.476Z","userId":"689744dc441aebba3cbb5c2a"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:21:19.473Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:21:19.974Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:21:20.030Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:21:20.539Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:21:21.139Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:21:21.479Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:21:21.804Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:21:21.895Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:21:22.022Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:21:22.591Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:21:23.706Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:21:23.732Z"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Cached wallet balance","timestamp":"2025-08-11T07:21:50.383Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:21:50.389Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:21:50.706Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:21:50.720Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:21:50.877Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:21:50.952Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:21:51.046Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:23:15.844Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:23:15.876Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:23:16.128Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:23:16.160Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:23:17.011Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:23:17.016Z"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:35.995Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:36.013Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:36.025Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:37.048Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:37.078Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:23:37.090Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:28:26.528Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:28:27.645Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:28:28.037Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:28:28.359Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:28:28.475Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:28:28.658Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:28:28.995Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:28:28.997Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:28:29.428Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:28:29.530Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:28:29.712Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:28:30.125Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:48:02.765Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:48:03.432Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:48:04.301Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:48:04.570Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:48:04.578Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:48:04.833Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:48:05.383Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:48:05.402Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:48:05.684Z"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Cached wallet balance","timestamp":"2025-08-11T07:48:06.459Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T07:48:06.463Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.015Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.022Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.037Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.051Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.064Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.082Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:07.100Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T07:48:07.585Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:48:07.912Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T07:48:08.288Z"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:09.037Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:09.078Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:09.092Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:22.451Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:22.530Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:22.548Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:23.898Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:23.927Z","userId":"68921bee55772291c815b074"}
+{"cacheKey":"wallet_balance_68921bee55772291c815b074","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-11T07:48:23.937Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T11:43:22.357Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T11:43:23.335Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T11:43:24.369Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T11:43:25.371Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T11:43:26.986Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T11:43:28.369Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-11T11:43:28.592Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T11:43:28.836Z","userId":"68921bee55772291c815b074"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-11T11:43:29.336Z","userId":"68921bee55772291c815b074"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T11:43:29.480Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T11:43:30.409Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-11T11:43:32.068Z"}
