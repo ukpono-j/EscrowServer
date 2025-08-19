@@ -45,6 +45,34 @@ const upload = multer({
 
 const app = express();
 const server = http.createServer(app);
+// const io = socketIo(server, {
+//   cors: {
+//     origin: [
+//       process.env.VITE_BASE_URL || "http://localhost:5173",
+//       "http://localhost:5174",
+//       "https://res.cloudinary.com",
+//       "https://api.multiavatar.com",
+//       "https://escrow-app.onrender.com",
+//       "https://escrow-app-delta.vercel.app",
+//       "https://escrowserver.onrender.com",
+//       "https://mymiddleman.ng",
+//       "https://paywithsylo.com",
+//       "https://1ea518b60f04.ngrok-free.aconst io = socketIo(server, {pp",
+//     ],
+//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+//     credentials: true,
+//   },
+//   pingTimeout: 60000,
+//   pingInterval: 25000,
+//   transports: ['websocket', 'polling'],
+//   reconnection: true,
+//   reconnectionAttempts: 5,
+//   reconnectionDelay: 1000,
+//   reconnectionDelayMax: 5000,
+//   randomizationFactor: 0.5,
+// });
+
+// Updated server socket.io configuration
 const io = socketIo(server, {
   cors: {
     origin: [
@@ -62,11 +90,11 @@ const io = socketIo(server, {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   },
-  pingTimeout: 60000,
+  pingTimeout: 60000,  // Increased to 60 seconds
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
   reconnection: true,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: Infinity,  // Unlimited reconnection attempts
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   randomizationFactor: 0.5,
