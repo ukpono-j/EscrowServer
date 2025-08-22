@@ -1,9 +1,14 @@
 const User = require('../modules/Users');
 const Transaction = require('../modules/Transactions');
 const KYC = require('../modules/Kyc');
+const Wallet = require('../modules/wallet');
+const Notification = require('../modules/Notification');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
+const pino = require('pino')();
+const moment = require('moment-timezone');
 
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -12,8 +17,20 @@ exports.getDashboardStats = async (req, res) => {
     const pendingKYC = await KYC.countDocuments({ status: 'pending' });
     const totalTransactionAmount = await Transaction.aggregate([
       { $match: { status: 'completed' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } }
+      { $group: { _id: null, total: { $sum: '$paymentAmount' } } },
     ]);
+
+    let pendingWithdrawals = 0;
+    try {
+      const withdrawalsResult = await Wallet.aggregate([
+        { $unwind: '$withdrawalRequests' },
+        { $match: { 'withdrawalRequests.status': 'pending' } },
+        { $group: { _id: null, total: { $sum: '$withdrawalRequests.amount' } } },
+      ]);
+      pendingWithdrawals = withdrawalsResult[0]?.total || 0;
+    } catch (walletError) {
+      console.error('Error fetching pending withdrawals:', walletError);
+    }
 
     res.status(200).json({
       success: true,
@@ -21,39 +38,38 @@ exports.getDashboardStats = async (req, res) => {
         userCount,
         transactionCount,
         pendingKYC,
-        totalTransactionAmount: totalTransactionAmount[0]?.total || 0
-      }
+        totalTransactionAmount: totalTransactionAmount[0]?.total || 0,
+        pendingWithdrawals,
+      },
     });
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error fetching dashboard stats:', {
+      message: error.message,
+      stack: error.stack,
+    });
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      details: error.message,
+    });
   }
 };
 
 exports.getAllUsers = async (req, res) => {
   try {
     console.log('Admin fetching all users');
-    
-    // Fetch all users with all needed fields except password
     const users = await User.find()
-      .select('-password') // Exclude only password
-      .sort({ createdAt: -1 }); // Sort by newest first
-    
-    console.log(`Found ${users.length} users`);
-    
+      .select('-password')
+      .sort({ createdAt: -1 });
+
     if (!users || users.length === 0) {
       console.log('No users found');
-      return res.status(200).json({ 
-        success: true, 
-        data: [] // Return empty array instead of nested object
-      });
+      return res.status(200).json({ success: true, data: [] });
     }
 
-    // Add avatar URLs and ensure all fields are present
     const usersWithAvatars = users.map(user => ({
       ...user.toObject(),
       avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
-      // Ensure required fields have default values if missing
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       email: user.email || '',
@@ -64,25 +80,13 @@ exports.getAllUsers = async (req, res) => {
       dateOfBirth: user.dateOfBirth || null,
       avatarSeed: user.avatarSeed || user._id,
       paystackCustomerCode: user.paystackCustomerCode || '',
-      createdAt: user.createdAt || new Date()
+      createdAt: user.createdAt || new Date(),
     }));
 
-    // Return users array directly in data field to match frontend expectation
-    res.status(200).json({ 
-      success: true, 
-      data: usersWithAvatars // Return array directly, not nested in users object
-    });
-    
+    res.status(200).json({ success: true, data: usersWithAvatars });
   } catch (error) {
-    console.error('Error fetching users:', {
-      message: error.message,
-      stack: error.stack
-    });
-    res.status(500).json({ 
-      success: false,
-      error: 'Internal Server Error', 
-      details: error.message 
-    });
+    console.error('Error fetching users:', { message: error.message, stack: error.stack });
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -92,7 +96,7 @@ exports.getAllTransactions = async (req, res) => {
     res.status(200).json({ success: true, data: { transactions } });
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
   }
 };
 
@@ -102,7 +106,103 @@ exports.getPendingKYC = async (req, res) => {
     res.status(200).json({ success: true, data: { pendingKYC } });
   } catch (error) {
     console.error('Error fetching pending KYC:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
+  }
+};
+
+exports.getAllWithdrawals = async (req, res) => {
+  try {
+    console.log('Admin fetching all withdrawal requests');
+    const wallets = await Wallet.find()
+      .populate('userId', 'firstName lastName email')
+      .lean();
+
+    const withdrawalRequests = wallets
+      .flatMap(wallet =>
+        (wallet.withdrawalRequests || []).map(request => ({
+          ...request,
+          userId: wallet.userId?._id,
+          userName: wallet.userId ? `${wallet.userId.firstName} ${wallet.userId.lastName}` : 'Unknown User',
+          userEmail: wallet.userId?.email || '',
+        }))
+      )
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    console.log('Withdrawal requests sent:', withdrawalRequests); // Debugging
+    res.status(200).json({
+      success: true,
+      data: withdrawalRequests,
+    });
+  } catch (error) {
+    console.error('Error fetching withdrawal requests:', { message: error.message, stack: error.stack });
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
+  }
+};
+
+exports.markWithdrawalAsPaid = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const { id } = req.params;
+      const wallet = await Wallet.findOne({ 'withdrawalRequests.reference': id }).session(session);
+
+      if (!wallet) {
+        throw new Error('Withdrawal request not found');
+      }
+
+      const withdrawal = wallet.withdrawalRequests.find(w => w.reference === id);
+      if (!withdrawal) {
+        throw new Error('Withdrawal request not found');
+      }
+      if (withdrawal.status === 'paid') {
+        throw new Error('Withdrawal already marked as paid');
+      }
+
+      withdrawal.status = 'paid';
+      withdrawal.metadata.paidDate = moment.tz('Africa/Lagos').toDate();
+      withdrawal.updatedAt = moment.tz('Africa/Lagos').toDate();
+      wallet.markModified('withdrawalRequests');
+      await wallet.save({ session });
+
+      await Notification.create(
+        [
+          {
+            userId: wallet.userId,
+            title: 'Withdrawal Request Processed',
+            message: `Your withdrawal request of ₦${withdrawal.amount.toFixed(2)} to ${withdrawal.metadata.accountName} at ${withdrawal.metadata.bankName} has been processed and marked as paid.`,
+            reference: withdrawal.reference,
+            type: 'withdrawal',
+            status: 'completed',
+            createdAt: moment.tz('Africa/Lagos').toDate(),
+          },
+        ],
+        { session }
+      );
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(wallet.userId.toString()).emit('withdrawalUpdate', {
+          reference: withdrawal.reference,
+          status: 'paid',
+          paidDate: withdrawal.metadata.paidDate,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Withdrawal request marked as paid',
+        data: {
+          reference: withdrawal.reference,
+          status: withdrawal.status,
+          paidDate: withdrawal.metadata.paidDate,
+        },
+      });
+    });
+  } catch (error) {
+    console.error('Error marking withdrawal as paid:', { message: error.message, stack: error.stack });
+    res.status(400).json({ success: false, error: error.message });
+  } finally {
+    await session.endSession();
   }
 };
 

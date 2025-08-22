@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const Notification = require('./Notification');
 
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
@@ -34,7 +33,7 @@ const withdrawalRequestSchema = new mongoose.Schema({
   type: { type: String, default: 'withdrawal' },
   amount: { type: Number, required: true, min: 100 },
   reference: { type: String, required: true, unique: true },
-  status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' }, // Changed 'completed' to 'paid'
   metadata: {
     accountNumber: { type: String, required: true },
     accountName: { type: String, required: true },
@@ -43,6 +42,7 @@ const withdrawalRequestSchema = new mongoose.Schema({
     requestDate: { type: Date, required: true },
     expectedPayoutDate: { type: Date, required: true },
     manualProcessing: { type: Boolean, default: true },
+    paidDate: { type: Date }, // Added paidDate
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
