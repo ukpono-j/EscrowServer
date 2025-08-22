@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const axios = require("axios");
 const multer = require("multer");
+const fs = require("fs").promises;
 require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
@@ -18,14 +19,27 @@ const Message = require("./modules/Message");
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger-output.json');
 
+// Ensure Uploads/images directory exists
+async function ensureUploadsDirectory() {
+  const uploadsDir = path.join(__dirname, "Uploads/images");
+  try {
+    await fs.mkdir(uploadsDir, { recursive: true }); // Change UploadsDir to uploadsDir
+    console.log('index - Uploads/images directory ensured at:', uploadsDir);
+  } catch (error) {
+    console.error('index - Failed to create Uploads/images directory:', error);
+    throw error;
+  }
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "Uploads/");
+  destination: async (req, file, cb) => {
+    await ensureUploadsDirectory();
+    cb(null, path.join(__dirname, "Uploads/images"));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
+    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
   },
 });
 const upload = multer({
@@ -45,34 +59,6 @@ const upload = multer({
 
 const app = express();
 const server = http.createServer(app);
-// const io = socketIo(server, {
-//   cors: {
-//     origin: [
-//       process.env.VITE_BASE_URL || "http://localhost:5173",
-//       "http://localhost:5174",
-//       "https://res.cloudinary.com",
-//       "https://api.multiavatar.com",
-//       "https://escrow-app.onrender.com",
-//       "https://escrow-app-delta.vercel.app",
-//       "https://escrowserver.onrender.com",
-//       "https://mymiddleman.ng",
-//       "https://paywithsylo.com",
-//       "https://1ea518b60f04.ngrok-free.aconst io = socketIo(server, {pp",
-//     ],
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-//     credentials: true,
-//   },
-//   pingTimeout: 60000,
-//   pingInterval: 25000,
-//   transports: ['websocket', 'polling'],
-//   reconnection: true,
-//   reconnectionAttempts: 5,
-//   reconnectionDelay: 1000,
-//   reconnectionDelayMax: 5000,
-//   randomizationFactor: 0.5,
-// });
-
-// Updated server socket.io configuration
 const io = socketIo(server, {
   cors: {
     origin: [
@@ -90,17 +76,18 @@ const io = socketIo(server, {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   },
-  pingTimeout: 60000,  // Increased to 60 seconds
+  pingTimeout: 60000,
   pingInterval: 25000,
   transports: ['websocket', 'polling'],
   reconnection: true,
-  reconnectionAttempts: Infinity,  // Unlimited reconnection attempts
+  reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   randomizationFactor: 0.5,
 });
 
 app.set("io", io);
+app.set("upload", upload); // Expose multer instance
 
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === "production"
   ? process.env.PAYSTACK_LIVE_SECRET_KEY
@@ -328,7 +315,7 @@ const setupSocket = (io) => {
           message: message.message,
           avatarSeed: message.avatarSeed,
           timestamp: message.timestamp,
-          tempId: message.tempId, // Include tempId for deduplication
+          tempId: message.tempId,
         });
         console.log("Message broadcasted to room:", `transaction_${message.chatroomId}`);
       } catch (error) {
@@ -434,9 +421,6 @@ const initializeRoutes = () => {
   app.use("/api/messages", messageRoutes);
   app.use('/api/admin', adminRoutes);
 };
-
-// Expose multer upload middleware for KYC routes
-app.set("upload", upload);
 
 app.use((err, req, res, next) => {
   console.error("Server Error:", {

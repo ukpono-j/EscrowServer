@@ -8,14 +8,15 @@ const path = require("path");
 const { v4: uuidv4 } = require("uuid");
 const nigeriaBanks = require("../data/banksList");
 const { getBankNameFromCode } = require('../data/banksList');
-const cache = require("../cache");
-const fs = require("fs");
+const fsPromises = require("fs").promises; // For promise-based methods
+const fs = require("fs"); // For synchronous methods
 const axios = require("axios");
 
 // Ensure the Uploads directory exists
 const uploadDir = path.join(__dirname, "../Uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+  console.log('Created Uploads directory at:', uploadDir);
 }
 
 exports.createTransaction = async (req, res) => {
@@ -1258,57 +1259,113 @@ exports.createChatRoom = async (req, res) => {
   }
 };
 
+async function ensureUploadsDirectory() {
+  const uploadsDir = path.join(__dirname, '..', 'Uploads', 'images');
+  try {
+    await fsPromises.mkdir(uploadsDir, { recursive: true });
+    console.log('submitWaybillDetails - Uploads/images directory ensured at:', uploadsDir);
+  } catch (error) {
+    console.error('submitWaybillDetails - Failed to create Uploads/images directory:', error);
+    throw error;
+  }
+}
+
+async function verifyFileWithRetry(filePath, retries = 3, delay = 100) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await fsPromises.access(filePath);
+      console.log('submitWaybillDetails - Image verified successfully:', filePath);
+      return true;
+    } catch (error) {
+      console.warn(`submitWaybillDetails - Attempt ${i + 1} failed to verify file:`, filePath, error);
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw new Error('File verification failed after retries');
+}
+
 exports.submitWaybillDetails = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { transactionId, item, shippingAddress, trackingNumber, deliveryDate } = req.body;
 
+    console.log('submitWaybillDetails - Request received:', {
+      transactionId,
+      userId,
+      item,
+      shippingAddress,
+      trackingNumber,
+      deliveryDate,
+      hasFile: !!req.file,
+      fileDetails: req.file ? { filename: req.file.filename, path: req.file.path } : null
+    });
+
     // Validate transaction ID
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
       console.warn('Invalid transaction ID:', transactionId);
-      return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
+      return res.status(400).json({ success: false, error: "Invalid transaction ID format" });
     }
 
     // Validate required fields
-    if (!transactionId || !item || !shippingAddress || !trackingNumber || !deliveryDate) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-    if (!req.file) {
-      return res.status(400).json({ error: "Image is required" });
+    if (!item || !shippingAddress || !trackingNumber || !deliveryDate) {
+      console.warn('Missing required fields:', { item, shippingAddress, trackingNumber, deliveryDate });
+      return res.status(400).json({ success: false, error: "All fields are required" });
     }
 
-    // Find the transaction
+    // Find transaction
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
+      console.warn('Transaction not found:', transactionId);
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    // Check if user is the seller
-    const isSeller = transaction.selectedUserType === "buyer" ? transaction.participants.some(p => p.toString() === userId) : transaction.userId.toString() === userId;
-    if (!isSeller) {
-      return res.status(403).json({ error: "Only the seller can submit waybill details" });
+    // Check if user is authorized (seller)
+    const isCreator = transaction.userId.toString() === userId;
+    const isParticipant = transaction.participants.some(p => p.userId.toString() === userId && p.role === 'seller');
+    if (!isCreator && !isParticipant) {
+      console.warn('Unauthorized access:', { userId, transactionId });
+      return res.status(403).json({ error: "Unauthorized to submit waybill details" });
     }
 
-    // Validate delivery date
-    const parsedDate = new Date(deliveryDate);
-    if (isNaN(parsedDate.getTime())) {
-      return res.status(400).json({ error: "Invalid delivery date" });
+    // Check if transaction is funded
+    if (!transaction.locked) {
+      console.warn('Transaction not funded:', transactionId);
+      return res.status(400).json({ error: "Transaction must be funded before submitting waybill details" });
     }
 
-    // Store file path
-    const imagePath = `Uploads/${req.file.filename}`;
+    // Ensure Uploads/images directory exists
+    await ensureUploadsDirectory();
+
+    // Handle file upload
+    let imagePath = null;
+    if (req.file) {
+      imagePath = `Uploads/images/${req.file.filename}`;
+      const fullPath = path.join(__dirname, '..', imagePath);
+      try {
+        await verifyFileWithRetry(fullPath);
+        console.log('submitWaybillDetails - Image saved successfully:', fullPath);
+      } catch (error) {
+        console.error('submitWaybillDetails - Failed to verify image file:', fullPath, error);
+        return res.status(500).json({ success: false, error: "Failed to save image file" });
+      }
+    } else {
+      console.warn('No image file uploaded:', transactionId);
+      return res.status(400).json({ success: false, error: "Image is required" });
+    }
 
     // Update transaction with waybill details
     transaction.waybillDetails = {
       item,
-      image: imagePath,
       shippingAddress,
       trackingNumber,
-      deliveryDate: parsedDate,
+      deliveryDate,
+      image: imagePath,
     };
-    transaction.proofOfWaybill = "confirmed";
 
     await transaction.save();
+    console.log('submitWaybillDetails - Waybill details saved:', { transactionId, imagePath });
 
     // Emit socket event
     const io = req.app.get("io");
@@ -1317,14 +1374,13 @@ exports.submitWaybillDetails = async (req, res, next) => {
       message: "Waybill details submitted",
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Waybill details submitted successfully",
-      data: transaction.waybillDetails,
-    });
+    return res.status(200).json({ success: true, message: "Waybill details submitted successfully" });
   } catch (error) {
-    console.error("Submit waybill error:", error);
-    return res.status(500).json({ error: "Failed to submit waybill details" });
+    console.error("Submit waybill details error:", error);
+    const errorMessage = error.code === 'ERR_INVALID_ARG_TYPE'
+      ? 'Server configuration error: Unable to create upload directory'
+      : 'Failed to submit waybill details';
+    return res.status(500).json({ success: false, error: errorMessage });
   }
 };
 
@@ -1335,39 +1391,64 @@ exports.getWaybillDetails = async (req, res, next) => {
 
     // Validate transaction ID
     if (!mongoose.Types.ObjectId.isValid(transactionId)) {
-      console.warn('Invalid transaction ID:', transactionId);
+      console.warn('getWaybillDetails - Invalid transaction ID:', transactionId);
       return res.status(400).json({ success: false, error: 'Invalid transaction ID format' });
     }
 
     // Find the transaction
-    const transaction = await Transaction.findById(transactionId).populate("userId participants");
+    const transaction = await Transaction.findById(transactionId).populate("userId participants.userId");
     if (!transaction) {
+      console.warn('getWaybillDetails - Transaction not found:', transactionId);
       return res.status(404).json({ error: "Transaction not found" });
     }
 
     // Check if user is part of the transaction
     const isCreator = transaction.userId._id.toString() === userId;
-    const isParticipant = transaction.participants.some(p => p._id.toString() === userId);
+    const isParticipant = transaction.participants.some(p => p.userId._id.toString() === userId);
     if (!isCreator && !isParticipant) {
+      console.warn('getWaybillDetails - Unauthorized access:', { userId, transactionId });
       return res.status(403).json({ error: "Unauthorized to view waybill details" });
     }
 
     if (!transaction.waybillDetails) {
+      console.log('getWaybillDetails - No waybill details for transaction:', transactionId);
       return res.status(200).json({ success: true, data: {} });
+    }
+
+    // Construct absolute URL for the image
+    const baseUrl = process.env.VITE_BASE_URL || 'http://localhost:3001';
+    let imageUrl = null;
+    if (transaction.waybillDetails.image) {
+      // Normalize path to use forward slashes
+      const normalizedImagePath = transaction.waybillDetails.image.replace(/\\/g, '/');
+      imageUrl = `${baseUrl}/${normalizedImagePath}`;
+      console.log('getWaybillDetails - Image URL constructed:', imageUrl);
+
+      // Optional: Verify file existence (for debugging, can be removed in production)
+      const fullPath = path.join(__dirname, normalizedImagePath);
+      try {
+        await fs.access(fullPath);
+        console.log('getWaybillDetails - Image file verified at:', fullPath);
+      } catch (error) {
+        console.error('getWaybillDetails - Image file not accessible:', fullPath, error.message);
+        // Don't set imageUrl to null; let the frontend attempt to load it
+      }
+    } else {
+      console.log('getWaybillDetails - No image in waybillDetails:', transactionId);
     }
 
     return res.status(200).json({
       success: true,
       data: {
         item: transaction.waybillDetails.item,
-        image: transaction.waybillDetails.image,
+        image: imageUrl,
         shippingAddress: transaction.waybillDetails.shippingAddress,
         trackingNumber: transaction.waybillDetails.trackingNumber,
         deliveryDate: transaction.waybillDetails.deliveryDate,
       },
     });
   } catch (error) {
-    console.error("Get waybill details error:", error);
+    console.error("getWaybillDetails - Error:", error.message, error.stack);
     return res.status(500).json({ error: "Failed to retrieve waybill details" });
   }
 };
@@ -1463,15 +1544,17 @@ exports.fundTransactionWithWallet = async (req, res) => {
     }
 
     const isCreator = transaction.userId.toString() === userId;
-    const isParticipant = transaction.participants.includes(userId);
+    const participant = transaction.participants.find(p => p.userId.toString() === userId);
+    const isParticipant = !!participant;
     if (!isCreator && !isParticipant) {
       await session.abortTransaction();
       session.endSession();
       return res.status(403).json({ message: 'Unauthorized to fund this transaction' });
     }
 
-    const isBuyer = (isCreator && transaction.selectedUserType === 'buyer') ||
-      (isParticipant && transaction.selectedUserType === 'seller');
+    const isBuyer = isCreator
+      ? transaction.selectedUserType === 'buyer'
+      : participant && participant.role === 'buyer';
     if (!isBuyer) {
       await session.abortTransaction();
       session.endSession();
@@ -1538,15 +1621,15 @@ exports.fundTransactionWithWallet = async (req, res) => {
     // Create notifications for both parties
     const usersToNotify = [
       transaction.userId.toString(),
-      ...transaction.participants.map((p) => p.toString()),
+      ...transaction.participants.map((p) => p.userId.toString()),
     ];
     const notificationPromises = usersToNotify.map((notifyUserId) => {
       if (!mongoose.Types.ObjectId.isValid(notifyUserId)) {
         console.warn('Invalid userId for notification:', notifyUserId);
-        return Promise.resolve(); // Skip invalid userIds
+        return Promise.resolve();
       }
       return Notification.create([{
-        userId: new mongoose.Types.ObjectId(notifyUserId), // Use 'new' for ObjectId
+        userId: new mongoose.Types.ObjectId(notifyUserId),
         title: 'Transaction Funded',
         message: `Transaction ${transaction._id} has been funded with ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} and is now in escrow.`,
         transactionId: transaction._id.toString(),
@@ -1555,7 +1638,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
         createdAt: new Date(),
       }], { session });
     });
-    await Promise.all(notificationPromises.filter(p => p)); // Filter out undefined promises
+    await Promise.all(notificationPromises.filter(p => p));
 
     const io = req.app.get('io');
     io.to(userId).emit('balanceUpdate', {

@@ -4,7 +4,12 @@ const router = express.Router();
 const transactionController = require('../controllers/transactionController');
 const authenticateUser = require('../middlewares/authenticateUser');
 const { body, validationResult } = require('express-validator');
-const upload = require('../middlewares/upload');
+
+// Middleware to get multer upload instance
+const getUpload = (req, res, next) => {
+  const upload = req.app.get('upload'); // Retrieve multer instance
+  return upload.single('image')(req, res, next); // Apply single file upload middleware
+};
 
 const validateInput = (req, res, next) => {
   const errors = validationResult(req);
@@ -49,7 +54,7 @@ router.post('/create-chatroom', authenticateUser, transactionController.createCh
 
 router.get("/:id", authenticateUser, transactionController.getTransactionById);
 
-router.post('/submit-waybill', authenticateUser, upload.single('image'), transactionController.submitWaybillDetails);
+router.post('/submit-waybill', authenticateUser, getUpload, transactionController.submitWaybillDetails);
 
 router.get('/waybill-details/:transactionId', authenticateUser, transactionController.getWaybillDetails);
 
