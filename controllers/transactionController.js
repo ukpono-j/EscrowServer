@@ -26,53 +26,43 @@ exports.createTransaction = async (req, res) => {
     paymentAmount,
     paymentDescription,
     selectedUserType,
-    paymentBank = "Pending",
-    paymentBankCode = "000",
-    paymentAccountNumber = "0",
+    paymentBank = 'Pending',
+    paymentBankCode = '000',
+    paymentAccountNumber = '0',
   } = req.body;
   const userId = req.user.id;
 
   try {
     // Validate required fields
     if (!paymentName || !email || !paymentAmount || !paymentDescription || !selectedUserType) {
-      return res.status(400).json({ success: false, error: "Missing required fields" });
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
     // Validate selectedUserType
     if (!['buyer', 'seller'].includes(selectedUserType)) {
-      return res.status(400).json({ success: false, error: "Invalid user type" });
+      return res.status(400).json({ success: false, error: 'Invalid user type' });
     }
 
-    // Check cache for user
-    const cacheKey = `user_${userId}`;
-    let user = cache.get(cacheKey);
+    // Fetch user from database
+    const user = await User.findById(userId);
     if (!user) {
-      user = await User.findById(userId);
-      if (!user) {
-        console.log("User not found:", userId);
-        return res.status(404).json({ success: false, error: "User not found" });
-      }
-      cache.set(cacheKey, user);
+      console.log('User not found:', userId);
+      return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Check cache for wallet
-    const walletCacheKey = `wallet_${userId}`;
-    let wallet = cache.get(walletCacheKey);
+    // Fetch or create wallet
+    let wallet = await Wallet.findOne({ userId });
     if (!wallet) {
-      wallet = await Wallet.findOne({ userId });
-      if (!wallet) {
-        console.log("Wallet not found, creating new wallet for user:", userId);
-        wallet = new Wallet({
-          userId,
-          balance: 0,
-          totalDeposits: 0,
-          currency: "NGN",
-          transactions: [],
-        });
-        await wallet.save();
-        console.log("New wallet created:", wallet._id);
-        cache.set(walletCacheKey, wallet);
-      }
+      console.log('Wallet not found, creating new wallet for user:', userId);
+      wallet = new Wallet({
+        userId,
+        balance: 0,
+        totalDeposits: 0,
+        currency: 'NGN',
+        transactions: [],
+      });
+      await wallet.save();
+      console.log('New wallet created:', wallet._id);
     }
 
     // Create transaction
@@ -89,13 +79,13 @@ exports.createTransaction = async (req, res) => {
       },
       selectedUserType,
       paymentBankCode,
-      buyerWalletId: selectedUserType === "buyer" ? wallet._id : null,
-      sellerWalletId: selectedUserType === "seller" ? wallet._id : null,
-      status: "pending",
+      buyerWalletId: selectedUserType === 'buyer' ? wallet._id : null,
+      sellerWalletId: selectedUserType === 'seller' ? wallet._id : null,
+      status: 'pending',
       participants: [],
     });
 
-    console.log("Transaction object prepared:", {
+    console.log('Transaction object prepared:', {
       userId,
       paymentName,
       email,
@@ -106,39 +96,39 @@ exports.createTransaction = async (req, res) => {
 
     // Save transaction
     await transaction.save();
-    console.log("Transaction saved successfully:", transaction._id);
+    console.log('Transaction saved successfully:', transaction._id);
 
     // Create notification
     const creatorNotification = new Notification({
       userId,
-      title: "Transaction Created",
+      title: 'Transaction Created',
       message: `You have successfully created a transaction ${transaction._id} as ${selectedUserType}.`,
       transactionId: transaction._id.toString(),
-      type: "transaction",
-      status: "pending",
+      type: 'transaction',
+      status: 'pending',
     });
     await creatorNotification.save();
-    console.log("Notification created for creator:", creatorNotification._id);
+    console.log('Notification created for creator:', creatorNotification._id);
 
     // Emit socket event
-    const io = req.app.get("io");
-    io.to(userId).emit("transactionCreated", {
+    const io = req.app.get('io');
+    io.to(userId).emit('transactionCreated', {
       transactionId: transaction._id.toString(),
       message: `Transaction created successfully as ${selectedUserType}`,
     });
-    console.log("Emitted transactionCreated event to user:", userId);
+    console.log('Emitted transactionCreated event to user:', userId);
 
     return res.status(201).json({
       success: true,
-      data: { message: "Transaction created successfully", transactionId: transaction._id.toString() },
+      data: { message: 'Transaction created successfully', transactionId: transaction._id.toString() },
     });
   } catch (error) {
-    console.error("Error creating transaction:", {
+    console.error('Error creating transaction:', {
       message: error.message,
       stack: error.stack,
       requestBody: req.body,
     });
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: 'Too much traffic at the moment. Please try again later.' });
   }
 };
 
@@ -253,13 +243,6 @@ exports.getBanks = async (req, res) => {
       return res.status(401).json({ success: false, error: "Authorization token required" });
     }
 
-    const cacheKey = "banks_list";
-    let banks = cache.get(cacheKey);
-    if (banks) {
-      console.log("Returning cached banks:", banks.length);
-      return res.status(200).json({ success: true, data: banks });
-    }
-
     // Fetch from Paystack
     const paystackResponse = await axios.get("https://api.paystack.co/bank?country=nigeria", {
       headers: {
@@ -268,14 +251,14 @@ exports.getBanks = async (req, res) => {
       timeout: 10000,
     });
 
-    banks = paystackResponse.data.status && Array.isArray(paystackResponse.data.data) && paystackResponse.data.data.length > 0
+    const banks = paystackResponse.data.status && Array.isArray(paystackResponse.data.data) && paystackResponse.data.data.length > 0
       ? paystackResponse.data.data.map((bank) => ({
-        name: bank.name,
-        code: bank.code,
-      }))
+          name: bank.name,
+          code: bank.code,
+        }))
       : nigeriaBanks;
 
-    cache.set(cacheKey, banks, 3600); // Cache for 1 hour
+    console.log("Banks fetched:", banks.length);
     return res.status(200).json({ success: true, data: banks });
   } catch (error) {
     console.error("Error fetching banks:", error);

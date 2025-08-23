@@ -1499,7 +1499,7 @@ exports.withdrawFunds = async (req, res) => {
       if (!/^\d{10}$/.test(accountNumber)) {
         throw new Error('Account number must be exactly 10 digits');
       }
-      const bank = PAYSTACK_BANKS.find(b => b.code === bankCode);
+      const bank = CRITICAL_BANKS.find(b => b.code === bankCode); // Use CRITICAL_BANKS instead of PAYSTACK_BANKS
       if (!bank) {
         throw new Error('Invalid bank code');
       }

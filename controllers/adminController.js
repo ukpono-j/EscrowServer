@@ -114,24 +114,65 @@ exports.getAllWithdrawals = async (req, res) => {
   try {
     console.log('Admin fetching all withdrawal requests');
     const wallets = await Wallet.find()
-      .populate('userId', 'firstName lastName email')
+      .populate({
+        path: 'userId',
+        select: 'firstName lastName email',
+        match: { _id: { $exists: true } },
+      })
       .lean();
 
-    const withdrawalRequests = wallets
-      .flatMap(wallet =>
-        (wallet.withdrawalRequests || []).map(request => ({
-          ...request,
-          userId: wallet.userId?._id,
-          userName: wallet.userId ? `${wallet.userId.firstName} ${wallet.userId.lastName}` : 'Unknown User',
-          userEmail: wallet.userId?.email || '',
-        }))
-      )
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const withdrawalRequests = await Promise.all(
+      wallets.flatMap(async (wallet) => {
+        if (!wallet.withdrawalRequests) {
+          console.warn('Wallet skipped due to missing withdrawalRequests', {
+            walletId: wallet._id,
+            userId: wallet.userId ? wallet.userId._id : 'missing',
+          });
+          return [];
+        }
 
-    console.log('Withdrawal requests sent:', withdrawalRequests); // Debugging
+        if (!wallet.userId || !wallet.userId._id) {
+          console.warn('Invalid or missing userId for wallet', {
+            walletId: wallet._id,
+            userId: wallet.userId,
+          });
+
+          return Promise.all(
+            wallet.withdrawalRequests.map(async (request) => {
+              // Try to find user by matching accountName with firstName + lastName
+              const [firstName, ...lastNameParts] = request.metadata.accountName.split(' ');
+              const lastName = lastNameParts.join(' ');
+              const user = await User.findOne({
+                $or: [
+                  { firstName, lastName },
+                  { firstName: request.metadata.accountName }, // Fallback for single-name accounts
+                ],
+              }).lean();
+
+              return {
+                ...request,
+                userId: user ? user._id : null,
+                userName: user ? `${user.firstName} ${user.lastName}` : request.metadata.accountName,
+                userEmail: user ? user.email || '' : '',
+              };
+            })
+          );
+        }
+
+        return wallet.withdrawalRequests.map(request => ({
+          ...request,
+          userId: wallet.userId._id,
+          userName: `${wallet.userId.firstName || 'Unknown'} ${wallet.userId.lastName || 'User'}`,
+          userEmail: wallet.userId.email || '',
+        }));
+      })
+    ).then(results => results.flat());
+
+    const sortedRequests = withdrawalRequests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    console.log('Withdrawal requests sent:', sortedRequests);
     res.status(200).json({
       success: true,
-      data: withdrawalRequests,
+      data: sortedRequests,
     });
   } catch (error) {
     console.error('Error fetching withdrawal requests:', { message: error.message, stack: error.stack });
