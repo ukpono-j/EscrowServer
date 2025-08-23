@@ -92,7 +92,32 @@ exports.getAllUsers = async (req, res) => {
 
 exports.getAllTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find();
+    const transactions = await Transaction.find()
+      .populate({
+        path: 'participants.userId',
+        select: 'firstName lastName',
+      })
+      .populate({
+        path: 'userId',
+        select: 'firstName lastName',
+      })
+      .sort({ createdAt: -1 }); // Sort by createdAt in descending order
+
+    // Log transactions with potential issues
+    transactions.forEach((t) => {
+      if (!t.participants || t.participants.length !== 2) {
+        console.warn(`Transaction ${t._id} has invalid participants count: ${t.participants?.length || 0}`);
+      }
+      if (!t.userId || !t.userId.firstName || !t.userId.lastName) {
+        console.warn(`Transaction ${t._id} has invalid creator userId:`, t.userId);
+      }
+      t.participants.forEach(p => {
+        if (!p.userId || !p.userId.firstName || !p.userId.lastName) {
+          console.warn(`Transaction ${t._id} has invalid userId for ${p.role}:`, p.userId);
+        }
+      });
+    });
+
     res.status(200).json({ success: true, data: { transactions } });
   } catch (error) {
     console.error('Error fetching transactions:', error);
