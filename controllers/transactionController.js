@@ -406,7 +406,7 @@ exports.getTransactionById = async (req, res) => {
     const isParticipant = transaction.participants.some(
       (p) => p.userId && p.userId._id.toString() === userId
     );
-    const canPreview = transaction.status === "pending" && transaction.participants.length === 0;
+    const canPreview = (transaction.status === "pending" || transaction.status === "funded") && transaction.participants.length === 0;
 
     console.log('Authorization check:', {
       isCreator,
@@ -838,11 +838,11 @@ exports.joinTransaction = async (req, res) => {
       });
     }
 
-    // Ensure transaction is pending
-    if (transaction.status !== 'pending') {
+    // Ensure transaction is pending or funded
+    if (!['pending', 'funded'].includes(transaction.status)) {
       return res.status(400).json({
         success: false,
-        error: 'Only pending transactions can be joined',
+        error: 'Only pending or funded transactions can be joined',
       });
     }
 
