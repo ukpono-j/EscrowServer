@@ -662,89 +662,139 @@ exports.cancelTransaction = async (req, res) => {
       transaction.cancelConfirmations = { creator: false, participant: false };
     }
 
-    const userRole = isCreator ? "creator" : "participant";
-    transaction.cancelConfirmations[userRole] = true;
-
     let responseMessage = "";
     let refundedAmount = 0;
 
-    // For non-funded (pending) transactions, cancel immediately
-    if (transaction.status === "pending" && !transaction.locked) {
+    // Handle cancellation based on participant count and transaction status
+    if (transaction.participants.length === 0) {
+      // No participants: Creator can cancel immediately, regardless of pending or funded status
       transaction.status = "canceled";
       responseMessage = "Transaction cancelled successfully";
-    } else if (transaction.status === "funded" && transaction.locked) {
-      // For funded transactions, require both confirmations
-      if (transaction.cancelConfirmations.creator && transaction.cancelConfirmations.participant) {
-        transaction.status = "canceled";
-        responseMessage = "Transaction cancelled successfully with both confirmations";
 
-        // Handle refund if transaction is funded
-        if (transaction.buyerWalletId && transaction.lockedAmount > 0) {
-          const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
-          if (buyerWallet) {
-            refundedAmount = transaction.lockedAmount;
-            buyerWallet.balance += transaction.lockedAmount;
-            buyerWallet.transactions.push({
-              type: "deposit",
+      // Handle refund for funded transaction
+      if (transaction.status === "funded" && transaction.locked && transaction.buyerWalletId && transaction.lockedAmount > 0) {
+        const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
+        if (buyerWallet) {
+          refundedAmount = transaction.lockedAmount;
+          buyerWallet.balance += transaction.lockedAmount;
+          buyerWallet.transactions.push({
+            type: "deposit",
+            amount: transaction.lockedAmount,
+            reference: `REFUND-${transaction._id}`,
+            status: "completed",
+            metadata: {
+              purpose: "Transaction cancellation refund",
+              transactionId: transaction._id,
+            },
+            createdAt: new Date(),
+          });
+          await buyerWallet.save({ session });
+
+          const refundNotification = new Notification({
+            userId: buyerWallet.userId.toString(),
+            title: "Transaction Refund",
+            message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
+            transactionId: transaction._id.toString(),
+            type: "transaction",
+            status: "completed",
+          });
+          await refundNotification.save({ session });
+
+          const io = req.app.get("io");
+          io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
+            balance: buyerWallet.balance,
+            transaction: {
               amount: transaction.lockedAmount,
               reference: `REFUND-${transaction._id}`,
-              status: "completed",
-              metadata: {
-                purpose: "Transaction cancellation refund",
-                transactionId: transaction._id,
-              },
-              createdAt: new Date(),
-            });
-            await buyerWallet.save({ session });
-
-            const refundNotification = new Notification({
-              userId: buyerWallet.userId.toString(),
-              title: "Transaction Refund",
-              message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
-              transactionId: transaction._id.toString(),
-              type: "transaction",
-              status: "completed",
-            });
-            await refundNotification.save({ session });
-
-            const io = req.app.get("io");
-            io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
-              balance: buyerWallet.balance,
-              transaction: {
-                amount: transaction.lockedAmount,
-                reference: `REFUND-${transaction._id}`,
-              },
-            });
-          }
+            },
+          });
         }
         transaction.locked = false;
         transaction.lockedAmount = 0;
-      } else {
-        // Only one party has confirmed cancellation
-        responseMessage = `Cancellation request recorded. Waiting for ${isCreator ? "participant" : "creator"} confirmation.`;
-        await transaction.save({ session });
-        await session.commitTransaction();
-        session.endSession();
+      }
+    } else {
+      // At least one participant exists
+      const userRole = isCreator ? "creator" : "participant";
+      transaction.cancelConfirmations[userRole] = true;
 
-        const io = req.app.get("io");
-        const usersToNotify = [
-          transaction.userId.toString(),
-          ...transaction.participants.map((p) => p.userId.toString()),
-        ];
-        usersToNotify.forEach((userId) => {
-          io.to(userId).emit("transactionUpdated", {
-            transactionId: transaction._id,
-            status: transaction.status,
-            message: responseMessage,
-            cancelConfirmations: transaction.cancelConfirmations,
+      if (transaction.status === "pending" && !transaction.locked) {
+        // For non-funded (pending) transactions with participants, cancel immediately
+        transaction.status = "canceled";
+        responseMessage = "Transaction cancelled successfully";
+      } else if (transaction.status === "funded" && transaction.locked) {
+        // For funded transactions with participants, require both confirmations
+        if (transaction.cancelConfirmations.creator && transaction.cancelConfirmations.participant) {
+          transaction.status = "canceled";
+          responseMessage = "Transaction cancelled successfully with both confirmations";
+
+          // Handle refund if transaction is funded
+          if (transaction.buyerWalletId && transaction.lockedAmount > 0) {
+            const buyerWallet = await Wallet.findById(transaction.buyerWalletId).session(session);
+            if (buyerWallet) {
+              refundedAmount = transaction.lockedAmount;
+              buyerWallet.balance += transaction.lockedAmount;
+              buyerWallet.transactions.push({
+                type: "deposit",
+                amount: transaction.lockedAmount,
+                reference: `REFUND-${transaction._id}`,
+                status: "completed",
+                metadata: {
+                  purpose: "Transaction cancellation refund",
+                  transactionId: transaction._id,
+                },
+                createdAt: new Date(),
+              });
+              await buyerWallet.save({ session });
+
+              const refundNotification = new Notification({
+                userId: buyerWallet.userId.toString(),
+                title: "Transaction Refund",
+                message: `Transaction ${transaction._id} was cancelled, and ₦${transaction.lockedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} has been refunded to your wallet.`,
+                transactionId: transaction._id.toString(),
+                type: "transaction",
+                status: "completed",
+              });
+              await refundNotification.save({ session });
+
+              const io = req.app.get("io");
+              io.to(buyerWallet.userId.toString()).emit("balanceUpdate", {
+                balance: buyerWallet.balance,
+                transaction: {
+                  amount: transaction.lockedAmount,
+                  reference: `REFUND-${transaction._id}`,
+                },
+              });
+            }
+            transaction.locked = false;
+            transaction.lockedAmount = 0;
+          }
+        } else {
+          // Only one party has confirmed cancellation
+          responseMessage = `Cancellation request recorded. Waiting for ${isCreator ? "participant" : "creator"} confirmation.`;
+          await transaction.save({ session });
+          await session.commitTransaction();
+          session.endSession();
+
+          const io = req.app.get("io");
+          const usersToNotify = [
+            transaction.userId.toString(),
+            ...transaction.participants.map((p) => p.userId.toString()),
+          ];
+          usersToNotify.forEach((userId) => {
+            io.to(userId).emit("transactionUpdated", {
+              transactionId: transaction._id,
+              status: transaction.status,
+              message: responseMessage,
+              cancelConfirmations: transaction.cancelConfirmations,
+            });
           });
-        });
 
-        return res.status(200).json({
-          message: responseMessage,
-          refunded: 0,
-          transaction: transaction.toObject(),
-        });
+          return res.status(200).json({
+            message: responseMessage,
+            refunded: 0,
+            transaction: transaction.toObject(),
+          });
+        }
       }
     }
 
