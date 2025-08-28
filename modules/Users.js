@@ -53,6 +53,13 @@ const userSchema = new mongoose.Schema({
     default: Date.now,
   },
   paystackCustomerCode: { type: String, sparse: true },
+  pushSubscriptions: [{
+    endpoint: { type: String },
+    keys: {
+      p256dh: { type: String },
+      auth: { type: String }
+    }
+  }],
 });
 
 userSchema.pre("save", async function (next) {

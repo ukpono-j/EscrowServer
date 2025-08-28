@@ -3,6 +3,7 @@ const cors = require("cors");
 const http = require("http");
 const connectDB = require("./config/db");
 const path = require("path");
+const webpush = require('web-push');
 const socketIo = require("socket.io");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
@@ -18,6 +19,12 @@ const User = require("./modules/Users");
 const Message = require("./modules/Message");
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger-output.json');
+
+webpush.setVapidDetails(
+  process.env.VAPID_MAILTO,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 // Ensure Uploads/images directory exists
 async function ensureUploadsDirectory() {

@@ -46,6 +46,7 @@
     "swagger-autogen": "^2.23.7",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1",
+    "web-push": "^3.6.7",
     "winston": "^3.17.0"
   },
   "engines": {
