@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-
+const { v4: uuidv4 } = require('uuid'); // Add this import if not present (npm install uuid)
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema({
   },
   avatarSeed: {
     type: String,
-    default: () => require('uuid').v4(),
+    default: () => uuidv4(),
   },
   createdAt: {
     type: Date,
@@ -60,6 +60,23 @@ const userSchema = new mongoose.Schema({
       auth: { type: String }
     }
   }],
+  // New fields for OTP verification and reset
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+  },
+  verificationExpire: {
+    type: Date,
+  },
+  resetToken: {
+    type: String,
+  },
+  resetExpire: {
+    type: Date,
+  },
 });
 
 userSchema.pre("save", async function (next) {
@@ -70,7 +87,7 @@ userSchema.pre("save", async function (next) {
     if (this.isNew) {
       // Ensure avatarSeed is unique
       const existingUser = await this.constructor.findOne({ avatarSeed: this.avatarSeed });
-      if (existingUser) this.avatarSeed = generateRandomSeed(); // Regenerate if conflict
+      if (existingUser) this.avatarSeed = uuidv4(); // Regenerate if conflict
     }
   }
   next();

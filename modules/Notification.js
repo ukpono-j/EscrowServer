@@ -16,7 +16,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["transaction", "waybill", "funding", "confirmation", "payment", "registration", "withdrawal", "kyc", "system"],
+    enum: ["transaction", "waybill", "funding", "confirmation", "payment", "registration", "withdrawal", "kyc", "system", "message"],
     default: "transaction",
   },
   timestamp: {
@@ -47,9 +47,14 @@ const notificationSchema = new mongoose.Schema({
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Transaction",
-    required: false, // Already set to false, kept for compatibility
+    required: false,
   },
-  reference: { // New field for string-based references
+  chatroomId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Chatroom",
+    required: false, // Optional for non-message notifications
+  },
+  reference: {
     type: String,
     required: false,
   },

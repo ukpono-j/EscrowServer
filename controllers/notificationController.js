@@ -1,10 +1,11 @@
+
 const mongoose = require('mongoose');
 const Notification = require('../modules/Notification');
 const Transaction = require('../modules/Transactions');
 const User = require('../modules/Users');
 const webpush = require('web-push');
 
-const validNotificationTypes = ['transaction', 'funding', 'confirmation', 'payment', 'waybill', 'registration'];
+const validNotificationTypes = ['transaction', 'funding', 'confirmation', 'payment', 'waybill', 'registration', 'message'];
 
 exports.acceptTransaction = async (req, res) => {
   try {
@@ -108,7 +109,7 @@ exports.getNotifications = async (req, res) => {
 
 exports.createNotification = async (req, res) => {
   try {
-    const { title, message, transactionId, participants, type } = req.body;
+    const { title, message, transactionId, participants, type, chatroomId } = req.body;
     const { id: userId } = req.user;
 
     // Validate inputs
@@ -123,6 +124,9 @@ exports.createNotification = async (req, res) => {
     }
     if (type && !validNotificationTypes.includes(type)) {
       return res.status(400).json({ success: false, error: `Invalid notification type. Must be one of: ${validNotificationTypes.join(', ')}` });
+    }
+    if (type === 'message' && (!chatroomId || !mongoose.Types.ObjectId.isValid(chatroomId))) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing chatroomId for message notification' });
     }
 
     const validRoles = ['buyer', 'seller'];
@@ -144,8 +148,9 @@ exports.createNotification = async (req, res) => {
       title,
       message,
       transactionId: new mongoose.Types.ObjectId(transactionId),
+      chatroomId: type === 'message' ? new mongoose.Types.ObjectId(chatroomId) : undefined,
       participants: validatedParticipants,
-      type: type || 'transaction', // Default to 'transaction' if type not provided
+      type: type || 'transaction',
       isRead: false,
       timestamp: new Date(),
     });
@@ -157,7 +162,7 @@ exports.createNotification = async (req, res) => {
     const recipients = [
       newNotification.userId.toString(),
       ...newNotification.participants.map(p => p.userId.toString()),
-    ];
+    ].filter(id => id !== userId); // Exclude sender
     const uniqueRecipients = [...new Set(recipients)];
 
     for (const recipientId of uniqueRecipients) {
@@ -169,8 +174,9 @@ exports.createNotification = async (req, res) => {
             body: newNotification.message,
             icon: '/icons/android-chrome-192x192.png',
             data: {
-              url: `/transactions/tab?transactionId=${newNotification.transactionId}`,
+              url: type === 'message' ? `/chat/${newNotification.chatroomId}` : `/transactions/tab?transactionId=${newNotification.transactionId}`,
               notificationId: newNotification._id.toString(),
+              chatroomId: type === 'message' ? newNotification.chatroomId.toString() : undefined,
             },
           });
 
@@ -201,17 +207,19 @@ exports.createNotification = async (req, res) => {
     // Emit WebSocket event for real-time updates
     const io = req.app.get('io');
     uniqueRecipients.forEach(recipientId => {
+      console.log('Emitting newNotification to:', `user_${recipientId}`);
       io.to(`user_${recipientId}`).emit('newNotification', {
         _id: newNotification._id,
         title: newNotification.title,
         message: newNotification.message,
         transactionId: newNotification.transactionId,
+        chatroomId: type === 'message' ? newNotification.chatroomId : undefined,
         type: newNotification.type,
         status: newNotification.status,
         isRead: newNotification.isRead,
-        timestamp: newNotification.timestamp,
         userId: newNotification.userId,
         participants: newNotification.participants,
+        timestamp: newNotification.timestamp,
       });
     });
 
@@ -262,42 +270,56 @@ exports.deleteNotification = async (req, res) => {
 exports.updateNotificationStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, isRead } = req.body;
     const userId = req.user.id;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ success: false, error: 'Invalid notification ID' });
     }
-    if (!status || !['pending', 'accepted', 'declined', 'completed', 'canceled', 'failed'].includes(status)) {
-      return res.status(400).json({ success: false, error: 'Invalid status' });
+
+    const updateFields = {};
+    if (status) {
+      const validStatuses = ['pending', 'accepted', 'declined', 'completed', 'canceled', 'failed', 'error', 'warning', 'funded'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, error: 'Invalid status' });
+      }
+      updateFields.status = status;
+    }
+    if (typeof isRead === 'boolean') {
+      updateFields.isRead = isRead;
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid fields to update' });
     }
 
     const notification = await Notification.findOne({ _id: id, userId });
     if (!notification) {
       return res.status(404).json({ success: false, error: 'Notification not found or unauthorized' });
     }
-    notification.status = status;
-    notification.isRead = true; // Mark as read when status changes
+
+    Object.assign(notification, updateFields);
     await notification.save();
-    console.log('Notification status updated:', { id, status });
+    console.log('Notification updated:', { id, ...updateFields });
 
     // Notify via WebSocket
     const io = req.app.get('io');
     io.to(`user_${userId}`).emit('notificationUpdated', {
       id,
-      status,
-      isRead: true,
+      ...updateFields,
     });
 
     res.status(200).json({ success: true, data: notification });
   } catch (error) {
-    console.error('Error updating notification status:', {
+    console.error('Error updating notification:', {
       error: error.message,
       stack: error.stack,
       notificationId: req.params.id,
-      status: req.body.status,
+      body: req.body,
       userId: req.user?.id,
     });
     res.status(500).json({ success: false, error: 'Internal Server Error' });
   }
 };
+
+module.exports = exports;

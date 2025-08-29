@@ -11865,3 +11865,644 @@
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T12:46:05.205Z"}
 {"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T12:46:05.907Z"}
 {"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T12:46:06.423Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T13:50:35.598Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T13:50:36.344Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T13:50:37.091Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T13:50:37.790Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T13:50:38.322Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T13:50:39.311Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T13:50:39.550Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T13:50:40.004Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T13:50:40.872Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T13:50:41.438Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T13:50:42.800Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T13:50:43.335Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:50.003Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:50.345Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:50.379Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:50.396Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:56.846Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:27:57.172Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T14:28:37.495Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:28:37.496Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:37.981Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:38.009Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:38.107Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:38.316Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:38.454Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:28:38.467Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:28:45.966Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:28:45.979Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:28:46.220Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:28:46.591Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:38.420Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:38.494Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:38.552Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:38.599Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:39.627Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:39.720Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T14:29:39.757Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:33:36.954Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:33:37.003Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:33:37.530Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:33:38.104Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:38:51.813Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:38:52.238Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:38:52.526Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T14:38:52.992Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T14:38:53.882Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T14:38:54.888Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T14:38:55.019Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T14:38:55.433Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T14:38:56.695Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T14:38:57.072Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T14:38:57.285Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T14:38:57.828Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:54.803Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:54.831Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:55.146Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:55.163Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:58.473Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:58.542Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:58.737Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:50:59.257Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T15:51:00.141Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T15:51:01.070Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T15:51:02.337Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T15:51:02.904Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T15:51:02.978Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T15:51:03.515Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T15:51:04.227Z"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T15:51:04.488Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:51:04.489Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:04.732Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:04.757Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T15:51:04.783Z"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:05.754Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:05.759Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:05.848Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T15:51:13.613Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:51:13.621Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:13.892Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:13.901Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:14.149Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:14.161Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:51:14.172Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:01.121Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:01.141Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:01.155Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:02.279Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:02.287Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:52:02.518Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:52:49.027Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T15:52:49.071Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:08.054Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:08.062Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:08.092Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:09.339Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:09.344Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:09.425Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:52.620Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:52.632Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:52.640Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:53.520Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:53.533Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T15:53:53.546Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T16:13:40.661Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:13:40.671Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:13:40.908Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:13:40.926Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:13:41.213Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:13:41.222Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:13:41.279Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:03.709Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:03.731Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:04.201Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:04.448Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T16:14:05.497Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:05.499Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:05.928Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:05.976Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.121Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.191Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.614Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.677Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.687Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.700Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.710Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.721Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.729Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.753Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.834Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:06.900Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.949Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.965Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:06.971Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:07.018Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:07.598Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:07.799Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:08.287Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:09.431Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:09.936Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:10.668Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:14:10.680Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:11.599Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:12.134Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:14:13.530Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:14:14.104Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:17.139Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:17.153Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:17.158Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:17.989Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:18.056Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:14:18.187Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:16.268Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:16.282Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:16.288Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:17.382Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:17.399Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:17.404Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:32.368Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:32.379Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:32.397Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:33.356Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:33.361Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:15:33.424Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:15:43.046Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:15:43.051Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:47:49.127Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:47:49.135Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T16:47:50.303Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:47:50.304Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:47:50.558Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:47:50.565Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:47:51.303Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:47:51.314Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:47:51.325Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T16:49:04.728Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:49:04.729Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:04.953Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:04.967Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:05.266Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:05.271Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:05.358Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:49:33.397Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T16:49:33.436Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:49:36.522Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T16:49:37.200Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:49:37.529Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T16:49:38.131Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:59.513Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:59.830Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:49:59.846Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:01.946Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:01.951Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:01.963Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:28.792Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:28.833Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:28.860Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:30.200Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:30.210Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:30.327Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:49.428Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:49.448Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:49.463Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:50.901Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:50.912Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T16:50:50.930Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:16.540Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:16.552Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:16.557Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:18.055Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:24.126Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:24.355Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:24.376Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:25.262Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T17:06:26.923Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:26.924Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:27.693Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:28.471Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:06:28.708Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:28.727Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:28.745Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.241Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.296Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.311Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.325Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.340Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.353Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.362Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.373Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.390Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.412Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.604Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:06:29.817Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:06:29.842Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:29.958Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:30.094Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:30.107Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:30.118Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:06:30.380Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:06:30.754Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:06:31.329Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:06:31.891Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:06:32.477Z"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T17:06:38.855Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:06:38.858Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:39.139Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:39.151Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:39.610Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:39.620Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:06:39.727Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:09.719Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:09.737Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:09.775Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:11.126Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:11.151Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:07:11.284Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:36:07.021Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:36:07.141Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:36:07.843Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:36:08.140Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:36:10.749Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:36:11.744Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:36:12.811Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:36:13.529Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:36:13.909Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:36:13.948Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:36:14.057Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:36:14.440Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:38:51.289Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:38:51.339Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:38:52.416Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:38:53.166Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:38:54.077Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:38:55.049Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:38:55.216Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:38:55.825Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:38:56.360Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:38:56.978Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:38:57.880Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:38:58.504Z"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Cached wallet balance","timestamp":"2025-08-28T17:39:12.178Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:39:12.178Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:39:12.411Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:39:12.425Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:39:12.545Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:39:12.565Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"cacheKey":"wallet_balance_68a46ba03040e5cb8dbf8dce","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-28T17:39:12.579Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:46.988Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:47.188Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:47.826Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:48.122Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:49.351Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:49.375Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:49.544Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:49.689Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:48:51.430Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:51.956Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:51.979Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:52.180Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:48:52.422Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:52.457Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:52.649Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:53.334Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:53.527Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:48:54.072Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:48:55.155Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:48:56.056Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:11.431Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:11.441Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:11.876Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:13.130Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:13.155Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:14.221Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:14.234Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:15.243Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:16.031Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:17.247Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:21.189Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:21.676Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:22.914Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:23.161Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:23.846Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:23.993Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:24.206Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:24.934Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:25.237Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:25.664Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:25.722Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:26.164Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:26.266Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:26.940Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:32.827Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:32.833Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:33.534Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:33.813Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:36.767Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:36.941Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:37.581Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:37.724Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:37.806Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:38.064Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:38.177Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:38.529Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:38.882Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:39.392Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:39.399Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:39.891Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:40.372Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:41.078Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:43.538Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:44.185Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:44.680Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:44.891Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:44.977Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:45.025Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:45.556Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:45.704Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:45.987Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:46.350Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:46.584Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:46.870Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:49.973Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:50.012Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:50.017Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:50.025Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:50.156Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:50.225Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:50.514Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:50.577Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:51.710Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:51.735Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:52.365Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:52.937Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:52.940Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:52.944Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:53.170Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:53.179Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:53.207Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:53.619Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:54.509Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:54.525Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:55.108Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.121Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.124Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.137Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.378Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.389Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:55.826Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:50:57.497Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:57.657Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:58.986Z"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:50:59.222Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:50:59.728Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:00.191Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:00.764Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:00.890Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:01.987Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:03.537Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:04.248Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:04.941Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:05.638Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:51:05.767Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:51:06.718Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:07.413Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:07.434Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:07.500Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:07.803Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:13.804Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:13.831Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:13.833Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:13.999Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:16.650Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:16.851Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:16.951Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:17.041Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:24.489Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:24.915Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:25.058Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:25.148Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:26.432Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:26.566Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:26.569Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:26.641Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:27.705Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:27.809Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:27.835Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:27.839Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:28.833Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:28.963Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:29.034Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:29.037Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:32.622Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:32.630Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:32.638Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:32.914Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:36.186Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:36.406Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:36.741Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:37.286Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.013Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.019Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.026Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.044Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.221Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:38.403Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:39.189Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:39.636Z","userId":"68a46ba03040e5cb8dbf8dce"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:41.234Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:41.985Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:42.038Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:42.071Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:43.409Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:43.424Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:43.520Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:43.617Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:45.756Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:45.782Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:45.802Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:45.864Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:47.449Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:47.495Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:47.526Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:51:47.551Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:47.589Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Transaction not found locally, checking Paystack","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","timestamp":"2025-08-28T17:51:48.656Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:51:49.060Z"}
+{"level":"error","message":"Check funding status error Request failed with status code 400","reference":"FUND_6889bb39a78f5240932d8ebd_1754485265043_0760f35b","status":400,"timestamp":"2025-08-28T17:51:49.522Z"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:50.637Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:50.682Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:50.864Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:50.871Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:52.051Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:52.097Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:52.150Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:52.166Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:54.230Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:54.234Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:54.296Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-28T17:51:54.766Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:00.948Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:01.065Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:01.085Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:01.311Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-29T10:23:06.118Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:06.121Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:06.741Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:06.818Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:06.851Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:06.994Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:07.034Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:07.046Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:12.228Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:12.234Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:12.270Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T10:23:12.950Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:21.559Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:21.576Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:21.603Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:22.368Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:23.256Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:23.285Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T10:23:23.300Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:25:35.736Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:25:35.785Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:25:35.800Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:25:37.224Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-29T11:25:38.602Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:25:38.606Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.168Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.233Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.249Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.274Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.608Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.649Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:25:39.666Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:56.554Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:57.118Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:57.375Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:57.438Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:58.508Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:58.524Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:26:58.542Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:51:56.804Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:51:57.068Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:51:57.085Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:51:57.100Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-29T11:52:05.767Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:52:05.771Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:06.224Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:06.453Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:06.847Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:07.331Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:07.843Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:52:08.113Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:15.365Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:15.882Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:16.244Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:17.529Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:19.514Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:19.667Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:20.313Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:29.002Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:38.417Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:55:52.514Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:55:52.520Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:55:52.529Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:55:52.532Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:58.465Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:58.506Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:55:58.561Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:56:00.205Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:56:00.665Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:56:00.760Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:56:00.826Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:08.906Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:08.912Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:08.915Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:09.503Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:12.774Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:12.788Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:12.852Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:13.412Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:14.169Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:14.188Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:57:14.204Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:43.359Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:43.482Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:43.507Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:43.523Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:58.424Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:58.684Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:58.792Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:57:58.796Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:05.183Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:05.300Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:05.338Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:06.788Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:06.964Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T11:58:07.433Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:58:39.287Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:58:39.496Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:58:39.717Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T11:58:39.753Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:26:21.024Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:26:21.287Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:26:21.338Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:26:21.396Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Cached wallet balance","timestamp":"2025-08-29T12:26:22.802Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:26:22.803Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:23.445Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:23.574Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:23.612Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:23.656Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:23.912Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:24.135Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:24.144Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:26:24.177Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:14.349Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:14.485Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:14.537Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:15.055Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:15.525Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:15.546Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:15.569Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:20.631Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:28:25.594Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:28:53.675Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:28:53.771Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:28:53.787Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:28:53.802Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:29:04.375Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:29:04.381Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:29:04.629Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:29:04.676Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:02.913Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:02.960Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:03.025Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:03.121Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:04.076Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:04.136Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:04.263Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:38.778Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:43.745Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:30:48.792Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:30:48.875Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:30:48.971Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T12:30:49.102Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:54.696Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:54.736Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:54.757Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:55.247Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:55.901Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:55.954Z","userId":"6889b27da78f5240932d8e89"}
+{"cacheKey":"wallet_balance_6889b27da78f5240932d8e89","level":"info","message":"Returning cached wallet balance","timestamp":"2025-08-29T12:30:55.969Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:25:12.851Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:25:12.882Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:25:13.218Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:25:13.229Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:30:18.172Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:30:18.189Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:30:18.213Z","userId":"6889b27da78f5240932d8e89"}
+{"level":"info","message":"Balance update emitted","timestamp":"2025-08-29T14:30:18.257Z","userId":"6889b27da78f5240932d8e89"}

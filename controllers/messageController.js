@@ -4,6 +4,7 @@ const Chatroom = require('../modules/Chatroom');
 const User = require('../modules/Users');
 const Message = require('../modules/Message');
 const transactionController = require('./transactionController');
+const notificationController = require('./notificationController'); // Ensure this is imported
 
 exports.addMessage = async (req, res) => {
   const { transactionId, userId, userFirstName, message, avatarSeed } = req.body;
@@ -87,18 +88,39 @@ exports.addMessage = async (req, res) => {
       timestamp: new Date(),
     });
 
-    try {
-      await newMessage.save();
-      console.log('Message saved to database:', JSON.stringify(newMessage, null, 2));
-    } catch (error) {
-      console.error('Failed to save message to database:', {
-        transactionId,
-        userId,
-        chatroomId: chatroom._id,
-        message: error.message,
-        stack: error.stack,
-      });
-      return res.status(500).json({ message: 'Failed to save message to database', details: error.message });
+    await newMessage.save();
+    console.log('Message saved to database:', JSON.stringify(newMessage, null, 2));
+
+    // Create a notification for the message
+    const participants = transaction.participants.map(p => ({
+      userId: p.userId._id,
+      role: p.role,
+    }));
+    const notificationData = {
+      title: `New Message from ${user.firstName || 'User'} ${user.lastName || ''}`.trim(),
+      message: message.trim().length > 50 ? `${message.trim().substring(0, 47)}...` : message.trim(),
+      transactionId: transaction._id,
+      chatroomId: chatroom._id, // Ensure chatroomId is included
+      participants,
+      type: 'message',
+      userId,
+    };
+
+    console.log('Creating notification:', JSON.stringify(notificationData, null, 2));
+    const notificationResponse = await notificationController.createNotification(
+      { body: notificationData, user: { id: userId }, app: req.app },
+      {
+        json: (data) => data,
+        status: (code) => ({
+          json: (data) => ({ code, data }),
+        }),
+      }
+    );
+
+    if (!notificationResponse || !notificationResponse.data) {
+      console.error('Failed to create notification:', notificationResponse);
+    } else {
+      console.log('Notification created successfully:', notificationResponse.data._id);
     }
 
     // Emit the message via Socket.io

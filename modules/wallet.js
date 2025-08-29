@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const transactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['deposit', 'withdrawal', 'transfer'], required: true },
   amount: { type: Number, required: true, min: 0 },
-  reference: { type: String, required: true, unique: true },
-  paystackReference: { type: String, unique: true, sparse: true },
+  reference: { type: String, required: true }, // Removed unique to avoid implicit index
+  paystackReference: { type: String, sparse: true }, // Removed unique to avoid implicit index
   status: { type: String, enum: ['pending', 'completed', 'failed'], default: 'pending' },
   metadata: {
     paymentGateway: { type: String },
@@ -32,8 +32,8 @@ const transactionSchema = new mongoose.Schema({
 const withdrawalRequestSchema = new mongoose.Schema({
   type: { type: String, default: 'withdrawal' },
   amount: { type: Number, required: true, min: 100 },
-  reference: { type: String, required: true, unique: true },
-  status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' }, // Changed 'completed' to 'paid'
+  reference: { type: String, required: true }, // Removed unique to avoid implicit index
+  status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   metadata: {
     accountNumber: { type: String, required: true },
     accountName: { type: String, required: true },
@@ -42,14 +42,14 @@ const withdrawalRequestSchema = new mongoose.Schema({
     requestDate: { type: Date, required: true },
     expectedPayoutDate: { type: Date, required: true },
     manualProcessing: { type: Boolean, default: true },
-    paidDate: { type: Date }, // Added paidDate
+    paidDate: { type: Date },
   },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
 const walletSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true }, // Removed unique to avoid implicit index
   balance: { type: Number, default: 0, min: 0 },
   totalDeposits: { type: Number, default: 0, min: 0 },
   currency: { type: String, default: 'NGN' },
@@ -152,7 +152,7 @@ walletSchema.methods.validateFunding = async function (amount) {
 };
 
 // Create indexes
-walletSchema.index({ userId: 1 });
+walletSchema.index({ userId: 1 }, { unique: true });
 walletSchema.index({ 'transactions.reference': 1 }, { unique: true });
 walletSchema.index({ 'transactions.paystackReference': 1 }, { sparse: true, unique: true });
 walletSchema.index({ 'transactions.metadata.virtualAccountId': 1 }, { sparse: true });
