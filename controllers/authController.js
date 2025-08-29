@@ -315,89 +315,23 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const requestId = uuidv4();
-  console.time(`Login Process ${requestId}`);
-  try {
-    const { email, password } = req.body;
-    const sanitizedInputs = {
-      email: sanitizeInput(email),
-      password: sanitizeInput(password),
-    };
-
-    console.log(`Login attempt for email: ${sanitizedInputs.email}`);
-
-    if (!sanitizedInputs.email || !sanitizedInputs.password) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    console.time('Find User');
-    const user = await User.findOne({ email: sanitizedInputs.email }).select('+password');
-    console.timeEnd('Find User');
-    if (!user) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.time('Compare Password');
-    const isMatch = await user.comparePassword(sanitizedInputs.password);
-    console.timeEnd('Compare Password');
-    console.log(`Password comparison result: ${isMatch}`);
-    if (!isMatch) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(401).json({ error: 'Invalid credentials', details: 'Password mismatch' });
-    }
-
-    console.time('Find Wallet');
-    let wallet = await Wallet.findOne({ userId: user._id });
-    console.timeEnd('Find Wallet');
-    if (!wallet) {
-      console.log('Creating new wallet for user:', user._id);
-      wallet = new Wallet({
-        userId: user._id.toString(),
-        balance: 0,
-        totalDeposits: 0,
-        currency: 'NGN',
-        transactions: [],
-        virtualAccount: null,
-      });
-      await wallet.save();
-    }
-
-    console.time('Generate Tokens');
-    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
-    console.timeEnd('Generate Tokens');
-
-    console.time('Save Refresh Token');
-    await RefreshTokenModel.create({
-      userId: user._id.toString(),
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
-    console.timeEnd('Save Refresh Token');
-
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        dateOfBirth: user.dateOfBirth,
-      },
-      walletId: wallet._id,
-    });
-    console.timeEnd(`Login Process ${requestId}`);
-  } catch (error) {
-    console.error('Login error:', { message: error.message, stack: error.stack });
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-    console.timeEnd(`Login Process ${requestId}`);
+  const { email, password } = req.body;
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+  const isMatch = await user.comparePassword(password);
+  if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+  if (user.isVerified === false) {
+    return res.status(403).json({ error: 'Please verify your email first' });
   }
+  const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  res.json({
+    success: true,
+    message: 'Login successful',
+    accessToken,
+    refreshToken,
+    user: { id: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName }
+  });
 };
 
 exports.refreshToken = async (req, res) => {
