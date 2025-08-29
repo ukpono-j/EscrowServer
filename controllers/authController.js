@@ -33,19 +33,54 @@ axiosRetry(axios, {
 
 let transporter;
 
-if (process.env.NODE_ENV === 'production') {
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
-    },
-  });
-} else {
-  transporter = null;
-}
+const initializeTransporter = async () => {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: process.env.EMAIL_PORT,
+        secure: process.env.EMAIL_SECURE === 'true',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+        debug: true, // Enable debug logs
+        logger: true,
+      });
+    } else {
+      const testAccount = await nodemailer.createTestAccount();
+      transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: { user: testAccount.user, pass: testAccount.pass },
+        connectionTimeout: 5000,
+        greetingTimeout: 5000,
+        debug: true, // Enable debug logs
+        logger: true,
+      });
+      console.log('Ethereal account created:', { user: testAccount.user });
+    }
+    console.log('Transporter initialized:', {
+      host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
+      port: process.env.EMAIL_PORT || 587,
+      env: process.env.NODE_ENV,
+    });
+  } catch (error) {
+    console.error('Error initializing transporter:', error);
+    transporter = {
+      sendMail: (mailOptions) => {
+        console.warn('Using fake transporter due to initialization failure');
+        return Promise.resolve({ messageId: 'fake-message-id' });
+      },
+    };
+  }
+};
+
+// Initialize transporter on startup
+initializeTransporter().catch((error) => {
+  console.error('Failed to initialize transporter on startup:', error);
+});
 
 const otpSchema = new mongoose.Schema({
   email: { type: String, required: true, index: true },
@@ -76,30 +111,10 @@ const sanitizeInput = (input) => {
   });
 };
 
-const setupEtherealAccount = async () => {
-  try {
-    const testAccount = await nodemailer.createTestAccount();
-    const testTransporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: { user: testAccount.user, pass: testAccount.pass },
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-    });
-    return testTransporter;
-  } catch (error) {
-    console.error('Error creating Ethereal account:', error);
-    return {
-      sendMail: (mailOptions) => Promise.resolve({ messageId: 'fake-message-id' }),
-    };
-  }
-};
-
 exports.register = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  const requestId = uuidv4(); // Unique ID for this request
+  const requestId = uuidv4();
   console.time(`Register Process ${requestId}`);
   try {
     const { firstName, lastName, email, password, dateOfBirth, phoneNumber } = req.body;
@@ -112,7 +127,6 @@ exports.register = async (req, res) => {
       phoneNumber: sanitizeInput(phoneNumber),
     };
 
-    // Validate inputs
     if (!sanitizedInputs.firstName || !sanitizedInputs.lastName || !sanitizedInputs.email || !sanitizedInputs.password || !sanitizedInputs.dateOfBirth || !sanitizedInputs.phoneNumber) {
       await session.abortTransaction();
       session.endSession();
@@ -169,6 +183,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: 'Email already in use' });
     }
 
+    const otp = generateOTP();
     const user = new User({
       firstName: sanitizedInputs.firstName,
       lastName: sanitizedInputs.lastName,
@@ -176,6 +191,7 @@ exports.register = async (req, res) => {
       password: sanitizedInputs.password,
       dateOfBirth: dob,
       phoneNumber: sanitizedInputs.phoneNumber,
+      isVerified: false, // Enforce email verification
     });
     const savedUser = await user.save({ session });
 
@@ -260,10 +276,41 @@ exports.register = async (req, res) => {
       }
     }
 
+    await OTPModel.create({
+      email: sanitizedInputs.email,
+      otp,
+      userId: savedUser._id.toString(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    }, { session });
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Dev OTP:', otp);
+    } else {
+      const msg = {
+        from: process.env.FROM_EMAIL || 'noreply@escrowserver.com',
+        to: sanitizedInputs.email,
+        subject: 'Verify Your Email',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+            <h2 style="color: #031420; text-align: center;">Email Verification</h2>
+            <p>Please use the following OTP code to verify your email:</p>
+            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+              <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
+            </div>
+            <p>This code will expire in 15 minutes.</p>
+            <p>If you didn't request this, please ignore this email or contact support.</p>
+            <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
+          </div>
+        `,
+      };
+      const info = await transporter.sendMail(msg);
+      console.log('Verification email sent:', { messageId: info.messageId, to: sanitizedInputs.email });
+    }
+
     await Notification.create({
       userId: savedUser._id,
       title: 'Welcome to the Platform',
-      message: `Welcome, ${sanitizedInputs.firstName}! Your account has been created successfully.`,
+      message: `Welcome, ${sanitizedInputs.firstName}! Your account has been created successfully. Please verify your email to log in.`,
       reference: `REG_${Date.now()}`,
       type: 'registration',
       status: 'completed',
@@ -283,7 +330,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'User and wallet registered successfully',
+      message: 'User and wallet registered successfully. Please verify your email to log in.',
       accessToken,
       refreshToken,
       user: {
@@ -310,60 +357,149 @@ exports.register = async (req, res) => {
       }
       return res.status(400).json({ error: 'Database error: Duplicate key', details: error.keyValue });
     }
+    console.error('Error in register:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email }).select('+password');
-  if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-  const isMatch = await user.comparePassword(password);
-  if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-  if (user.isVerified === false) {
-    return res.status(403).json({ error: 'Please verify your email first' });
+  try {
+    const { email, password } = req.body;
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedPassword = sanitizeInput(password);
+
+    const user = await User.findOne({ email: sanitizedEmail }).select('+password');
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const isMatch = await user.comparePassword(sanitizedPassword);
+    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+    if (user.isVerified === false) {
+      return res.status(403).json({ error: 'Please verify your email first' });
+    }
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
+    await RefreshTokenModel.create({
+      userId: user._id.toString(),
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+    res.json({
+      success: true,
+      message: 'Login successful',
+      accessToken,
+      refreshToken,
+      user: { id: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+    });
+  } catch (error) {
+    console.error('Error in login:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-  const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-  const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-  res.json({
-    success: true,
-    message: 'Login successful',
-    accessToken,
-    refreshToken,
-    user: { id: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName }
-  });
 };
 
-exports.refreshToken = async (req, res) => {
-  const requestId = uuidv4();
-  console.time(`Refresh Token Process ${requestId}`);
+exports.verifyEmail = async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(400).json({ error: "Refresh token is required" });
-    }
+    const { email, otp } = req.body;
+    const sanitizedEmail = sanitizeInput(email);
+    const sanitizedOtp = sanitizeInput(otp);
 
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const storedToken = await RefreshTokenModel.findOne({ userId: decoded.id, token: refreshToken });
-    if (!storedToken) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(401).json({ error: "Invalid or expired refresh token" });
-    }
-
-    const user = await User.findById(decoded.id);
+    const user = await User.findOne({ email: sanitizedEmail });
     if (!user) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'Email already verified' });
     }
 
-    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ accessToken: newAccessToken });
-    console.timeEnd(`Refresh Token Process ${requestId}`);
+    const otpDoc = await OTPModel.findOne({ email: sanitizedEmail, otp: sanitizedOtp });
+    if (!otpDoc) {
+      return res.status(400).json({ error: 'Invalid OTP' });
+    }
+    if (new Date() > new Date(otpDoc.expiresAt)) {
+      await OTPModel.deleteOne({ _id: otpDoc._id });
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+
+    user.isVerified = true;
+    await user.save();
+    await OTPModel.deleteOne({ _id: otpDoc._id });
+
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
+
+    await RefreshTokenModel.create({
+      userId: user._id.toString(),
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Email verified successfully',
+      accessToken,
+      refreshToken,
+      user: { id: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName },
+    });
   } catch (error) {
-    console.error("Refresh token error:", { message: error.message });
-    res.status(401).json({ error: "Invalid or expired refresh token" });
-    console.timeEnd(`Refresh Token Process ${requestId}`);
+    console.error('Error in verifyEmail:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+exports.resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const sanitizedEmail = sanitizeInput(email);
+
+    const user = await User.findOne({ email: sanitizedEmail });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'Email already verified' });
+    }
+
+    const otp = generateOTP();
+    await OTPModel.deleteMany({ email: sanitizedEmail });
+    await OTPModel.create({
+      email: sanitizedEmail,
+      otp,
+      userId: user._id.toString(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Dev OTP:', otp);
+      return res.status(200).json({
+        success: true,
+        message: 'OTP resent successfully',
+        devMode: true,
+        devOtp: otp,
+      });
+    }
+
+    const msg = {
+      from: process.env.FROM_EMAIL || 'noreply@escrowserver.com',
+      to: sanitizedEmail,
+      subject: 'Verify Your Email',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #031420; text-align: center;">Email Verification</h2>
+          <p>Please use the following OTP code to verify your email:</p>
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+            <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
+          </div>
+          <p>This code will expire in 15 minutes.</p>
+          <p>If you didn't request this, please ignore this email or contact support.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(msg);
+    console.log('Verification email sent:', { messageId: info.messageId, to: sanitizedEmail });
+    res.status(200).json({ success: true, message: 'OTP resent to your email' });
+  } catch (error) {
+    console.error('Error in resendVerification:', error);
+    res.status(500).json({ error: 'Failed to resend OTP email' });
   }
 };
 
@@ -387,6 +523,7 @@ exports.forgotPassword = async (req, res) => {
     });
 
     if (process.env.NODE_ENV !== 'production') {
+      console.log('Dev OTP:', otp);
       return res.status(200).json({
         success: true,
         message: 'OTP generated successfully',
@@ -395,38 +532,30 @@ exports.forgotPassword = async (req, res) => {
       });
     }
 
-    try {
-      if (!transporter) {
-        transporter = await setupEtherealAccount();
-      }
-
-      const msg = {
-        from: process.env.FROM_EMAIL || 'noreply@yourapplication.com',
-        to: sanitizedEmail,
-        subject: 'Password Reset OTP',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-            <h2 style="color: #031420; text-align: center;">Password Reset Request</h2>
-            <p>We received a request to reset your password. Use the following OTP code to reset your password:</p>
-            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-              <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
-            </div>
-            <p>This code will expire in 15 minutes.</p>
-            <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
-            <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
+    const msg = {
+      from: process.env.FROM_EMAIL || 'noreply@escrowserver.com',
+      to: sanitizedEmail,
+      subject: 'Password Reset OTP',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #031420; text-align: center;">Password Reset Request</h2>
+          <p>We received a request to reset your password. Use the following OTP code to reset your password:</p>
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+            <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
           </div>
-        `,
-      };
+          <p>This code will expire in 15 minutes.</p>
+          <p>If you didn't request a password reset, please ignore this email or contact support.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
+        </div>
+      `,
+    };
 
-      await transporter.sendMail(msg);
-      res.status(200).json({ success: true, message: 'OTP sent to your email' });
-    } catch (emailError) {
-      console.error('Error sending email:', emailError);
-      res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
-    }
+    const info = await transporter.sendMail(msg);
+    console.log('Password reset email sent:', { messageId: info.messageId, to: sanitizedEmail });
+    res.status(200).json({ success: true, message: 'OTP sent to your email' });
   } catch (error) {
     console.error('Error in forgotPassword:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: 'Failed to send OTP email' });
   }
 };
 
@@ -471,5 +600,46 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error('Error in resetPassword:', error);
     res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+exports.refreshToken = async (req, res) => {
+  const requestId = uuidv4();
+  console.time(`Refresh Token Process ${requestId}`);
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      console.timeEnd(`Refresh Token Process ${requestId}`);
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const storedToken = await RefreshTokenModel.findOne({ userId: decoded.id, token: refreshToken });
+    if (!storedToken) {
+      console.timeEnd(`Refresh Token Process ${requestId}`);
+      return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      console.timeEnd(`Refresh Token Process ${requestId}`);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
+    await RefreshTokenModel.deleteOne({ _id: storedToken._id });
+    await RefreshTokenModel.create({
+      userId: user._id.toString(),
+      token: newRefreshToken,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+
+    res.status(200).json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    console.timeEnd(`Refresh Token Process ${requestId}`);
+  } catch (error) {
+    console.error('Refresh token error:', { message: error.message });
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
+    console.timeEnd(`Refresh Token Process ${requestId}`);
   }
 };

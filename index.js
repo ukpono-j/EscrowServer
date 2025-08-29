@@ -3,7 +3,7 @@ const cors = require("cors");
 const http = require("http");
 const connectDB = require("./config/db");
 const path = require("path");
-const webpush = require('web-push');
+const webpush = require("web-push");
 const socketIo = require("socket.io");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
@@ -11,29 +11,41 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const multer = require("multer");
 const fs = require("fs").promises;
+const helmet = require("helmet"); // Added for CSP
 require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
 const Chatroom = require("./modules/Chatroom");
 const User = require("./modules/Users");
 const Message = require("./modules/Message");
-const swaggerUi = require('swagger-ui-express');
-const swaggerDocument = require('./swagger-output.json');
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = require("./swagger-output.json");
 
-webpush.setVapidDetails(
-  process.env.VAPID_MAILTO,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+// Validate VAPID environment variables
+const vapidSubject = process.env.VAPID_MAILTO || "mailto:ukponoakpan270@gmail.com";
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+if (!vapidSubject || !vapidPublicKey || !vapidPrivateKey) {
+  console.error("Missing VAPID environment variables:", {
+    VAPID_MAILTO: vapidSubject,
+    VAPID_PUBLIC_KEY: vapidPublicKey,
+    VAPID_PRIVATE_KEY: vapidPrivateKey ? "****" : undefined,
+  });
+  process.exit(1);
+}
+
+console.log("Setting VAPID details:", { vapidSubject });
+webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
 // Ensure Uploads/images directory exists
 async function ensureUploadsDirectory() {
   const uploadsDir = path.join(__dirname, "Uploads/images");
   try {
-    await fs.mkdir(uploadsDir, { recursive: true }); // Change UploadsDir to uploadsDir
-    console.log('index - Uploads/images directory ensured at:', uploadsDir);
+    await fs.mkdir(uploadsDir, { recursive: true });
+    console.log("index - Uploads/images directory ensured at:", uploadsDir);
   } catch (error) {
-    console.error('index - Failed to create Uploads/images directory:', error);
+    console.error("index - Failed to create Uploads/images directory:", error);
     throw error;
   }
 }
@@ -86,7 +98,7 @@ const io = socketIo(server, {
   },
   pingTimeout: 60000,
   pingInterval: 25000,
-  transports: ['websocket', 'polling'],
+  transports: ["websocket", "polling"],
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
@@ -95,7 +107,19 @@ const io = socketIo(server, {
 });
 
 app.set("io", io);
-app.set("upload", upload); // Expose multer instance
+app.set("upload", upload);
+
+// Add Content Security Policy
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://escrowserver.onrender.com", "http://localhost:5173"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'", "https://api.paystack.co", "https://escrowserver.onrender.com", "http://localhost:3001", "https://api.multiavatar.com"],
+    },
+  })
+);
 
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === "production"
   ? process.env.PAYSTACK_LIVE_SECRET_KEY
@@ -107,6 +131,9 @@ const requiredEnvVars = [
   "MONGODB_URI",
   process.env.NODE_ENV === "production" ? "PAYSTACK_LIVE_SECRET_KEY" : "PAYSTACK_SECRET_KEY",
   "PAYSTACK_API_URL",
+  "VAPID_MAILTO", // Added
+  "VAPID_PUBLIC_KEY", // Added
+  "VAPID_PRIVATE_KEY", // Added
 ];
 
 const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -233,7 +260,7 @@ const setupSocket = (io) => {
             return;
           }
           const transaction = await Transaction.findById(chatroom.transactionId)
-            .populate('participants.userId', 'firstName lastName email avatarSeed');
+            .populate("participants.userId", "firstName lastName email avatarSeed");
           if (!transaction) {
             console.error("Transaction not found:", {
               chatroomId,
@@ -245,7 +272,9 @@ const setupSocket = (io) => {
             return;
           }
           const isCreator = transaction.userId.toString() === userId;
-          const isParticipant = transaction.participants.some(p => p.userId && p.userId._id.toString() === userId);
+          const isParticipant = transaction.participants.some(
+            (p) => p.userId && p.userId._id.toString() === userId
+          );
           if (!isCreator && !isParticipant) {
             console.error("Unauthorized room join attempt:", {
               userId,
@@ -292,7 +321,6 @@ const setupSocket = (io) => {
         time: new Date().toISOString(),
       });
 
-      // Validate message
       try {
         if (!mongoose.Types.ObjectId.isValid(message.chatroomId) || !mongoose.Types.ObjectId.isValid(message.userId)) {
           console.error("Invalid message data:", { message, userId: socket.user.id });
@@ -307,14 +335,13 @@ const setupSocket = (io) => {
           return;
         }
 
-        const user = await User.findById(message.userId).select('firstName lastName avatarSeed');
+        const user = await User.findById(message.userId).select("firstName lastName avatarSeed");
         if (!user) {
           console.error("User not found for message:", { userId: message.userId });
           socket.emit("error", { message: "User not found" });
           return;
         }
 
-        // Broadcast the message to the room
         io.to(`transaction_${message.chatroomId}`).emit("message", {
           _id: message._id,
           chatroomId: message.chatroomId,
@@ -408,7 +435,7 @@ app.use(express.json());
 app.use(responseFormatter);
 
 // Serve Swagger UI at /api-docs
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Initialize routes
 const initializeRoutes = () => {
@@ -419,7 +446,7 @@ const initializeRoutes = () => {
   const kycRoutes = require("./routes/kycRoutes");
   const walletRoutes = require("./routes/walletRoutes");
   const messageRoutes = require("./routes/messages");
-  const adminRoutes = require('./routes/adminRoutes');
+  const adminRoutes = require("./routes/adminRoutes");
 
   app.use("/api/auth", authRoutes);
   app.use("/api/users", userRoutes);
@@ -428,7 +455,7 @@ const initializeRoutes = () => {
   app.use("/api/kyc", kycRoutes);
   app.use("/api/wallet", walletRoutes);
   app.use("/api/messages", messageRoutes);
-  app.use('/api/admin', adminRoutes);
+  app.use("/api/admin", adminRoutes);
 };
 
 app.use((err, req, res, next) => {
