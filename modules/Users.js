@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String,
@@ -40,13 +39,17 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  isAdmin: { // Changed from `role` to `isAdmin` for consistency
+  isAdmin: {
     type: Boolean,
     default: false,
   },
   avatarSeed: {
     type: String,
     default: () => require('uuid').v4(),
+  },
+  avatarImage: {
+    type: String,
+    default: "",
   },
   createdAt: {
     type: Date,
@@ -68,9 +71,8 @@ userSchema.pre("save", async function (next) {
     this.password = await bcrypt.hash(this.password, 10);
     console.log("Password hashed successfully for user:", this.email);
     if (this.isNew) {
-      // Ensure avatarSeed is unique
       const existingUser = await this.constructor.findOne({ avatarSeed: this.avatarSeed });
-      if (existingUser) this.avatarSeed = generateRandomSeed(); // Regenerate if conflict
+      if (existingUser) this.avatarSeed = require('uuid').v4();
     }
   }
   next();

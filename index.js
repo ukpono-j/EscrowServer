@@ -11,6 +11,7 @@ const mongoose = require("mongoose");
 const axios = require("axios");
 const multer = require("multer");
 const fs = require("fs").promises;
+const compression = require("compression");
 require("dotenv").config();
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
@@ -30,7 +31,7 @@ webpush.setVapidDetails(
 async function ensureUploadsDirectory() {
   const uploadsDir = path.join(__dirname, "Uploads/images");
   try {
-    await fs.mkdir(uploadsDir, { recursive: true }); // Change UploadsDir to uploadsDir
+    await fs.mkdir(uploadsDir, { recursive: true });
     console.log('index - Uploads/images directory ensured at:', uploadsDir);
   } catch (error) {
     console.error('index - Failed to create Uploads/images directory:', error);
@@ -95,7 +96,18 @@ const io = socketIo(server, {
 });
 
 app.set("io", io);
-app.set("upload", upload); // Expose multer instance
+app.set("upload", upload);
+
+// Apply compression middleware for all responses, with a focus on images
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path.startsWith('/Uploads/images')) {
+      return true; // Always compress images
+    }
+    return compression.filter(req, res); // Default filter for other responses
+  },
+  level: 6, // Balanced compression level
+}));
 
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === "production"
   ? process.env.PAYSTACK_LIVE_SECRET_KEY
@@ -169,8 +181,31 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-// Serve uploads folder statically
-app.use("/Uploads", express.static(path.join(__dirname, "Uploads")));
+// Log all requests to /Uploads
+app.use("/Uploads", (req, res, next) => {
+  console.log('Uploads request:', {
+    method: req.method,
+    url: req.originalUrl,
+    headers: req.headers,
+    time: new Date().toISOString(),
+  });
+  next();
+});
+
+// Serve uploads folder statically with explicit CORS headers and error handling
+app.use("/Uploads", (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', corsOptions.origin.join(','));
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Cache-Control', 'public, max-age=31536000');
+  express.static(path.join(__dirname, "Uploads"))(req, res, next);
+}, (req, res, next) => {
+  // Handle 404 for missing files
+  if (!res.headersSent) {
+    console.warn('Static file not found:', req.originalUrl);
+    res.status(404).json({ error: 'Image not found' });
+  }
+});
 
 app.use((req, res, next) => {
   res.on("finish", () => {
