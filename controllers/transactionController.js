@@ -1421,7 +1421,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
     if (!transaction) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ message: 'Transaction not found' });
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
     }
 
     // Check user authorization
@@ -1431,7 +1431,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
     if (!isCreator && !isParticipant) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(403).json({ message: 'Unauthorized to fund this transaction' });
+      return res.status(403).json({ success: false, error: 'Unauthorized to fund this transaction' });
     }
 
     // Verify user is buyer
@@ -1441,27 +1441,27 @@ exports.fundTransactionWithWallet = async (req, res) => {
     if (!isBuyer) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(403).json({ message: 'Only the buyer can fund the transaction' });
+      return res.status(403).json({ success: false, error: 'Only the buyer can fund the transaction' });
     }
 
     // Check transaction state
     if (transaction.locked) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: 'Transaction is already funded' });
+      return res.status(400).json({ success: false, error: 'Transaction is already funded' });
     }
 
     if (transaction.status !== 'pending') {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: 'Only pending transactions can be funded' });
+      return res.status(400).json({ success: false, error: 'Only pending transactions can be funded' });
     }
 
     // Validate amount
     if (parseFloat(amount) !== parseFloat(transaction.paymentAmount)) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(400).json({ message: 'Funding amount must match transaction amount' });
+      return res.status(400).json({ success: false, error: 'Funding amount must match transaction amount' });
     }
 
     // Find buyer's wallet
@@ -1469,7 +1469,7 @@ exports.fundTransactionWithWallet = async (req, res) => {
     if (!buyerWallet) {
       await session.abortTransaction();
       session.endSession();
-      return res.status(404).json({ message: 'Buyer wallet not found' });
+      return res.status(404).json({ success: false, error: 'Buyer wallet not found' });
     }
 
     // Ensure balance is a number and sufficient
@@ -1478,7 +1478,8 @@ exports.fundTransactionWithWallet = async (req, res) => {
       await session.abortTransaction();
       session.endSession();
       return res.status(400).json({
-        message: 'Insufficient wallet balance. Please top up your wallet in your Profile to fund this transaction.',
+        success: false,
+        error: 'Insufficient wallet balance. Please top up your wallet in your Profile to fund this transaction.',
         shortfall: amount - currentBalance,
         balance: currentBalance,
       });
@@ -1552,12 +1553,27 @@ exports.fundTransactionWithWallet = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    return res.status(200).json({ message: 'Transaction funded successfully' });
+    return res.status(200).json({ success: true, data: transaction });
   } catch (error) {
-    console.error('Error funding transaction:', error);
+    console.error('Error funding transaction:', {
+      message: error.message,
+      stack: error.stack,
+      transactionId: req.body.transactionId,
+      userId: req.user.id,
+    });
     await session.abortTransaction();
     session.endSession();
-    return res.status(500).json({ message: 'Internal server error', error: error.message });
+    if (error.message.includes('timed out') || error.message.includes('connection pool')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database connection timed out. Please try again later.',
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
   }
 };
 

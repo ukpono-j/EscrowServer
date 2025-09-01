@@ -181,31 +181,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
-// Log all requests to /Uploads
-app.use("/Uploads", (req, res, next) => {
-  console.log('Uploads request:', {
-    method: req.method,
-    url: req.originalUrl,
-    headers: req.headers,
-    time: new Date().toISOString(),
-  });
-  next();
-});
-
-// Serve uploads folder statically with explicit CORS headers and error handling
-app.use("/Uploads", (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', corsOptions.origin.join(','));
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Cache-Control', 'public, max-age=31536000');
-  express.static(path.join(__dirname, "Uploads"))(req, res, next);
-}, (req, res, next) => {
-  // Handle 404 for missing files
-  if (!res.headersSent) {
-    console.warn('Static file not found:', req.originalUrl);
-    res.status(404).json({ error: 'Image not found' });
-  }
-});
+// Serve uploads folder statically with caching headers
+app.use("/Uploads", express.static(path.join(__dirname, "Uploads"), {
+  setHeaders: (res, path) => {
+    if (path.match(/\.(jpg|jpeg|png)$/)) {
+      res.set('Cache-Control', 'public, max-age=31536000'); // Cache images for 1 year
+    }
+  },
+}));
 
 app.use((req, res, next) => {
   res.on("finish", () => {
