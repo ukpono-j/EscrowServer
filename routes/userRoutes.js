@@ -7,6 +7,6 @@ const upload = require('../middlewares/upload');
 router.get('/user-details', authenticateUser, userController.getUserDetails);
 router.get('/all-user-details', authenticateUser, userController.getAllUserDetails);
 router.put('/update-user-details', authenticateUser, upload.single('avatarImage'), userController.updateUserDetails);
-router.get('/avatar/:seed', userController.getAvatar);
+router.get('/avatar/:filename', userController.getAvatar);
 
 module.exports = router;

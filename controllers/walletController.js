@@ -601,36 +601,20 @@ exports.verifyFunding = async (req, res) => {
 };
 
 exports.getWalletBalance = async (req, res) => {
-  let session;
+  const session = await mongoose.startSession();
   try {
-    if (!req.user?.id) {
-      logger.error('No user ID in request', { user: req.user });
-      return res.status(401).json({ success: false, error: 'Unauthorized: No user ID provided' });
-    }
-
-    const { noCache } = req.query;
-    const cacheKey = `wallet_balance_${req.user.id}`;
-    const useCache = !noCache || noCache === 'false';
-
-    if (useCache) {
-      const cachedBalance = cache.get(cacheKey);
-      if (cachedBalance) {
-        logger.info('Returning cached wallet balance', { userId: req.user.id, cacheKey });
-        return res.status(200).json({ success: true, data: cachedBalance, source: 'cache' });
-      }
-    }
-
-    session = await mongoose.startSession();
-    let responseData;
-
     await session.withTransaction(async () => {
-      const user = await User.findById(req.user.id).session(session);
-      if (!user) {
-        throw new Error('User not found');
-      }
+      logger.info('Fetching wallet balance for user', { userId: req.user.id });
 
       let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
       if (!wallet) {
+        logger.warn('Wallet not found for user, creating new wallet', { userId: req.user.id });
+        const user = await User.findById(req.user.id).session(session);
+        if (!user) {
+          logger.error('User not found during wallet creation', { userId: req.user.id });
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
         wallet = new Wallet({
           userId: req.user.id,
           balance: 0,
@@ -640,55 +624,56 @@ exports.getWalletBalance = async (req, res) => {
           lastSynced: new Date(),
         });
         await wallet.save({ session });
-        logger.info('Created new wallet', { userId: req.user.id, walletId: wallet._id });
+        logger.info('Wallet created', { userId: req.user.id, walletId: wallet._id });
       }
 
-      responseData = {
-        user: serializeUserData(user),
-        wallet: serializeWalletData(wallet),
+      const response = {
+        success: true,
+        data: {
+          wallet: {
+            balance: parseFloat(wallet.balance) || 0,
+            totalDeposits: parseFloat(wallet.totalDeposits) || 0,
+            transactions: Array.isArray(wallet.transactions)
+              ? wallet.transactions
+                  .map(tx => ({
+                    _id: tx._id,
+                    type: tx.type || 'unknown',
+                    amount: parseFloat(tx.amount) || 0,
+                    status: tx.status || 'pending',
+                    reference: tx.reference || '',
+                    paystackReference: tx.paystackReference || '',
+                    createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
+                    metadata: tx.metadata || {},
+                  }))
+                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+              : [],
+          },
+        },
       };
 
-      if (useCache) {
-        cache.set(cacheKey, responseData);
-        logger.info('Cached wallet balance', { userId: req.user.id, cacheKey });
-      }
+      // Add cache-control headers to prevent caching
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Surrogate-Control', 'no-store');
 
-      const io = req.app.get('io');
-      if (io) {
-        io.to(req.user.id.toString()).emit('balanceUpdate', {
-          balance: wallet.balance,
-          totalDeposits: wallet.totalDeposits,
-          lastSynced: wallet.lastSynced instanceof Date
-            ? wallet.lastSynced.toISOString()
-            : new Date(wallet.lastSynced).toISOString(),
-        });
-        logger.info('Balance update emitted', { userId: req.user.id });
-      }
+      logger.info('Wallet balance retrieved', {
+        userId: req.user.id,
+        balance: response.data.wallet.balance,
+        transactionCount: response.data.wallet.transactions.length,
+      });
+
+      res.status(200).json(response);
     });
-
-    return res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     logger.error('Get wallet balance error', {
-      userId: req.user?.id,
+      userId: req.user.id,
       message: error.message,
       stack: error.stack,
-      errorName: error.name,
-      mongoErrorCode: error.name === 'MongoServerError' ? error.code : null,
     });
-
-    const statusCode = error.message === 'User not found' ? 404 :
-      error.name === 'MongoServerError' ? 503 :
-      error instanceof TypeError && error.message.includes('Converting circular structure to JSON') ? 500 : 500;
-
-    const errorMessage = error.name === 'MongoServerError' ? 'Database error: Unable to fetch wallet data' :
-      error.message.includes('Converting circular structure to JSON') ? 'Internal server error: Invalid response data format' :
-      error.message || 'Failed to fetch wallet balance';
-
-    return res.status(statusCode).json({ success: false, error: errorMessage });
+    res.status(500).json({ success: false, error: 'Failed to fetch wallet balance' });
   } finally {
-    if (session) {
-      await session.endSession();
-    }
+    await session.endSession();
   }
 };
 
@@ -2004,44 +1989,65 @@ exports.getPaystackBanks = async (req, res) => {
 };
 
 exports.getWalletTransactions = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
-    console.log('Fetching wallet transactions for user:', req.user.id);
-    let wallet = await Wallet.findOne({ userId: req.user.id });
+    await session.withTransaction(async () => {
+      logger.info('Fetching wallet transactions for user', { userId: req.user.id });
 
-    if (!wallet) {
-      console.warn('Wallet not found for user, recreating:', req.user.id);
-      const user = await User.findById(req.user.id);
-      if (!user) {
-        console.error('User not found during wallet recreation:', req.user.id);
-        return res.status(404).json({ success: false, error: 'User not found' });
+      let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
+      if (!wallet) {
+        logger.warn('Wallet not found for user, creating new wallet', { userId: req.user.id });
+        const user = await User.findById(req.user.id).session(session);
+        if (!user) {
+          logger.error('User not found during wallet creation', { userId: req.user.id });
+          return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        wallet = new Wallet({
+          userId: req.user.id,
+          balance: 0,
+          totalDeposits: 0,
+          currency: 'NGN',
+          transactions: [],
+          lastSynced: new Date(),
+        });
+        await wallet.save({ session });
+        logger.info('Wallet created', { userId: req.user.id, walletId: wallet._id });
       }
 
-      wallet = new Wallet({
-        userId: req.user.id,
-        balance: 0,
-        totalDeposits: 0,
-        currency: 'NGN',
-        transactions: [],
+      const transactions = Array.isArray(wallet.transactions)
+        ? wallet.transactions
+            .map(tx => ({
+              _id: tx._id,
+              type: tx.type || 'unknown',
+              amount: parseFloat(tx.amount) || 0,
+              status: tx.status || 'pending',
+              reference: tx.reference || '',
+              paystackReference: tx.paystackReference || '',
+              createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
+              metadata: tx.metadata || {},
+            }))
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        : [];
+
+      logger.info('Transactions retrieved', { userId: req.user.id, count: transactions.length, transactions });
+
+      res.status(200).json({
+        success: true,
+        data: {
+          transactions,
+        },
       });
-      await wallet.save();
-      console.log('Wallet recreated for user:', { userId: req.user.id, walletId: wallet._id });
-    }
-
-    const transactions = wallet.transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    res.status(200).json({
-      success: true,
-      data: {
-        transactions,
-      },
     });
   } catch (error) {
-    console.error('Get transactions error:', {
+    logger.error('Get transactions error', {
       userId: req.user.id,
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ success: false, error: 'Failed to fetch transactions' });
+  } finally {
+    await session.endSession();
   }
 };
 

@@ -8,7 +8,8 @@ const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
-const multiavatar = require('@multiavatar/multiavatar');
+const path = require('path');
+const fs = require('fs');
 
 axiosRetry(axios, {
   retries: 5,
@@ -86,9 +87,9 @@ exports.getUserDetails = async (req, res) => {
       }
       const userWithAvatar = {
         ...user.toObject(),
-        avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
+        avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
       };
-      console.log('Sending user details response:', { userId });
+      console.log('Sending user details response:', { userId, avatarImage: userWithAvatar.avatarImage });
       return res.status(200).json({ success: true, data: { user: userWithAvatar } });
     } catch (error) {
       attempt++;
@@ -112,14 +113,14 @@ exports.getAllUserDetails = async (req, res) => {
   try {
     const { id: userId } = req.user;
     console.log('Fetching all users:', { userId });
-    const users = await User.find({ _id: { $ne: userId } }).select(['email', 'firstName', '_id', 'avatarSeed']);
+    const users = await User.find({ _id: { $ne: userId } }).select(['email', 'firstName', '_id', 'avatarImage']);
     if (!users || users.length === 0) {
       console.log('No other users found:', userId);
       return res.status(404).json({ error: 'No other users found' });
     }
     const usersWithAvatars = users.map(user => ({
       ...user.toObject(),
-      avatarImage: `/api/avatar/${user.avatarSeed || user._id}`,
+      avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
     }));
     res.status(200).json({ success: true, data: { users: usersWithAvatars } });
   } catch (error) {
@@ -136,7 +137,7 @@ exports.updateUserDetails = async (req, res) => {
   try {
     const { id: userId } = req.user;
     const { firstName, lastName, dateOfBirth, bank, accountNumber } = req.body;
-    console.log('Updating user details:', { userId, firstName, lastName, dateOfBirth, bank, accountNumber });
+    console.log('Updating user details:', { userId, firstName, lastName, dateOfBirth, bank, accountNumber, file: req.file?.filename });
     const user = await User.findById(userId);
     if (!user) {
       console.log('User not found:', userId);
@@ -147,16 +148,27 @@ exports.updateUserDetails = async (req, res) => {
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
     user.bank = bank || user.bank;
     user.accountNumber = accountNumber || user.accountNumber;
+
+    if (req.file) {
+      // Delete old avatar image if it exists
+      if (user.avatarImage && fs.existsSync(path.join(__dirname, '..', 'Uploads', 'images', user.avatarImage))) {
+        fs.unlinkSync(path.join(__dirname, '..', 'Uploads', 'images', user.avatarImage));
+        console.log('Deleted old avatar:', user.avatarImage);
+      }
+      user.avatarImage = req.file.filename;
+      console.log('New avatar set:', user.avatarImage);
+    }
+
     await user.save();
-    const avatarIdentifier = user.avatarSeed || user._id;
     const userWithAvatar = {
       ...user.toObject(),
-      avatarImage: `/api/avatar/${avatarIdentifier}`,
+      avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
     };
+    console.log('User details updated successfully:', { userId, avatarImage: userWithAvatar.avatarImage });
     res.status(200).json({ success: true, data: { message: 'User details updated successfully!', user: userWithAvatar } });
   } catch (error) {
     console.error('Error in updateUserDetails:', {
-      userId: req.user.id,
+      userId: req.user?.id,
       message: error.message,
       stack: error.stack,
     });
@@ -166,19 +178,20 @@ exports.updateUserDetails = async (req, res) => {
 
 exports.getAvatar = async (req, res) => {
   try {
-    const { seed } = req.params;
-    if (!seed) {
-      return res.status(400).json({ error: 'Avatar seed is required' });
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, '..', 'Uploads', 'images', filename);
+    console.log('Serving avatar:', { filePath });
+    if (!fs.existsSync(filePath)) {
+      console.log('Avatar file not found:', filePath);
+      return res.status(404).json({ error: 'Avatar not found' });
     }
-    const avatarSvg = multiavatar(seed);
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.send(avatarSvg);
+    res.sendFile(filePath);
   } catch (error) {
-    console.error('Error generating avatar:', {
-      seed: req.params.seed,
+    console.error('Error serving avatar:', {
+      filename: req.params.filename,
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: 'Failed to generate avatar' });
+    res.status(500).json({ error: 'Failed to serve avatar' });
   }
 };
