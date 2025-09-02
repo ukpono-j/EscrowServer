@@ -1,30 +1,19 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs'); 
 
-
-// Multer storage configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads/images')); // Destination folder for uploaded files
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const validTypes = ['image/jpeg', 'image/png'];
+    if (!validTypes.includes(file.mimetype)) {
+      return cb(new Error('Only JPEG or PNG files are allowed'));
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return cb(new Error('File size must be less than 5MB'));
+    }
+    cb(null, true);
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
-
-// File filter function (optional)
-const fileFilter = (req, file, cb) => {
-  // Check file type, size, etc.
-  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
-    cb(null, true); // Accept file
-  } else {
-    cb(new Error('Invalid file type. Only JPEG and PNG files are allowed.'), false); // Reject file
-  }
-};
-
-// Multer instance with configuration
-const upload = multer({ storage: storage });
 
 module.exports = upload;

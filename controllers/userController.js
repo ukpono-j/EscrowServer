@@ -1,3 +1,4 @@
+// userController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../modules/Users');
@@ -10,6 +11,7 @@ const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 const path = require('path');
 const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 
 axiosRetry(axios, {
   retries: 5,
@@ -87,7 +89,9 @@ exports.getUserDetails = async (req, res) => {
       }
       const userWithAvatar = {
         ...user.toObject(),
-        avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
+        avatarImage: user.avatarImage
+          ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
+          : '/Uploads/images/default-avatar.png',
       };
       console.log('Sending user details response:', { userId, avatarImage: userWithAvatar.avatarImage });
       return res.status(200).json({ success: true, data: { user: userWithAvatar } });
@@ -120,7 +124,9 @@ exports.getAllUserDetails = async (req, res) => {
     }
     const usersWithAvatars = users.map(user => ({
       ...user.toObject(),
-      avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
+      avatarImage: user.avatarImage
+        ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
+        : '/Uploads/images/default-avatar.png',
     }));
     res.status(200).json({ success: true, data: { users: usersWithAvatars } });
   } catch (error) {
@@ -137,12 +143,14 @@ exports.updateUserDetails = async (req, res) => {
   try {
     const { id: userId } = req.user;
     const { firstName, lastName, dateOfBirth, bank, accountNumber } = req.body;
-    console.log('Updating user details:', { userId, firstName, lastName, dateOfBirth, bank, accountNumber, file: req.file?.filename });
+    console.log('Updating user details:', { userId, firstName, lastName, dateOfBirth, bank, accountNumber, file: req.file?.originalname });
+
     const user = await User.findById(userId);
     if (!user) {
       console.log('User not found:', userId);
       return res.status(404).json({ error: 'User not found' });
     }
+
     user.firstName = firstName || user.firstName;
     user.lastName = lastName || user.lastName;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
@@ -150,19 +158,40 @@ exports.updateUserDetails = async (req, res) => {
     user.accountNumber = accountNumber || user.accountNumber;
 
     if (req.file) {
-      // Delete old avatar image if it exists
-      if (user.avatarImage && fs.existsSync(path.join(__dirname, '..', 'Uploads', 'images', user.avatarImage))) {
-        fs.unlinkSync(path.join(__dirname, '..', 'Uploads', 'images', user.avatarImage));
-        console.log('Deleted old avatar:', user.avatarImage);
+      // Upload to Cloudinary
+      const uploadImage = (buffer) => new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream({
+          folder: 'avatars',
+          allowed_formats: ['jpg', 'png'],
+          public_id: `avatar_${userId}_${Date.now()}`,
+        }, (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        });
+        uploadStream.end(buffer);
+      });
+
+      const result = await uploadImage(req.file.buffer);
+
+      // Delete old avatar from Cloudinary if it exists
+      if (user.avatarImage && user.avatarImage.startsWith('https://res.cloudinary.com')) {
+        const parts = user.avatarImage.split('/');
+        const publicId = parts[parts.length - 1].split('.')[0];
+        const folderPublicId = `avatars/${publicId}`;
+        await cloudinary.uploader.destroy(folderPublicId);
+        console.log('Deleted old avatar from Cloudinary:', folderPublicId);
       }
-      user.avatarImage = req.file.filename;
-      console.log('New avatar set:', user.avatarImage);
+
+      user.avatarImage = result.secure_url;
+      console.log('New avatar uploaded to Cloudinary:', user.avatarImage);
     }
 
     await user.save();
     const userWithAvatar = {
       ...user.toObject(),
-      avatarImage: user.avatarImage ? `/Uploads/images/${user.avatarImage}` : '/default-avatar.png',
+      avatarImage: user.avatarImage
+        ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
+        : '/Uploads/images/default-avatar.png',
     };
     console.log('User details updated successfully:', { userId, avatarImage: userWithAvatar.avatarImage });
     res.status(200).json({ success: true, data: { message: 'User details updated successfully!', user: userWithAvatar } });
