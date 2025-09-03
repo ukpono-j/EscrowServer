@@ -13,12 +13,6 @@ const multer = require("multer");
 const compression = require("compression");
 require("dotenv").config();
 const cloudinary = require('cloudinary').v2;
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 const responseFormatter = require("./middlewares/responseFormatter");
 const Transaction = require("./modules/Transactions");
 const Chatroom = require("./modules/Chatroom");
@@ -26,6 +20,12 @@ const User = require("./modules/Users");
 const Message = require("./modules/Message");
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger-output.json');
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 webpush.setVapidDetails(
   process.env.VAPID_MAILTO,
@@ -83,15 +83,15 @@ const io = socketIo(server, {
 app.set("io", io);
 app.set("upload", upload);
 
-// Apply compression middleware for all responses, with a focus on images
+// Apply compression middleware
 app.use(compression({
   filter: (req, res) => {
     if (req.path.startsWith('/Uploads/images')) {
-      return true; // Always compress images
+      return true;
     }
-    return compression.filter(req, res); // Default filter for other responses
+    return compression.filter(req, res);
   },
-  level: 6, // Balanced compression level
+  level: 6,
 }));
 
 const PAYSTACK_SECRET_KEY = process.env.NODE_ENV === "production"
@@ -124,6 +124,8 @@ app.get("/health", (req, res) => {
 async function manageIndexes() {
   try {
     const db = mongoose.connection.db;
+    
+    // Drop old transactions.reference_1 index
     try {
       await db.collection("wallets").dropIndex("transactions.reference_1");
       console.log("Dropped transactions.reference_1 index");
@@ -134,8 +136,35 @@ async function manageIndexes() {
         throw error;
       }
     }
+
+    // Drop avatarSeed_1 index from users collection
+    try {
+      await db.collection("users").dropIndex("avatarSeed_1");
+      console.log("Dropped avatarSeed_1 index from users collection");
+    } catch (error) {
+      if (error.codeName === "IndexNotFound") {
+        console.log("avatarSeed_1 index not found, no need to drop");
+      } else {
+        throw error;
+      }
+    }
+
+    // Remove avatarSeed field from all user documents
+    try {
+      const result = await User.updateMany(
+        { avatarSeed: { $exists: true } },
+        { $unset: { avatarSeed: "" } }
+      );
+      console.log(`Removed avatarSeed field from ${result.modifiedCount} user documents`);
+    } catch (error) {
+      console.error("Error removing avatarSeed field:", error.message);
+    }
+
     const walletIndexes = await db.collection("wallets").indexes();
     console.log("Current wallet indexes:", JSON.stringify(walletIndexes, null, 2));
+    
+    const userIndexes = await db.collection("users").indexes();
+    console.log("Current user indexes:", JSON.stringify(userIndexes, null, 2));
   } catch (error) {
     console.error("Index management error:", error.message);
     throw error;
@@ -227,7 +256,7 @@ const setupSocket = (io) => {
             return;
           }
           const transaction = await Transaction.findById(chatroom.transactionId)
-            .populate('participants.userId', 'firstName lastName email avatarSeed');
+            .populate('participants.userId', 'firstName lastName email');
           if (!transaction) {
             console.error("Transaction not found:", {
               chatroomId,
@@ -286,7 +315,6 @@ const setupSocket = (io) => {
         time: new Date().toISOString(),
       });
 
-      // Validate message
       try {
         if (!mongoose.Types.ObjectId.isValid(message.chatroomId) || !mongoose.Types.ObjectId.isValid(message.userId)) {
           console.error("Invalid message data:", { message, userId: socket.user.id });
@@ -301,14 +329,13 @@ const setupSocket = (io) => {
           return;
         }
 
-        const user = await User.findById(message.userId).select('firstName lastName avatarSeed');
+        const user = await User.findById(message.userId).select('firstName lastName');
         if (!user) {
           console.error("User not found for message:", { userId: message.userId });
           socket.emit("error", { message: "User not found" });
           return;
         }
 
-        // Broadcast the message to the room
         io.to(`transaction_${message.chatroomId}`).emit("message", {
           _id: message._id,
           chatroomId: message.chatroomId,
@@ -316,7 +343,6 @@ const setupSocket = (io) => {
           userFirstName: message.userFirstName,
           userLastName: message.userLastName,
           message: message.message,
-          avatarSeed: message.avatarSeed,
           timestamp: message.timestamp,
           tempId: message.tempId,
         });
@@ -406,23 +432,33 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Initialize routes
 const initializeRoutes = () => {
-  const authRoutes = require("./routes/authRoutes");
-  const userRoutes = require("./routes/userRoutes");
-  const transactionRoutes = require("./routes/transactionRoutes");
-  const notificationRoutes = require("./routes/notificationRoutes");
-  const kycRoutes = require("./routes/kycRoutes");
-  const walletRoutes = require("./routes/walletRoutes");
-  const messageRoutes = require("./routes/messages");
-  const adminRoutes = require('./routes/adminRoutes');
+  try {
+    const authRoutes = require("./routes/authRoutes");
+    const userRoutes = require("./routes/userRoutes");
+    const transactionRoutes = require("./routes/transactionRoutes");
+    const notificationRoutes = require("./routes/notificationRoutes");
+    const kycRoutes = require("./routes/kycRoutes");
+    const walletRoutes = require("./routes/walletRoutes");
+    const messageRoutes = require("./routes/messages");
+    const adminRoutes = require('./routes/adminRoutes');
 
-  app.use("/api/auth", authRoutes);
-  app.use("/api/users", userRoutes);
-  app.use("/api/transactions", transactionRoutes);
-  app.use("/api/notifications", notificationRoutes);
-  app.use("/api/kyc", kycRoutes);
-  app.use("/api/wallet", walletRoutes);
-  app.use("/api/messages", messageRoutes);
-  app.use('/api/admin', adminRoutes);
+    app.use("/api/auth", authRoutes);
+    app.use("/api/users", userRoutes);
+    app.use("/api/transactions", transactionRoutes);
+    app.use("/api/notifications", notificationRoutes);
+    app.use("/api/kyc", kycRoutes);
+    app.use("/api/wallet", walletRoutes);
+    app.use("/api/messages", messageRoutes);
+    app.use("/api/admin", adminRoutes);
+
+    console.log("Routes initialized successfully");
+  } catch (error) {
+    console.error("Error initializing routes:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 };
 
 app.use((err, req, res, next) => {
@@ -435,37 +471,6 @@ app.use((err, req, res, next) => {
     message: err.message,
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
-});
-
-app.get("/api/avatar/:seed", async (req, res) => {
-  try {
-    const seed = req.params.seed;
-    const multiavatarUrl = `https://api.multiavatar.com/${encodeURIComponent(seed)}.svg`;
-    const response = await axios.get(multiavatarUrl, { responseType: "stream", timeout: 10000 });
-    res.set("Content-Type", "image/svg+xml");
-    response.data.pipe(res);
-  } catch (error) {
-    console.error("Avatar proxy error:", {
-      seed: req.params.seed,
-      message: error.message,
-      status: error.response?.status,
-      code: error.code,
-    });
-    if (error.response?.status === 429) {
-      res.status(429).send("Multiavatar rate limit exceeded. Please try again later.");
-    } else if (error.code === "ECONNABORTED" || error.response?.status === 408) {
-      res.status(504).send("Avatar request timed out. Using fallback.");
-    } else {
-      const fallbackSvg = `
-        <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="15" fill="#B38939" />
-          <text x="50%" y="50%" font-size="12" fill="white" text-anchor="middle" dominant-baseline="middle">${req.params.seed.slice(0, 2)}</text>
-        </svg>
-      `;
-      res.set("Content-Type", "image/svg+xml");
-      res.status(200).send(fallbackSvg);
-    }
-  }
 });
 
 const cronJobs = require("./jobs/cronJobs");

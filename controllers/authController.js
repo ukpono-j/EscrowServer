@@ -1,3 +1,4 @@
+// authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const sanitizeHtml = require('sanitize-html');
@@ -96,10 +97,10 @@ const setupEtherealAccount = async () => {
   }
 };
 
-exports.register = async (req, res) => {
+const register = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  const requestId = uuidv4(); // Unique ID for this request
+  const requestId = uuidv4();
   console.time(`Register Process ${requestId}`);
   try {
     const { firstName, lastName, email, password, dateOfBirth, phoneNumber } = req.body;
@@ -176,6 +177,7 @@ exports.register = async (req, res) => {
       password: sanitizedInputs.password,
       dateOfBirth: dob,
       phoneNumber: sanitizedInputs.phoneNumber,
+      avatarImage: null, // Explicitly set avatarImage to null since no upload is provided
     });
     const savedUser = await user.save({ session });
 
@@ -212,6 +214,8 @@ exports.register = async (req, res) => {
         throw new Error(customerResponse.data.message || 'Failed to create customer');
       }
       customerCode = customerResponse.data.data.customer_code;
+      user.paystackCustomerCode = customerCode;
+      await user.save({ session });
     } catch (error) {
       await Notification.create({
         userId: savedUser._id,
@@ -293,6 +297,7 @@ exports.register = async (req, res) => {
         email: savedUser.email,
         phoneNumber: savedUser.phoneNumber,
         dateOfBirth: savedUser.dateOfBirth,
+        avatarImage: savedUser.avatarImage,
       },
       walletId: savedWallet._id,
     });
@@ -301,6 +306,7 @@ exports.register = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.timeEnd(`Register Process ${requestId}`);
+    console.error('Registration error:', { message: error.message, stack: error.stack, keyPattern: error.keyPattern, keyValue: error.keyValue });
     if (error.code === 11000) {
       if (error.keyPattern?.email) {
         return res.status(400).json({ error: 'Email already in use', details: error.keyValue });
@@ -314,228 +320,230 @@ exports.register = async (req, res) => {
   }
 };
 
-exports.login = async (req, res) => {
-  const requestId = uuidv4();
-  console.time(`Login Process ${requestId}`);
-  try {
-    const { email, password } = req.body;
-    const sanitizedInputs = {
-      email: sanitizeInput(email),
-      password: sanitizeInput(password),
-    };
-
-    console.log(`Login attempt for email: ${sanitizedInputs.email}`);
-
-    if (!sanitizedInputs.email || !sanitizedInputs.password) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(400).json({ error: 'Email and password are required' });
-    }
-
-    console.time('Find User');
-    const user = await User.findOne({ email: sanitizedInputs.email }).select('+password');
-    console.timeEnd('Find User');
-    if (!user) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    console.time('Compare Password');
-    const isMatch = await user.comparePassword(sanitizedInputs.password);
-    console.timeEnd('Compare Password');
-    console.log(`Password comparison result: ${isMatch}`);
-    if (!isMatch) {
-      console.timeEnd(`Login Process ${requestId}`);
-      return res.status(401).json({ error: 'Invalid credentials', details: 'Password mismatch' });
-    }
-
-    console.time('Find Wallet');
-    let wallet = await Wallet.findOne({ userId: user._id });
-    console.timeEnd('Find Wallet');
-    if (!wallet) {
-      console.log('Creating new wallet for user:', user._id);
-      wallet = new Wallet({
-        userId: user._id.toString(),
-        balance: 0,
-        totalDeposits: 0,
-        currency: 'NGN',
-        transactions: [],
-        virtualAccount: null,
-      });
-      await wallet.save();
-    }
-
-    console.time('Generate Tokens');
-    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
-    console.timeEnd('Generate Tokens');
-
-    console.time('Save Refresh Token');
-    await RefreshTokenModel.create({
-      userId: user._id.toString(),
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
-    console.timeEnd('Save Refresh Token');
-
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        dateOfBirth: user.dateOfBirth,
-      },
-      walletId: wallet._id,
-    });
-    console.timeEnd(`Login Process ${requestId}`);
-  } catch (error) {
-    console.error('Login error:', { message: error.message, stack: error.stack });
-    res.status(500).json({ error: 'Internal server error', details: error.message });
-    console.timeEnd(`Login Process ${requestId}`);
-  }
-};
-
-exports.refreshToken = async (req, res) => {
-  const requestId = uuidv4();
-  console.time(`Refresh Token Process ${requestId}`);
-  try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(400).json({ error: "Refresh token is required" });
-    }
-
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    const storedToken = await RefreshTokenModel.findOne({ userId: decoded.id, token: refreshToken });
-    if (!storedToken) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(401).json({ error: "Invalid or expired refresh token" });
-    }
-
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      console.timeEnd(`Refresh Token Process ${requestId}`);
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ accessToken: newAccessToken });
-    console.timeEnd(`Refresh Token Process ${requestId}`);
-  } catch (error) {
-    console.error("Refresh token error:", { message: error.message });
-    res.status(401).json({ error: "Invalid or expired refresh token" });
-    console.timeEnd(`Refresh Token Process ${requestId}`);
-  }
-};
-
-exports.forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const sanitizedEmail = sanitizeInput(email);
-
-    const user = await User.findOne({ email: sanitizedEmail });
-    if (!user) {
-      return res.status(404).json({ error: 'No account found with this email' });
-    }
-
-    const otp = generateOTP();
-    await OTPModel.deleteMany({ email: sanitizedEmail });
-    await OTPModel.create({
-      email: sanitizedEmail,
-      otp,
-      userId: user._id.toString(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-    });
-
-    if (process.env.NODE_ENV !== 'production') {
-      return res.status(200).json({
-        success: true,
-        message: 'OTP generated successfully',
-        devMode: true,
-        devOtp: otp,
-      });
-    }
-
+// Export all functions explicitly
+module.exports = {
+  register,
+  login: async (req, res) => {
+    const requestId = uuidv4();
+    console.time(`Login Process ${requestId}`);
     try {
-      if (!transporter) {
-        transporter = await setupEtherealAccount();
-      }
-
-      const msg = {
-        from: process.env.FROM_EMAIL || 'noreply@yourapplication.com',
-        to: sanitizedEmail,
-        subject: 'Password Reset OTP',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-            <h2 style="color: #031420; text-align: center;">Password Reset Request</h2>
-            <p>We received a request to reset your password. Use the following OTP code to reset your password:</p>
-            <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-              <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
-            </div>
-            <p>This code will expire in 15 minutes.</p>
-            <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
-            <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
-          </div>
-        `,
+      const { email, password } = req.body;
+      const sanitizedInputs = {
+        email: sanitizeInput(email),
+        password: sanitizeInput(password),
       };
 
-      await transporter.sendMail(msg);
-      res.status(200).json({ success: true, message: 'OTP sent to your email' });
-    } catch (emailError) {
-      console.error('Error sending email:', emailError);
-      res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
+      console.log(`Login attempt for email: ${sanitizedInputs.email}`);
+
+      if (!sanitizedInputs.email || !sanitizedInputs.password) {
+        console.timeEnd(`Login Process ${requestId}`);
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      console.time('Find User');
+      const user = await User.findOne({ email: sanitizedInputs.email }).select('+password');
+      console.timeEnd('Find User');
+      if (!user) {
+        console.timeEnd(`Login Process ${requestId}`);
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      console.time('Compare Password');
+      const isMatch = await user.comparePassword(sanitizedInputs.password);
+      console.timeEnd('Compare Password');
+      console.log(`Password comparison result: ${isMatch}`);
+      if (!isMatch) {
+        console.timeEnd(`Login Process ${requestId}`);
+        return res.status(401).json({ error: 'Invalid credentials', details: 'Password mismatch' });
+      }
+
+      console.time('Find Wallet');
+      let wallet = await Wallet.findOne({ userId: user._id });
+      console.timeEnd('Find Wallet');
+      if (!wallet) {
+        console.log('Creating new wallet for user:', user._id);
+        wallet = new Wallet({
+          userId: user._id.toString(),
+          balance: 0,
+          totalDeposits: 0,
+          currency: 'NGN',
+          transactions: [],
+          virtualAccount: null,
+        });
+        await wallet.save();
+      }
+
+      console.time('Generate Tokens');
+      const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
+      console.timeEnd('Generate Tokens');
+
+      console.time('Save Refresh Token');
+      await RefreshTokenModel.create({
+        userId: user._id.toString(),
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      });
+      console.timeEnd('Save Refresh Token');
+
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        accessToken,
+        refreshToken,
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phoneNumber: user.phoneNumber,
+          dateOfBirth: user.dateOfBirth,
+          avatarImage: user.avatarImage, // Include avatarImage in response
+        },
+        walletId: wallet._id,
+      });
+      console.timeEnd(`Login Process ${requestId}`);
+    } catch (error) {
+      console.error('Login error:', { message: error.message, stack: error.stack });
+      res.status(500).json({ error: 'Internal server error', details: error.message });
+      console.timeEnd(`Login Process ${requestId}`);
     }
-  } catch (error) {
-    console.error('Error in forgotPassword:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
+  },
+  refreshToken: async (req, res) => {
+    const requestId = uuidv4();
+    console.time(`Refresh Token Process ${requestId}`);
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        console.timeEnd(`Refresh Token Process ${requestId}`);
+        return res.status(400).json({ error: "Refresh token is required" });
+      }
 
-exports.resetPassword = async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body;
-    const sanitizedInputs = {
-      email: sanitizeInput(email),
-      otp: sanitizeInput(otp),
-      newPassword: sanitizeInput(newPassword),
-    };
+      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+      const storedToken = await RefreshTokenModel.findOne({ userId: decoded.id, token: refreshToken });
+      if (!storedToken) {
+        console.timeEnd(`Refresh Token Process ${requestId}`);
+        return res.status(401).json({ error: "Invalid or expired refresh token" });
+      }
 
-    const otpDoc = await OTPModel.findOne({ email: sanitizedInputs.email });
-    if (!otpDoc) {
-      return res.status(400).json({ error: 'No OTP request found. Please request a new OTP.' });
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        console.timeEnd(`Refresh Token Process ${requestId}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const newAccessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      res.status(200).json({ accessToken: newAccessToken });
+      console.timeEnd(`Refresh Token Process ${requestId}`);
+    } catch (error) {
+      console.error("Refresh token error:", { message: error.message });
+      res.status(401).json({ error: "Invalid or expired refresh token" });
+      console.timeEnd(`Refresh Token Process ${requestId}`);
     }
+  },
+  forgotPassword: async (req, res) => {
+    try {
+      const { email } = req.body;
+      const sanitizedEmail = sanitizeInput(email);
 
-    if (otpDoc.otp !== sanitizedInputs.otp) {
-      return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+      const user = await User.findOne({ email: sanitizedEmail });
+      if (!user) {
+        return res.status(404).json({ error: 'No account found with this email' });
+      }
+
+      const otp = generateOTP();
+      await OTPModel.deleteMany({ email: sanitizedEmail });
+      await OTPModel.create({
+        email: sanitizedEmail,
+        otp,
+        userId: user._id.toString(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      });
+
+      if (process.env.NODE_ENV !== 'production') {
+        return res.status(200).json({
+          success: true,
+          message: 'OTP generated successfully',
+          devMode: true,
+          devOtp: otp,
+        });
+      }
+
+      try {
+        if (!transporter) {
+          transporter = await setupEtherealAccount();
+        }
+
+        const msg = {
+          from: process.env.FROM_EMAIL || 'noreply@yourapplication.com',
+          to: sanitizedEmail,
+          subject: 'Password Reset OTP',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+              <h2 style="color: #031420; text-align: center;">Password Reset Request</h2>
+              <p>We received a request to reset your password. Use the following OTP code to reset your password:</p>
+              <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+                <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
+              </div>
+              <p>This code will expire in 15 minutes.</p>
+              <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+              <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
+            </div>
+          `,
+        };
+
+        await transporter.sendMail(msg);
+        res.status(200).json({ success: true, message: 'OTP sent to your email' });
+      } catch (emailError) {
+        console.error('Error sending email:', emailError);
+        res.status(500).json({ error: 'Failed to send OTP email. Please try again later.' });
+      }
+    } catch (error) {
+      console.error('Error in forgotPassword:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
+  },
+  resetPassword: async (req, res) => {
+    try {
+      const { email, otp, newPassword } = req.body;
+      const sanitizedInputs = {
+        email: sanitizeInput(email),
+        otp: sanitizeInput(otp),
+        newPassword: sanitizeInput(newPassword),
+      };
 
-    if (new Date() > new Date(otpDoc.expiresAt)) {
+      const otpDoc = await OTPModel.findOne({ email: sanitizedInputs.email });
+      if (!otpDoc) {
+        return res.status(400).json({ error: 'No OTP request found. Please request a new OTP.' });
+      }
+
+      if (otpDoc.otp !== sanitizedInputs.otp) {
+        return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
+      }
+
+      if (new Date() > new Date(otpDoc.expiresAt)) {
+        await OTPModel.deleteOne({ _id: otpDoc._id });
+        return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+      }
+
+      const userId = otpDoc.userId;
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      if (sanitizedInputs.newPassword.length < 8 || !/[A-Z]/.test(sanitizedInputs.newPassword) || !/[0-9]/.test(sanitizedInputs.newPassword) || !/[^A-Za-z0-9]/.test(sanitizedInputs.newPassword)) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters and include uppercase, number, and special character' });
+      }
+
+      user.password = sanitizedInputs.newPassword;
+      await user.save();
       await OTPModel.deleteOne({ _id: otpDoc._id });
-      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+
+      res.status(200).json({ success: true, message: 'Password reset successful' });
+    } catch (error) {
+      console.error('Error in resetPassword:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-
-    const userId = otpDoc.userId;
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found.' });
-    }
-
-    if (sanitizedInputs.newPassword.length < 8 || !/[A-Z]/.test(sanitizedInputs.newPassword) || !/[0-9]/.test(sanitizedInputs.newPassword) || !/[^A-Za-z0-9]/.test(sanitizedInputs.newPassword)) {
-      return res.status(400).json({ error: 'New password must be at least 8 characters and include uppercase, number, and special character' });
-    }
-
-    user.password = sanitizedInputs.newPassword;
-    await user.save();
-    await OTPModel.deleteOne({ _id: otpDoc._id });
-
-    res.status(200).json({ success: true, message: 'Password reset successful' });
-  } catch (error) {
-    console.error('Error in resetPassword:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
+  },
 };
