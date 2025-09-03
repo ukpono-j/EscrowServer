@@ -10,7 +10,6 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const axios = require("axios");
 const multer = require("multer");
-const fs = require("fs").promises;
 const compression = require("compression");
 require("dotenv").config();
 const cloudinary = require('cloudinary').v2;
@@ -34,29 +33,8 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
-// Ensure Uploads/images directory exists
-async function ensureUploadsDirectory() {
-  const uploadsDir = path.join(__dirname, "Uploads/images");
-  try {
-    await fs.mkdir(uploadsDir, { recursive: true });
-    console.log('index - Uploads/images directory ensured at:', uploadsDir);
-  } catch (error) {
-    console.error('index - Failed to create Uploads/images directory:', error);
-    throw error;
-  }
-}
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    await ensureUploadsDirectory();
-    cb(null, path.join(__dirname, "Uploads/images"));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
-  },
-});
+// Configure multer for file uploads (using memory storage for Cloudinary uploads)
+const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
@@ -187,15 +165,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
-
-// Serve uploads folder statically with caching headers
-app.use("/Uploads", express.static(path.join(__dirname, "Uploads"), {
-  setHeaders: (res, path) => {
-    if (path.match(/\.(jpg|jpeg|png)$/)) {
-      res.set('Cache-Control', 'public, max-age=31536000'); // Cache images for 1 year
-    }
-  },
-}));
 
 app.use((req, res, next) => {
   res.on("finish", () => {

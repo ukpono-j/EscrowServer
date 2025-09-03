@@ -1,4 +1,3 @@
-// userController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../modules/Users');
@@ -9,8 +8,6 @@ const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
-const path = require('path');
-const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 
 axiosRetry(axios, {
@@ -89,9 +86,7 @@ exports.getUserDetails = async (req, res) => {
       }
       const userWithAvatar = {
         ...user.toObject(),
-        avatarImage: user.avatarImage
-          ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
-          : '/Uploads/images/default-avatar.png',
+        avatarImage: user.avatarImage || null,
       };
       console.log('Sending user details response:', { userId, avatarImage: userWithAvatar.avatarImage });
       return res.status(200).json({ success: true, data: { user: userWithAvatar } });
@@ -124,9 +119,7 @@ exports.getAllUserDetails = async (req, res) => {
     }
     const usersWithAvatars = users.map(user => ({
       ...user.toObject(),
-      avatarImage: user.avatarImage
-        ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
-        : '/Uploads/images/default-avatar.png',
+      avatarImage: user.avatarImage || null,
     }));
     res.status(200).json({ success: true, data: { users: usersWithAvatars } });
   } catch (error) {
@@ -142,8 +135,23 @@ exports.getAllUserDetails = async (req, res) => {
 exports.updateUserDetails = async (req, res) => {
   try {
     const { id: userId } = req.user;
-    const { firstName, lastName, dateOfBirth, bank, accountNumber } = req.body;
-    console.log('Updating user details:', { userId, firstName, lastName, dateOfBirth, bank, accountNumber, file: req.file?.originalname });
+    const { firstName, lastName, dateOfBirth, bank, accountNumber, phoneNumber } = req.body;
+    console.log('Updating user details:', { 
+      userId, 
+      firstName, 
+      lastName, 
+      dateOfBirth, 
+      bank, 
+      accountNumber, 
+      phoneNumber,
+      hasFile: !!req.file,
+      fileDetails: req.file ? { 
+        filename: req.file.originalname, 
+        size: req.file.size, 
+        mimetype: req.file.mimetype,
+        bufferExists: !!req.file.buffer 
+      } : null,
+    });
 
     const user = await User.findById(userId);
     if (!user) {
@@ -151,70 +159,105 @@ exports.updateUserDetails = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Validate required fields
+    if (!firstName || !lastName || !phoneNumber) {
+      console.warn('Missing required fields:', { firstName, lastName, phoneNumber });
+      return res.status(400).json({ success: false, error: 'First name, last name, and phone number are required' });
+    }
+
+    // Update user fields
     user.firstName = firstName || user.firstName;
     user.lastName = lastName || user.lastName;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
     user.bank = bank || user.bank;
     user.accountNumber = accountNumber || user.accountNumber;
+    user.phoneNumber = phoneNumber || user.phoneNumber;
 
+    // Handle file upload to Cloudinary
     if (req.file) {
-      // Upload to Cloudinary
-      const uploadImage = (buffer) => new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream({
-          folder: 'avatars',
-          allowed_formats: ['jpg', 'png'],
-          public_id: `avatar_${userId}_${Date.now()}`,
-        }, (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
+      try {
+        const uploadImage = (buffer) => new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream({
+            folder: 'avatars',
+            allowed_formats: ['jpg', 'png'],
+            public_id: `avatar_${userId}_${Date.now()}`,
+          }, (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          });
+          uploadStream.end(buffer);
         });
-        uploadStream.end(buffer);
-      });
 
-      const result = await uploadImage(req.file.buffer);
+        const result = await uploadImage(req.file.buffer);
+        console.log('New avatar uploaded to Cloudinary:', result.secure_url);
 
-      // Delete old avatar from Cloudinary if it exists
-      if (user.avatarImage && user.avatarImage.startsWith('https://res.cloudinary.com')) {
-        const parts = user.avatarImage.split('/');
-        const publicId = parts[parts.length - 1].split('.')[0];
-        const folderPublicId = `avatars/${publicId}`;
-        await cloudinary.uploader.destroy(folderPublicId);
-        console.log('Deleted old avatar from Cloudinary:', folderPublicId);
+        // Delete old avatar from Cloudinary if it exists
+        if (user.avatarImage && user.avatarImage.startsWith('https://res.cloudinary.com')) {
+          const parts = user.avatarImage.split('/');
+          const publicId = parts[parts.length - 1].split('.')[0];
+          const folderPublicId = `avatars/${publicId}`;
+          try {
+            await cloudinary.uploader.destroy(folderPublicId);
+            console.log('Deleted old avatar from Cloudinary:', folderPublicId);
+          } catch (deleteError) {
+            console.warn('Failed to delete old Cloudinary image:', folderPublicId, deleteError.message);
+          }
+        }
+
+        user.avatarImage = result.secure_url;
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError.message, uploadError.stack);
+        return res.status(500).json({ success: false, error: `Failed to upload avatar to Cloudinary: ${uploadError.message}` });
       }
-
-      user.avatarImage = result.secure_url;
-      console.log('New avatar uploaded to Cloudinary:', user.avatarImage);
     }
 
     await user.save();
     const userWithAvatar = {
       ...user.toObject(),
-      avatarImage: user.avatarImage
-        ? (user.avatarImage.startsWith('https://') ? user.avatarImage : `/Uploads/images/${user.avatarImage}`)
-        : '/Uploads/images/default-avatar.png',
+      avatarImage: user.avatarImage || null,
     };
     console.log('User details updated successfully:', { userId, avatarImage: userWithAvatar.avatarImage });
     res.status(200).json({ success: true, data: { message: 'User details updated successfully!', user: userWithAvatar } });
+
+    // Emit socket event for profile update
+    try {
+      const io = req.app.get('io');
+      io.to(`user_${userId}`).emit('profileUpdated', {
+        userId,
+        message: 'Profile updated successfully',
+        avatarImage: user.avatarImage,
+      });
+      console.log('Socket event emitted for profile update:', userId);
+    } catch (socketError) {
+      console.warn('Socket event emission failed:', socketError.message);
+    }
   } catch (error) {
     console.error('Error in updateUserDetails:', {
       userId: req.user?.id,
       message: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    let errorMessage = 'Failed to update user details';
+    if (error.message.includes('Cloudinary')) {
+      errorMessage = `Cloudinary error: ${error.message}`;
+    } else if (error.message.includes('MongoDB') || error.message.includes('User')) {
+      errorMessage = `Database error: ${error.message}`;
+    }
+    res.status(500).json({ success: false, error: errorMessage });
   }
 };
 
 exports.getAvatar = async (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '..', 'Uploads', 'images', filename);
-    console.log('Serving avatar:', { filePath });
-    if (!fs.existsSync(filePath)) {
-      console.log('Avatar file not found:', filePath);
+    console.log('Serving avatar:', { filename });
+    const user = await User.findOne({ avatarImage: { $regex: filename, $options: 'i' } });
+    if (!user || !user.avatarImage || !user.avatarImage.startsWith('https://res.cloudinary.com')) {
+      console.log('Avatar not found or not a Cloudinary URL:', { filename });
       return res.status(404).json({ error: 'Avatar not found' });
     }
-    res.sendFile(filePath);
+    // Redirect to Cloudinary URL
+    res.redirect(user.avatarImage);
   } catch (error) {
     console.error('Error serving avatar:', {
       filename: req.params.filename,

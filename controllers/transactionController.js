@@ -11,6 +11,16 @@ const { getBankNameFromCode } = require('../data/banksList');
 const fsPromises = require("fs").promises; // For promise-based methods
 const fs = require("fs"); // For synchronous methods
 const axios = require("axios");
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+console.log('Cloudinary config:', cloudinary.config());
+
 
 // Ensure the Uploads directory exists
 const uploadDir = path.join(__dirname, "../Uploads");
@@ -676,6 +686,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Validate request body structure
     if (!req.body || typeof id !== 'string' || !id.trim()) {
+      console.warn('Missing or invalid transaction ID:', req.body);
       return res.status(400).json({
         success: false,
         error: 'Transaction ID is required and must be a non-empty string',
@@ -684,6 +695,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Validate userId from authentication middleware
     if (!userId || typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
+      console.warn('Invalid or missing user authentication:', { userId });
       return res.status(401).json({
         success: false,
         error: 'Invalid or missing user authentication',
@@ -692,6 +704,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Validate transaction ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.warn('Invalid transaction ID format:', id);
       return res.status(400).json({
         success: false,
         error: 'Invalid transaction ID format',
@@ -703,6 +716,7 @@ exports.joinTransaction = async (req, res) => {
       'userId participants status selectedUserType buyerWalletId sellerWalletId'
     );
     if (!transaction) {
+      console.warn('Transaction not found:', id);
       return res.status(404).json({
         success: false,
         error: 'Transaction not found',
@@ -711,6 +725,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Prevent creator from joining their own transaction
     if (transaction.userId.toString() === userId) {
+      console.warn('User attempted to join their own transaction:', { userId, transactionId: id });
       return res.status(400).json({
         success: false,
         error: 'You cannot join your own transaction',
@@ -719,6 +734,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Check if user is already a participant
     if (transaction.participants.some((p) => p.userId && p.userId.toString() === userId)) {
+      console.warn('User already a participant:', { userId, transactionId: id });
       return res.status(400).json({
         success: false,
         error: 'You are already a participant in this transaction',
@@ -727,6 +743,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Ensure transaction is pending or funded
     if (!['pending', 'funded'].includes(transaction.status)) {
+      console.warn('Invalid transaction status:', { transactionId: id, status: transaction.status });
       return res.status(400).json({
         success: false,
         error: 'Only pending or funded transactions can be joined',
@@ -735,6 +752,7 @@ exports.joinTransaction = async (req, res) => {
 
     // Limit to one participant
     if (transaction.participants.length >= 1) {
+      console.warn('Transaction already has a participant:', { transactionId: id, participants: transaction.participants });
       return res.status(400).json({
         success: false,
         error: 'Transaction already has a participant',
@@ -744,6 +762,7 @@ exports.joinTransaction = async (req, res) => {
     // Verify user profile completeness
     const user = await User.findById(userId).select('email firstName');
     if (!user || !user.email || !user.firstName) {
+      console.warn('Incomplete user profile:', { userId, email: user?.email, firstName: user?.firstName });
       return res.status(400).json({
         success: false,
         error: 'User profile incomplete (missing email or firstName)',
@@ -753,6 +772,7 @@ exports.joinTransaction = async (req, res) => {
     // Ensure user has a wallet
     let wallet = await Wallet.findOne({ userId }).select('_id');
     if (!wallet) {
+      console.log('Creating new wallet for user:', userId);
       wallet = new Wallet({
         userId,
         balance: 0,
@@ -799,7 +819,7 @@ exports.joinTransaction = async (req, res) => {
       console.warn('Socket.io instance not found');
     }
 
-    // Log successful join for debugging
+    // Log successful join
     console.log(`User ${userId} joined transaction ${id} as ${participantRole}`);
 
     return res.status(200).json({
@@ -818,7 +838,7 @@ exports.joinTransaction = async (req, res) => {
       userId: req.user?.id,
     });
 
-    // Handle specific Mongoose errors
+    // Handle specific errors
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -830,7 +850,7 @@ exports.joinTransaction = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Internal server error',
-      details: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };
@@ -1129,17 +1149,6 @@ exports.createChatRoom = async (req, res) => {
   }
 };
 
-async function ensureUploadsDirectory() {
-  const uploadsDir = path.join(__dirname, '..', 'Uploads', 'images');
-  try {
-    await fsPromises.mkdir(uploadsDir, { recursive: true });
-    console.log('submitWaybillDetails - Uploads/images directory ensured at:', uploadsDir);
-  } catch (error) {
-    console.error('submitWaybillDetails - Failed to create Uploads/images directory:', error);
-    throw error;
-  }
-}
-
 async function verifyFileWithRetry(filePath, retries = 3, delay = 100) {
   for (let i = 0; i < retries; i++) {
     try {
@@ -1169,7 +1178,12 @@ exports.submitWaybillDetails = async (req, res, next) => {
       trackingNumber,
       deliveryDate,
       hasFile: !!req.file,
-      fileDetails: req.file ? { filename: req.file.filename, path: req.file.path, size: req.file.size } : null
+      fileDetails: req.file ? {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        bufferExists: !!req.file.buffer
+      } : null,
     });
 
     // Validate transaction ID
@@ -1184,8 +1198,12 @@ exports.submitWaybillDetails = async (req, res, next) => {
       return res.status(400).json({ success: false, error: "All fields are required" });
     }
 
-    // Validate file size
-    if (req.file && req.file.size > 2 * 1024 * 1024) {
+    // Validate file presence and size
+    if (!req.file) {
+      console.warn('No image file uploaded:', transactionId);
+      return res.status(400).json({ success: false, error: "Image is required" });
+    }
+    if (req.file.size > 2 * 1024 * 1024) {
       console.warn('Image size too large:', req.file.size);
       return res.status(400).json({ success: false, error: "Image size must be less than 2MB" });
     }
@@ -1194,7 +1212,7 @@ exports.submitWaybillDetails = async (req, res, next) => {
     const transaction = await Transaction.findById(transactionId);
     if (!transaction) {
       console.warn('Transaction not found:', transactionId);
-      return res.status(404).json({ error: "Transaction not found" });
+      return res.status(404).json({ success: false, error: "Transaction not found" });
     }
 
     // Check if user is authorized (seller)
@@ -1202,60 +1220,88 @@ exports.submitWaybillDetails = async (req, res, next) => {
     const isParticipant = transaction.participants.some(p => p.userId.toString() === userId && p.role === 'seller');
     if (!isCreator && !isParticipant) {
       console.warn('Unauthorized access:', { userId, transactionId });
-      return res.status(403).json({ error: "Unauthorized to submit waybill details" });
+      return res.status(403).json({ success: false, error: "Unauthorized to submit waybill details" });
     }
 
     // Check if transaction is funded
     if (!transaction.locked) {
       console.warn('Transaction not funded:', transactionId);
-      return res.status(400).json({ error: "Transaction must be funded before submitting waybill details" });
+      return res.status(400).json({ success: false, error: "Transaction must be funded before submitting waybill details" });
     }
 
-    // Ensure Uploads/images directory exists
-    await ensureUploadsDirectory();
+    // Handle file upload to Cloudinary
+    let imageUrl = null;
+    try {
+      const uploadImage = (buffer) => new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream({
+          folder: 'waybills',
+          allowed_formats: ['jpg', 'png'],
+          public_id: `waybill_${transactionId}_${Date.now()}`,
+        }, (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        });
+        uploadStream.end(buffer);
+      });
 
-    // Handle file upload
-    let imagePath = null;
-    if (req.file) {
-      imagePath = `Uploads/images/${req.file.filename}`;
-      const fullPath = path.join(__dirname, '..', imagePath);
-      try {
-        await verifyFileWithRetry(fullPath);
-        console.log('submitWaybillDetails - Image saved successfully:', fullPath);
-      } catch (error) {
-        console.error('submitWaybillDetails - Failed to verify image file:', fullPath, error);
-        return res.status(500).json({ success: false, error: "Failed to save image file" });
+      const result = await uploadImage(req.file.buffer);
+      imageUrl = result.secure_url;
+      console.log('New waybill image uploaded to Cloudinary:', imageUrl);
+
+      // Delete old image if exists
+      if (transaction.waybillDetails?.image && transaction.waybillDetails.image.startsWith('https://res.cloudinary.com')) {
+        const parts = transaction.waybillDetails.image.split('/');
+        const publicId = parts[parts.length - 1].split('.')[0];
+        const folderPublicId = `waybills/${publicId}`;
+        try {
+          await cloudinary.uploader.destroy(folderPublicId);
+          console.log('Deleted old waybill image from Cloudinary:', folderPublicId);
+        } catch (deleteError) {
+          console.warn('Failed to delete old Cloudinary image:', folderPublicId, deleteError.message);
+        }
       }
-    } else {
-      console.warn('No image file uploaded:', transactionId);
-      return res.status(400).json({ success: false, error: "Image is required" });
+    } catch (uploadError) {
+      console.error('Cloudinary upload error:', uploadError.message, uploadError.stack);
+      return res.status(500).json({ success: false, error: `Failed to upload image to Cloudinary: ${uploadError.message}` });
     }
 
     // Update transaction with waybill details
-    transaction.waybillDetails = {
-      item,
-      shippingAddress,
-      trackingNumber,
-      deliveryDate,
-      image: imagePath,
-    };
-
-    await transaction.save();
-    console.log('submitWaybillDetails - Waybill details saved:', { transactionId, imagePath });
+    try {
+      transaction.waybillDetails = {
+        item,
+        shippingAddress,
+        trackingNumber,
+        deliveryDate,
+        image: imageUrl,
+      };
+      await transaction.save();
+      console.log('submitWaybillDetails - Waybill details saved:', { transactionId, imageUrl });
+    } catch (saveError) {
+      console.error('Transaction save error:', saveError.message, saveError.stack);
+      return res.status(500).json({ success: false, error: `Failed to save waybill details: ${saveError.message}` });
+    }
 
     // Emit socket event
-    const io = req.app.get("io");
-    io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
-      transactionId,
-      message: "Waybill details submitted",
-    });
+    try {
+      const io = req.app.get('io');
+      io.to(`transaction_${transactionId}`).emit("transactionUpdated", {
+        transactionId,
+        message: "Waybill details submitted",
+      });
+      console.log('Socket event emitted for transaction:', transactionId);
+    } catch (socketError) {
+      console.warn('Socket event emission failed:', socketError.message);
+    }
 
     return res.status(200).json({ success: true, message: "Waybill details submitted successfully" });
   } catch (error) {
-    console.error("Submit waybill details error:", error);
-    const errorMessage = error.code === 'ERR_INVALID_ARG_TYPE'
-      ? 'Server configuration error: Unable to create upload directory'
-      : 'Failed to submit waybill details';
+    console.error("Submit waybill details error:", error.message, error.stack);
+    let errorMessage = 'Failed to submit waybill details';
+    if (error.message.includes('Cloudinary')) {
+      errorMessage = `Cloudinary error: ${error.message}`;
+    } else if (error.message.includes('MongoDB') || error.message.includes('Transaction')) {
+      errorMessage = `Database error: ${error.message}`;
+    }
     return res.status(500).json({ success: false, error: errorMessage });
   }
 };
@@ -1293,24 +1339,16 @@ exports.getWaybillDetails = async (req, res, next) => {
       return res.status(200).json({ success: true, data: {} });
     }
 
-    // Construct absolute URL for the image
-    const baseUrl = process.env.VITE_BASE_URL || 'http://localhost:3001';
+    // For Cloudinary URLs, use as-is
     let imageUrl = null;
     if (transaction.waybillDetails.image) {
-      // Normalize path to use forward slashes
-      const normalizedImagePath = transaction.waybillDetails.image.replace(/\\/g, '/');
-      imageUrl = `${baseUrl}/${normalizedImagePath}`;
-      console.log('getWaybillDetails - Image URL constructed:', imageUrl);
-
-      // Verify file existence
-      const fullPath = path.join(__dirname, '..', normalizedImagePath);
-      try {
-        await fsPromises.access(fullPath, fsPromises.constants.R_OK);
-        console.log('getWaybillDetails - Image file verified at:', fullPath);
-      } catch (error) {
-        console.warn('getWaybillDetails - Image file not accessible:', fullPath, error.message);
-        imageUrl = null; // Set to null if file doesn't exist
-        transaction.waybillDetails.image = null; // Update transaction to reflect missing image
+      if (transaction.waybillDetails.image.startsWith('https://res.cloudinary.com')) {
+        imageUrl = transaction.waybillDetails.image;
+        console.log('getWaybillDetails - Serving Cloudinary image:', imageUrl);
+      } else {
+        console.warn('getWaybillDetails - Non-Cloudinary image found, setting to null:', transaction.waybillDetails.image);
+        imageUrl = null;
+        transaction.waybillDetails.image = null;
         await transaction.save();
       }
     } else {

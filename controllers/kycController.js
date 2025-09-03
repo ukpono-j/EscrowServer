@@ -1,6 +1,6 @@
 const KYC = require("../modules/Kyc");
 const Notification = require("../modules/Notification");
-const path = require("path");
+const cloudinary = require('cloudinary').v2;
 
 const submitKYC = async (req, res) => {
   try {
@@ -34,10 +34,10 @@ const submitKYC = async (req, res) => {
       return res.status(400).json({ error: "User must be at least 18 years old" });
     }
 
-    // Validate file paths (ensure they start with /uploads/)
-    const pathRegex = /^\/uploads\/.+/;
-    if (!pathRegex.test(documentPhotoPath) || !pathRegex.test(personalPhotoPath)) {
-      return res.status(400).json({ error: "Invalid photo paths. Must be valid server paths" });
+    // Validate file paths (ensure they are valid Cloudinary URLs)
+    const urlRegex = /^https:\/\/res\.cloudinary\.com\/.*\/image\/upload\/.+/;
+    if (!urlRegex.test(documentPhotoPath) || !urlRegex.test(personalPhotoPath)) {
+      return res.status(400).json({ error: "Invalid photo URLs. Must be valid Cloudinary URLs" });
     }
 
     // Check if KYC already exists
@@ -113,14 +113,13 @@ const getKYCDetails = async (req, res) => {
   }
 };
 
-// New endpoint for file uploads
 const uploadFiles = async (req, res) => {
   try {
     const upload = req.app.get("upload"); // Get multer instance
     upload.fields([
       { name: "documentPhoto", maxCount: 1 },
       { name: "personalPhoto", maxCount: 1 },
-    ])(req, res, (err) => {
+    ])(req, res, async (err) => {
       if (err) {
         console.error("Multer error:", err.message);
         return res.status(400).json({ success: false, error: err.message });
@@ -129,14 +128,40 @@ const uploadFiles = async (req, res) => {
         return res.status(400).json({ success: false, error: "Both documentPhoto and personalPhoto are required" });
       }
 
-      const documentPhotoPath = `/uploads/${req.files.documentPhoto[0].filename}`;
-      const personalPhotoPath = `/uploads/${req.files.personalPhoto[0].filename}`;
+      try {
+        // Upload documentPhoto to Cloudinary
+        const documentPhotoResult = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "kyc_documents", resource_type: "image" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(req.files.documentPhoto[0].buffer);
+        });
 
-      res.status(200).json({
-        success: true,
-        documentPhotoPath,
-        personalPhotoPath,
-      });
+        // Upload personalPhoto to Cloudinary
+        const personalPhotoResult = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            { folder: "kyc_photos", resource_type: "image" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(req.files.personalPhoto[0].buffer);
+        });
+
+        res.status(200).json({
+          success: true,
+          documentPhotoPath: documentPhotoResult.secure_url,
+          personalPhotoPath: personalPhotoResult.secure_url,
+        });
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload error:", cloudinaryError.message);
+        res.status(500).json({ success: false, error: "Failed to upload files to Cloudinary" });
+      }
     });
   } catch (error) {
     console.error("Error uploading files:", error.message);
