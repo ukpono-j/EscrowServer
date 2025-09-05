@@ -63,7 +63,6 @@ const io = socketIo(server, {
       "https://escrow-app-delta.vercel.app",
       "https://escrowserver.onrender.com",
       "https://sylo-admin.vercel.app",
-      "https://mymiddleman.ng",
       "https://paywithsylo.com",
       "https://1ea518b60f04.ngrok-free.app",
     ],
@@ -104,6 +103,7 @@ const requiredEnvVars = [
   "MONGODB_URI",
   process.env.NODE_ENV === "production" ? "PAYSTACK_LIVE_SECRET_KEY" : "PAYSTACK_SECRET_KEY",
   "PAYSTACK_API_URL",
+  "YOUVERIFY_API_KEY",
 ];
 
 const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -124,7 +124,7 @@ app.get("/health", (req, res) => {
 async function manageIndexes() {
   try {
     const db = mongoose.connection.db;
-    
+
     // Drop old transactions.reference_1 index
     try {
       await db.collection("wallets").dropIndex("transactions.reference_1");
@@ -162,7 +162,7 @@ async function manageIndexes() {
 
     const walletIndexes = await db.collection("wallets").indexes();
     console.log("Current wallet indexes:", JSON.stringify(walletIndexes, null, 2));
-    
+
     const userIndexes = await db.collection("users").indexes();
     console.log("Current user indexes:", JSON.stringify(userIndexes, null, 2));
   } catch (error) {
@@ -440,7 +440,7 @@ const initializeRoutes = () => {
     const kycRoutes = require("./routes/kycRoutes");
     const walletRoutes = require("./routes/walletRoutes");
     const messageRoutes = require("./routes/messages");
-    const adminRoutes = require('./routes/adminRoutes');
+    const adminRoutes = require("./routes/adminRoutes");
 
     app.use("/api/auth", authRoutes);
     app.use("/api/users", userRoutes);
@@ -450,6 +450,12 @@ const initializeRoutes = () => {
     app.use("/api/wallet", walletRoutes);
     app.use("/api/messages", messageRoutes);
     app.use("/api/admin", adminRoutes);
+
+    // Add this to log all registered routes
+    console.log("Registered routes:", app._router.stack
+      .filter(r => r.route)
+      .map(r => `${r.route.path} (${Object.keys(r.route.methods).join(", ")})`));
+
 
     console.log("Routes initialized successfully");
   } catch (error) {

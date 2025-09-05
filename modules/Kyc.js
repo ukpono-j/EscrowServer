@@ -6,30 +6,16 @@ const KYCSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
-  documentType: {
-    type: String,
-    enum: ["Drivers License", "NIN Slip", "Passport"],
-    required: true,
-  },
-  documentPhoto: {
+  bvn: {
     type: String,
     required: true,
+    match: [/^\d{11}$/, "BVN must be an 11-digit number"],
   },
-  personalPhoto: {
-    type: String,
-    required: true,
-  },
-  firstName: {
-    type: String,
-    required: true,
-  },
-  lastName: {
-    type: String,
-    required: true,
-  },
-  dateOfBirth: {
-    type: Date,
-    required: true,
+  verificationResult: {
+    firstName: { type: String },
+    lastName: { type: String },
+    dateOfBirth: { type: Date },
+    status: { type: String, enum: ["VERIFIED", "NOT_VERIFIED"], default: "NOT_VERIFIED" },
   },
   status: {
     type: String,

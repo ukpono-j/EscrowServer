@@ -1,105 +1,138 @@
 const KYC = require("../modules/Kyc");
 const Notification = require("../modules/Notification");
-const cloudinary = require('cloudinary').v2;
+const axios = require("axios");
 
 const submitKYC = async (req, res) => {
   try {
-    const { documentType, documentPhotoPath, personalPhotoPath, firstName, lastName, dateOfBirth } = req.body;
+    const { bvn } = req.body;
     const userId = req.user.id;
 
-    // Validate required fields
-    if (!documentType || !firstName || !lastName || !dateOfBirth || !documentPhotoPath || !personalPhotoPath) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    // Validate documentType
-    if (!["Drivers License", "NIN Slip", "Passport"].includes(documentType)) {
-      return res.status(400).json({ error: "Invalid document type" });
-    }
-
-    // Validate dateOfBirth
-    const dobDate = new Date(dateOfBirth);
-    if (isNaN(dobDate.getTime())) {
-      return res.status(400).json({ error: "Invalid date format for dateOfBirth" });
-    }
-
-    // Validate age (must be at least 18)
-    const today = new Date();
-    let age = today.getFullYear() - dobDate.getFullYear();
-    const monthDiff = today.getMonth() - dobDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
-      age--;
-    }
-    if (age < 18) {
-      return res.status(400).json({ error: "User must be at least 18 years old" });
-    }
-
-    // Validate file paths (ensure they are valid Cloudinary URLs)
-    const urlRegex = /^https:\/\/res\.cloudinary\.com\/.*\/image\/upload\/.+/;
-    if (!urlRegex.test(documentPhotoPath) || !urlRegex.test(personalPhotoPath)) {
-      return res.status(400).json({ error: "Invalid photo URLs. Must be valid Cloudinary URLs" });
+    // Validate BVN
+    if (!bvn || !/^\d{11}$/.test(bvn)) {
+      return res.status(400).json({ error: "Valid 11-digit BVN is required" });
     }
 
     // Check if KYC already exists
     const existingKYC = await KYC.findOne({ user: userId });
     if (existingKYC && existingKYC.status !== "rejected") {
-      return res.status(400).json({ error: "KYC already submitted and not rejected" });
+      return res.status(400).json({ error: "BVN verification already submitted and not rejected" });
+    }
+
+    let verificationData;
+
+    // Check for mock verification
+    if (process.env.ENABLE_MOCK_VERIFICATION === "true") {
+      console.log("Using mock verification for BVN:", bvn);
+      verificationData = {
+        firstName: "Test",
+        lastName: "User",
+        dateOfBirth: "1990-01-01",
+        status: bvn === "12345678901" ? "VERIFIED" : "NOT_VERIFIED", // Mock success for specific BVN
+      };
+    } else {
+      // Call YouVerify API for BVN verification
+      console.log("Sending BVN verification request to YouVerify:", { bvn, userId });
+      const youVerifyResponse = await axios.post(
+        "https://api.sandbox.youverify.co/v2/api/identity/ng/bvn",
+        { id: bvn, isSubjectConsent: true },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.YOUVERIFY_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("YouVerify response:", youVerifyResponse.data);
+
+      if (!youVerifyResponse.data.success) {
+        return res.status(400).json({ 
+          success: false, 
+          error: youVerifyResponse.data.message || "BVN verification failed" 
+        });
+      }
+
+      verificationData = youVerifyResponse.data.data || {};
+      if (!verificationData.firstName || !verificationData.lastName || !verificationData.status) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Incomplete verification data from YouVerify" 
+        });
+      }
     }
 
     // Save KYC data
     const newKYC = new KYC({
       user: userId,
-      documentType,
-      documentPhoto: documentPhotoPath,
-      personalPhoto: personalPhotoPath,
-      firstName,
-      lastName,
-      dateOfBirth: dobDate,
-      status: "pending",
+      bvn,
+      verificationResult: {
+        firstName: verificationData.firstName || "",
+        lastName: verificationData.lastName || "",
+        dateOfBirth: verificationData.dateOfBirth ? new Date(verificationData.dateOfBirth) : null,
+        status: verificationData.status === "VERIFIED" ? "VERIFIED" : "NOT_VERIFIED",
+      },
+      status: verificationData.status === "VERIFIED" ? "approved" : "rejected",
       isSubmitted: true,
     });
 
     await newKYC.save();
+    console.log("KYC saved successfully:", { userId, bvn, status: newKYC.status });
 
     // Create notification
     const notification = new Notification({
       userId,
-      title: "KYC Submission",
-      message: "Your KYC documents have been submitted and are under review.",
+      title: "BVN Verification",
+      message: `Your BVN verification has been ${newKYC.status}.`,
       status: "pending",
       type: "kyc",
       timestamp: new Date(),
       isRead: false,
     });
     await notification.save();
+    console.log("Notification created:", { userId, message: notification.message });
 
-    res.status(201).json({ success: true, message: "KYC submitted successfully" });
+    res.status(201).json({ 
+      success: true, 
+      message: "BVN verification submitted successfully", 
+      status: newKYC.status 
+    });
   } catch (error) {
-    console.error("Error submitting KYC:", error.message);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    console.error("Error submitting KYC:", error.message, { 
+      stack: error.stack,
+      bvn: req.body.bvn,
+      userId: req.user.id,
+      apiResponse: error.response?.data 
+    });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Internal Server Error",
+      details: error.response?.data || error.message 
+    });
   }
 };
 
 const getKYCDetails = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log("Fetching KYC details for user:", userId);
     const kycDetails = await KYC.findOne({ user: userId }).select(
-      "documentType documentPhoto personalPhoto firstName lastName dateOfBirth status isSubmitted createdAt updatedAt"
+      "bvn verificationResult status isSubmitted createdAt updatedAt"
     );
 
     if (!kycDetails) {
-      return res.status(404).json({ success: false, error: "KYC details not found", isKycSubmitted: false });
+      console.log("No KYC details found for user:", userId);
+      return res.status(404).json({ 
+        success: false, 
+        error: "KYC details not found", 
+        isKycSubmitted: false 
+      });
     }
 
     res.status(200).json({
       success: true,
       kycDetails: {
-        documentType: kycDetails.documentType,
-        documentPhoto: kycDetails.documentPhoto,
-        personalPhoto: kycDetails.personalPhoto,
-        firstName: kycDetails.firstName,
-        lastName: kycDetails.lastName,
-        dateOfBirth: kycDetails.dateOfBirth,
+        bvn: kycDetails.bvn,
+        verificationResult: kycDetails.verificationResult,
         status: kycDetails.status,
         isSubmitted: kycDetails.isSubmitted,
         createdAt: kycDetails.createdAt,
@@ -108,11 +141,19 @@ const getKYCDetails = async (req, res) => {
       isKycSubmitted: kycDetails.isSubmitted,
     });
   } catch (error) {
-    console.error("Error fetching KYC details:", error.message);
-    res.status(500).json({ success: false, error: "Internal Server Error", isKycSubmitted: false });
+    console.error("Error fetching KYC details:", error.message, { 
+      stack: error.stack,
+      userId: req.user.id 
+    });
+    res.status(500).json({ 
+      success: false, 
+      error: "Internal Server Error", 
+      isKycSubmitted: false 
+    });
   }
 };
 
+// Note: uploadFiles endpoint is retained but not used for KYC
 const uploadFiles = async (req, res) => {
   try {
     const upload = req.app.get("upload"); // Get multer instance
@@ -129,6 +170,7 @@ const uploadFiles = async (req, res) => {
       }
 
       try {
+        const cloudinary = require('cloudinary').v2;
         // Upload documentPhoto to Cloudinary
         const documentPhotoResult = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
