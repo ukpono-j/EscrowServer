@@ -23243,3 +23243,441 @@
 {"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:12:52.491Z","userId":"68baa97fa2ce915d9883ba15"}
 {"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:12:52.697Z","transactionCount":0,"userId":"68baa97fa2ce915d9883ba15"}
 {"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:12:52.765Z","transactionCount":0,"userId":"68baa97fa2ce915d9883ba15"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:47.551Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:47.625Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:47.885Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:47.935Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:48.023Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:48.224Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:48.268Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:48.450Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:48.525Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:48.619Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:48.691Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T09:31:48.855Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:49.008Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:49.183Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:49.573Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T09:31:49.797Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:48.063Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:48.187Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:48.876Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:49.606Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:50.132Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:51.785Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:51.966Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:52.728Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:52.734Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:53.283Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:53.379Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:53.403Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:53.616Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:02:53.624Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:53.918Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:02:54.112Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:03.074Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:03.102Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:03.468Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:03.583Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:03.599Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:04.342Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:04.359Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:04.396Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:04.650Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:05.310Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:05.330Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:05.495Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:05.514Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:05.662Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:05.815Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:06.637Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:06.964Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:07.033Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:07.161Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:07.348Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:07.433Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:07.684Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:07.757Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:08.062Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:08.120Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:08.410Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:08.446Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:09.547Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:09.609Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:09.926Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:09.946Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:10.222Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:10.265Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:10.552Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:10.571Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:10.815Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:10.939Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:11.262Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:16.544Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:16.579Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:16.793Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:16.890Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:17.122Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:04:17.245Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:17.710Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:04:17.745Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:49.839Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.104Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.230Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:50.328Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:50.372Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.443Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:50.531Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.554Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.636Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:50.701Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:50.813Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:50.891Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:51.003Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:51.102Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:51.297Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.143Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.360Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:53.399Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.464Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:53.607Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.612Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:53.725Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:53.867Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.874Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:53.889Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:54.114Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:54.305Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:54.380Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:54.445Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:54.653Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:54.712Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:56.767Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:58.410Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:58.654Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:58.674Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:58.953Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:58.971Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:59.206Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:59.278Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:59.598Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:59.613Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:11:59.882Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:11:59.944Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:00.254Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:00.297Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:00.551Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:00.650Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:01.012Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:09.683Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:10.082Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:10.764Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:10.780Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:11.052Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:11.163Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:11.342Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:11.362Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:11.411Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:11.460Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:11.483Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:12.046Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:12.080Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-05T12:12:12.114Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:12.698Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-05T12:12:12.715Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:29.280Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:29.306Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:29.747Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:29.819Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:29.907Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:30.181Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:30.374Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:30.393Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:30.537Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:30.569Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:30.713Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:30.919Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:30.972Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:30.997Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:31.300Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:31.323Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:31.866Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:32.164Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:32.201Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:32.416Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:32.496Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:32.690Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:32.786Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:32.813Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:32.978Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:33.167Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:33.230Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:33.434Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:33.468Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:34.753Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:34.815Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:35.957Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:36.299Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:36.596Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:36.624Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:36.966Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:36.998Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:37.352Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:37.403Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:37.925Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:38.257Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:38.586Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:38.617Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:38.883Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:38.896Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:39.250Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:39.289Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:39.633Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:39.689Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:40.085Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:40.750Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:41.165Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:59.127Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:59.169Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:59.485Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:59.520Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:59.572Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:27:59.618Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:27:59.994Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:00.128Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:00.210Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:00.229Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:00.535Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:00.539Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:00.620Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:00.635Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:00.926Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:00.931Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:30.016Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:30.049Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:30.484Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:30.535Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:30.646Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:30.717Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:30.919Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:30.934Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:31.006Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:31.024Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:31.125Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:31.217Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:28:31.245Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:31.314Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:31.396Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:28:31.538Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:31.308Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:31.328Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:31.559Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:31.615Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:31.766Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:31.808Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.057Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:32.097Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.101Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:32.136Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:32.302Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.376Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.562Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:32.642Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.654Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:32.897Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:34.893Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:35.216Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:35.442Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:35.844Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:35.894Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:36.171Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:36.210Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:36.494Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:36.508Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:36.772Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:36.804Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:37.119Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:37.146Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:37.417Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:29:37.453Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:29:37.718Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:47.216Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:47.233Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:47.617Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:47.684Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:47.805Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:47.999Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:48.104Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:48.294Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:48.317Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:48.373Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:48.398Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:48.402Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:49.110Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:49.263Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-07T12:31:49.352Z","userId":"68baa8eca2ce915d9883b9dd"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-07T12:31:49.630Z","transactionCount":0,"userId":"68baa8eca2ce915d9883b9dd"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.171Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.225Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:05.416Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.486Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:05.501Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.664Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.876Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:05.899Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:05.970Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:06.106Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:06.159Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:06.212Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:06.224Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:06.401Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:06.599Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:06.979Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:07.162Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:07.404Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:07.468Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:07.689Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:07.710Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:07.989Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:08.054Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:08.303Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:08.340Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:08.617Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:08.625Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:08.858Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:08.887Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:09.113Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:09.122Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:09.360Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:09.370Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:09.612Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:50:09.626Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:50:09.860Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:18.488Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:18.505Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:18.730Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:18.797Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:18.839Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:18.881Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:19.109Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:19.148Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:19.265Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:19.412Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:19.433Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:19.507Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T14:55:19.522Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:19.666Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:19.801Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T14:55:20.416Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:12.765Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:12.789Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.012Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.024Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.042Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.079Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.245Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.320Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.356Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.384Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.605Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.647Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.662Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:05:13.787Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:13.892Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:05:14.017Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.156Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.294Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:46.406Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.422Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:46.524Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.539Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.703Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:46.895Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:46.935Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:47.092Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:47.125Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:12:47.186Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:47.337Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:47.425Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:47.948Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:12:47.973Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:03.253Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:03.285Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:03.569Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:03.668Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:03.711Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:03.910Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:03.974Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:04.179Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:04.213Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:04.409Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:04.428Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:16:04.487Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:04.662Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:04.726Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:04.940Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:16:05.323Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:03.628Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:03.670Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:03.728Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:03.915Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:03.935Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:04.112Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:04.387Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:04.480Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:04.592Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:04.797Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:04.904Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:04.988Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:21:05.113Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:05.245Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:05.498Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:21:06.961Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:51.525Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:51.709Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:52.355Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:52.425Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:52.836Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:53.137Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:53.315Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:53.389Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:53.681Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:53.864Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:53.973Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:54.038Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:23:54.103Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:54.417Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:54.439Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:23:55.611Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:15.282Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:15.329Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:15.676Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:15.795Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:15.942Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:15.953Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.028Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.173Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.191Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:16.298Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:16.426Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.562Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.673Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:25:16.718Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:16.902Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:25:18.171Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:44.651Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:44.892Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:45.407Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:45.484Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:45.568Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:45.593Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:45.846Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:46.225Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:46.253Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:46.356Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:46.447Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:46.875Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:46.890Z","userId":"688e3709ad86a581ea7b4d58"}
+{"level":"info","message":"Fetching wallet balance for user","timestamp":"2025-09-08T15:36:47.053Z","userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:47.134Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
+{"balance":0,"level":"info","message":"Wallet balance retrieved","timestamp":"2025-09-08T15:36:47.426Z","transactionCount":0,"userId":"688e3709ad86a581ea7b4d58"}
