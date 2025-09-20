@@ -149,6 +149,7 @@ const transactionSchema = new mongoose.Schema({
     creator: { type: Boolean, default: false },
     participant: { type: Boolean, default: false },
   },
+  reference: String,
 });
 
 transactionSchema.pre('save', async function (next) {

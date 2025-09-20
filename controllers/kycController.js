@@ -209,7 +209,6 @@ const submitKYC = async (req, res) => {
   }
 };
 
-// Alternative implementation using a third-party service (YouVerify)
 const submitKYCWithYouVerify = async (req, res) => {
   try {
     const { bvn } = req.body;
@@ -449,7 +448,7 @@ const uploadFiles = async (req, res) => {
 
 module.exports = { 
   submitKYC, 
-  submitKYCWithYouVerify, // Alternative implementation
+  submitKYCWithYouVerify,
   getKYCDetails, 
   uploadFiles 
 };

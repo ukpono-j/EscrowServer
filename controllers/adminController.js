@@ -1,5 +1,6 @@
 const User = require('../modules/Users');
 const Transaction = require('../modules/Transactions');
+const Dispute = require('../modules/Dispute');
 const KYC = require('../modules/Kyc');
 const Wallet = require('../modules/wallet');
 const Notification = require('../modules/Notification');
@@ -14,6 +15,7 @@ exports.getDashboardStats = async (req, res) => {
   try {
     const userCount = await User.countDocuments();
     const transactionCount = await Transaction.countDocuments();
+    const disputeCount = await Dispute.countDocuments({ status: { $in: ['open', 'pending'] } });
     const pendingKYC = await KYC.countDocuments({ status: 'pending' });
     const totalTransactionAmount = await Transaction.aggregate([
       { $match: { status: 'completed' } },
@@ -37,6 +39,7 @@ exports.getDashboardStats = async (req, res) => {
       data: {
         userCount,
         transactionCount,
+        disputeCount,
         pendingKYC,
         totalTransactionAmount: totalTransactionAmount[0]?.total || 0,
         pendingWithdrawals,
@@ -101,9 +104,8 @@ exports.getAllTransactions = async (req, res) => {
         path: 'userId',
         select: 'firstName lastName',
       })
-      .sort({ createdAt: -1 }); // Sort by createdAt in descending order
+      .sort({ createdAt: -1 });
 
-    // Log transactions with potential issues
     transactions.forEach((t) => {
       if (!t.participants || t.participants.length !== 2) {
         console.warn(`Transaction ${t._id} has invalid participants count: ${t.participants?.length || 0}`);
@@ -121,6 +123,35 @@ exports.getAllTransactions = async (req, res) => {
     res.status(200).json({ success: true, data: { transactions } });
   } catch (error) {
     console.error('Error fetching transactions:', error);
+    res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
+  }
+};
+
+exports.getAllDisputes = async (req, res) => {
+  try {
+    console.log('Admin fetching all disputes');
+    const disputes = await Dispute.find()
+      .populate({
+        path: 'transactionId',
+        populate: [
+          { path: 'userId', select: 'firstName lastName' },
+          { path: 'participants.userId', select: 'firstName lastName' },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    disputes.forEach((d) => {
+      if (!d.transactionId) {
+        console.warn(`Dispute ${d._id} has invalid transactionId`);
+      }
+      if (!d.createdBy || !d.createdBy.firstName || !d.createdBy.lastName) {
+        console.warn(`Dispute ${d._id} has invalid creator:`, d.createdBy);
+      }
+    });
+
+    res.status(200).json({ success: true, data: { disputes } });
+  } catch (error) {
+    console.error('Error fetching disputes:', { message: error.message, stack: error.stack });
     res.status(500).json({ success: false, error: 'Internal Server Error', details: error.message });
   }
 };
@@ -164,13 +195,12 @@ exports.getAllWithdrawals = async (req, res) => {
 
           return Promise.all(
             wallet.withdrawalRequests.map(async (request) => {
-              // Try to find user by matching accountName with firstName + lastName
               const [firstName, ...lastNameParts] = request.metadata.accountName.split(' ');
               const lastName = lastNameParts.join(' ');
               const user = await User.findOne({
                 $or: [
                   { firstName, lastName },
-                  { firstName: request.metadata.accountName }, // Fallback for single-name accounts
+                  { firstName: request.metadata.accountName },
                 ],
               }).lean();
 

@@ -59,8 +59,17 @@ function authenticateUser(req, res, next) {
       res.set('X-Token-Refresh-Recommended', 'true');
     }
 
-    req.user = { id: verified.id };
-    logger.info('Token verified successfully', { userId: verified.id, url: req.originalUrl });
+    // FIXED: Include isAdmin field from the JWT token
+    req.user = { 
+      id: verified.id,
+      isAdmin: verified.isAdmin || false  // This was missing!
+    };
+    
+    logger.info('Token verified successfully', { 
+      userId: verified.id, 
+      isAdmin: verified.isAdmin || false,
+      url: req.originalUrl 
+    });
     next();
   } catch (error) {
     logger.error('Token verification failed', {

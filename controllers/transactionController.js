@@ -93,6 +93,7 @@ exports.createTransaction = async (req, res) => {
       sellerWalletId: selectedUserType === 'seller' ? wallet._id : null,
       status: 'pending',
       participants: [],
+      reference: `TXN-${uuidv4().slice(0, 8)}`, // Add unique reference
     });
 
     console.log('Transaction object prepared:', {
