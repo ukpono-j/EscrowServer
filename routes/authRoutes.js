@@ -1,15 +1,24 @@
-// authRoutes.js
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 
-// Debug log to verify import
-console.log('authController:', authController);
+/* ----------------------------------------------------
+   NEW OTP FLOW
+---------------------------------------------------- */
+router.post('/register/request-otp', authController.requestRegistrationOTP);
+router.post('/register/verify-otp',   authController.verifyRegistrationOTP);
 
-router.post('/login', authController.login);
-router.post('/register', authController.register);
-router.post('/forgot-password', authController.forgotPassword);
+/* ----------------------------------------------------
+   LEGACY (still works – redirects to OTP flow)
+---------------------------------------------------- */
+router.post('/register', authController.register); // already aliases to requestRegistrationOTP
+
+/* ----------------------------------------------------
+   OTHER AUTH END-POINTS
+---------------------------------------------------- */
+router.post('/login',          authController.login);
+router.post('/forgot-password',authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
-router.post('/refreshToken', authController.refreshToken);
+router.post('/refreshToken',   authController.refreshToken);
 
 module.exports = router;
