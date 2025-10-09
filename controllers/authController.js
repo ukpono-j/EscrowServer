@@ -5,26 +5,42 @@ const User = require('../modules/Users');
 const Wallet = require('../modules/wallet');
 const Notification = require('../modules/Notification');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer'); // CHANGED: Use Nodemailer
+const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 
-// Initialize Gmail Transporter
+// Initialize Gmail Transporter with robust settings for production
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
+  connectionTimeout: 15000, // 15 seconds
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+  tls: {
+    rejectUnauthorized: false,
+    ciphers: 'SSLv3'
+  },
+  pool: true,
+  maxConnections: 5,
+  logger: process.env.NODE_ENV === 'development', // Enable logging in dev
+  debug: process.env.NODE_ENV === 'development',
 });
 
 // Verify transporter configuration
 transporter.verify((error, success) => {
   if (error) {
     console.error('❌ Gmail transporter verification failed:', error);
+    console.error('GMAIL_USER:', process.env.GMAIL_USER);
+    console.error('GMAIL_APP_PASSWORD exists:', !!process.env.GMAIL_APP_PASSWORD);
   } else {
     console.log('✅ Gmail transporter is ready to send emails');
+    console.log('Using Gmail account:', process.env.GMAIL_USER);
   }
 });
 
@@ -83,10 +99,10 @@ const sanitizeInput = (input) => {
 
 // Send OTP Email using Gmail
 const sendOTPEmail = async (email, otp, type = 'registration') => {
-  const subject = type === 'registration' 
-    ? 'Verify Your Email - Registration OTP' 
+  const subject = type === 'registration'
+    ? 'Verify Your Email - Registration OTP'
     : 'Password Reset OTP';
-  
+
   const message = type === 'registration'
     ? `Welcome! Use this OTP to complete your registration: <strong>${otp}</strong>`
     : `Use this OTP to reset your password: <strong>${otp}</strong>`;
@@ -106,7 +122,7 @@ const sendOTPEmail = async (email, otp, type = 'registration') => {
 
   try {
     console.log(`[OTP] Sending OTP to ${email} via Gmail...`);
-    
+
     const mailOptions = {
       from: `"Sylo" <${process.env.GMAIL_USER}>`,
       to: email,
@@ -115,7 +131,7 @@ const sendOTPEmail = async (email, otp, type = 'registration') => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    
+
     console.log('[OTP] Email sent successfully:', info.messageId);
     return true;
   } catch (error) {
