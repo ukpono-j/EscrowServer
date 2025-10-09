@@ -10,26 +10,14 @@ const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 
-// Initialize Gmail Transporter with robust settings for production
+// Initialize Gmail Transporter with Render-compatible settings
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
+  service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
-  connectionTimeout: 15000, // 15 seconds
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
-  tls: {
-    rejectUnauthorized: false,
-    ciphers: 'SSLv3'
-  },
-  pool: true,
-  maxConnections: 5,
-  logger: process.env.NODE_ENV === 'development', // Enable logging in dev
-  debug: process.env.NODE_ENV === 'development',
+  // Remove custom timeout and TLS settings that conflict with Render
 });
 
 // Verify transporter configuration
