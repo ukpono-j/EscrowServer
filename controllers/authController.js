@@ -10,20 +10,34 @@ const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 
-// Initialize Gmail Transporter with Render-compatible settings
+// Initialize Gmail Transporter with Render-specific settings
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_APP_PASSWORD,
   },
-  // Remove custom timeout and TLS settings that conflict with Render
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false, // Use TLS, not SSL
+  requireTLS: true,
+  tls: {
+    rejectUnauthorized: false, // Required for Render
+  },
+  connectionTimeout: 10000, // 10 seconds
+  socketTimeout: 10000, // 10 seconds
+  pool: {
+    maxConnections: 1,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: 5,
+  },
 });
 
 // Verify transporter configuration
 transporter.verify((error, success) => {
   if (error) {
-    console.error('❌ Gmail transporter verification failed:', error);
+    console.error('❌ Gmail transporter verification failed:', error.message);
     console.error('GMAIL_USER:', process.env.GMAIL_USER);
     console.error('GMAIL_APP_PASSWORD exists:', !!process.env.GMAIL_APP_PASSWORD);
   } else {
@@ -85,7 +99,7 @@ const sanitizeInput = (input) => {
   });
 };
 
-// Send OTP Email using Gmail
+// Send OTP Email using Gmail with retry logic
 const sendOTPEmail = async (email, otp, type = 'registration') => {
   const subject = type === 'registration'
     ? 'Verify Your Email - Registration OTP'
@@ -108,24 +122,40 @@ const sendOTPEmail = async (email, otp, type = 'registration') => {
     </div>
   `;
 
-  try {
-    console.log(`[OTP] Sending OTP to ${email} via Gmail...`);
+  const maxRetries = 3;
+  let lastError;
 
-    const mailOptions = {
-      from: `"Sylo" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: subject,
-      html: htmlContent,
-    };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[OTP] Sending OTP to ${email} via Gmail... (Attempt ${attempt}/${maxRetries})`);
 
-    const info = await transporter.sendMail(mailOptions);
+      const mailOptions = {
+        from: `"Sylo" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: subject,
+        html: htmlContent,
+      };
 
-    console.log('[OTP] Email sent successfully:', info.messageId);
-    return true;
-  } catch (error) {
-    console.error('[OTP] Error sending email:', error);
-    throw new Error(`Failed to send email: ${error.message}`);
+      const info = await transporter.sendMail(mailOptions);
+
+      console.log('[OTP] Email sent successfully:', info.messageId);
+      return true;
+    } catch (error) {
+      lastError = error;
+      console.error(`[OTP] Attempt ${attempt} failed:`, error.message);
+
+      // If this isn't the last attempt, wait before retrying
+      if (attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s
+        console.log(`[OTP] Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
   }
+
+  // All retries failed
+  console.error('[OTP] All email send attempts failed:', lastError.message);
+  throw new Error(`Failed to send email after ${maxRetries} attempts: ${lastError.message}`);
 };
 
 // Request OTP for registration
@@ -485,7 +515,7 @@ const verifyRegistrationOTP = async (req, res) => {
   }
 };
 
-// FIXED: Forgot Password with proper OTP type
+// Forgot Password
 const forgotPassword = async (req, res) => {
   const requestId = uuidv4();
   console.log(`[${requestId}] Starting forgot password...`);
@@ -518,7 +548,7 @@ const forgotPassword = async (req, res) => {
     await OTPModel.create({
       email: sanitizedEmail,
       otp,
-      type: 'password-reset', // FIXED: Added type field
+      type: 'password-reset',
       userId: user._id.toString(),
       expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
     });
@@ -532,12 +562,10 @@ const forgotPassword = async (req, res) => {
       res.status(200).json({
         success: true,
         message: 'Password reset OTP sent to your email',
-        // For development only
         ...(process.env.NODE_ENV !== 'production' && { devOtp: otp })
       });
     } catch (emailError) {
       console.error(`[${requestId}] Failed to send password reset email:`, emailError);
-      // Delete the OTP since we couldn't send the email
       await OTPModel.deleteMany({
         email: sanitizedEmail,
         type: 'password-reset'
@@ -553,7 +581,7 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// FIXED: Reset Password
+// Reset Password
 const resetPassword = async (req, res) => {
   const requestId = uuidv4();
   console.log(`[${requestId}] Starting password reset...`);
@@ -639,8 +667,6 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// Keep existing register, login, and refreshToken functions
-// ... (rest of your existing code)
 
 module.exports = {
   requestRegistrationOTP,
