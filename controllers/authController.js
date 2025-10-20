@@ -5,47 +5,11 @@ const User = require('../modules/Users');
 const Wallet = require('../modules/wallet');
 const Notification = require('../modules/Notification');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const axiosRetry = require('axios-retry').default;
 
-// Initialize Gmail Transporter with Render-specific settings
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Use TLS, not SSL
-  requireTLS: true,
-  tls: {
-    rejectUnauthorized: false, // Required for Render
-  },
-  connectionTimeout: 10000, // 10 seconds
-  socketTimeout: 10000, // 10 seconds
-  pool: {
-    maxConnections: 1,
-    maxMessages: 100,
-    rateDelta: 1000,
-    rateLimit: 5,
-  },
-});
-
-// Verify transporter configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Gmail transporter verification failed:', error.message);
-    console.error('GMAIL_USER:', process.env.GMAIL_USER);
-    console.error('GMAIL_APP_PASSWORD exists:', !!process.env.GMAIL_APP_PASSWORD);
-  } else {
-    console.log('✅ Gmail transporter is ready to send emails');
-    console.log('Using Gmail account:', process.env.GMAIL_USER);
-  }
-});
-
+// Configure axios retry for Paystack
 axiosRetry(axios, {
   retries: 3,
   retryDelay: (retryCount) => {
@@ -99,7 +63,31 @@ const sanitizeInput = (input) => {
   });
 };
 
-// Send OTP Email using Gmail with retry logic
+// Verify Brevo configuration on startup
+const verifyBrevoConfig = () => {
+  const apiKey = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.FROM_EMAIL;
+  const fromName = process.env.BREVO_FROM_NAME || 'Sylo';
+
+  if (!apiKey) {
+    console.error('❌ BREVO_API_KEY is not set in environment variables');
+    return false;
+  }
+
+  if (!fromEmail) {
+    console.error('❌ BREVO_FROM_EMAIL is not set in environment variables');
+    return false;
+  }
+
+  console.log('✅ Brevo configuration verified');
+  console.log('Using Brevo sender:', fromName, '<' + fromEmail + '>');
+  return true;
+};
+
+// Call verification on module load
+verifyBrevoConfig();
+
+// Send OTP Email using Brevo with retry logic
 const sendOTPEmail = async (email, otp, type = 'registration') => {
   const subject = type === 'registration'
     ? 'Verify Your Email - Registration OTP'
@@ -110,39 +98,105 @@ const sendOTPEmail = async (email, otp, type = 'registration') => {
     : `Use this OTP to reset your password: <strong>${otp}</strong>`;
 
   const htmlContent = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-      <h2 style="color: #031420; text-align: center;">${type === 'registration' ? 'Email Verification' : 'Password Reset'}</h2>
-      <p>${message}</p>
-      <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-        <h1 style="margin: 0; color: #B38939; letter-spacing: 5px; font-size: 32px;">${otp}</h1>
-      </div>
-      <p>This code will expire in <strong>15 minutes</strong>.</p>
-      <p style="color: #666; font-size: 12px;">If you didn't request this, please ignore this email.</p>
-      <p style="margin-top: 30px; font-size: 12px; color: #666; text-align: center;">This is an automated message, please do not reply.</p>
-    </div>
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 40px 0;">
+            <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+              <tr>
+                <td style="padding: 40px 30px; text-align: center;">
+                  <h2 style="color: #031420; margin: 0 0 20px 0; font-size: 24px;">
+                    ${type === 'registration' ? 'Email Verification' : 'Password Reset'}
+                  </h2>
+                  <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 30px 0;">
+                    ${message}
+                  </p>
+                  <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h1 style="margin: 0; color: #B38939; letter-spacing: 8px; font-size: 36px; font-weight: bold;">
+                      ${otp}
+                    </h1>
+                  </div>
+                  <p style="color: #666666; font-size: 14px; margin: 20px 0;">
+                    This code will expire in <strong>15 minutes</strong>.
+                  </p>
+                  <p style="color: #999999; font-size: 12px; margin: 30px 0 0 0;">
+                    If you didn't request this, please ignore this email.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: #f8f8f8; padding: 20px 30px; text-align: center; border-radius: 0 0 10px 10px;">
+                  <p style="color: #999999; font-size: 12px; margin: 0;">
+                    This is an automated message, please do not reply.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
   `;
 
   const maxRetries = 3;
   let lastError;
 
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const fromEmail = process.env.BREVO_FROM_EMAIL || process.env.FROM_EMAIL || 'onboarding@resend.dev';
+  const fromName = process.env.BREVO_FROM_NAME || 'Sylo';
+
+  if (!brevoApiKey) {
+    throw new Error('BREVO_API_KEY is not configured in environment variables');
+  }
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`[OTP] Sending OTP to ${email} via Gmail... (Attempt ${attempt}/${maxRetries})`);
+      console.log(`[OTP] Sending OTP to ${email} via Brevo... (Attempt ${attempt}/${maxRetries})`);
 
-      const mailOptions = {
-        from: `"Sylo" <${process.env.GMAIL_USER}>`,
-        to: email,
-        subject: subject,
-        html: htmlContent,
-      };
+      const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: {
+            name: fromName,
+            email: fromEmail
+          },
+          to: [
+            {
+              email: email,
+              name: email.split('@')[0]
+            }
+          ],
+          subject: subject,
+          htmlContent: htmlContent
+        },
+        {
+          headers: {
+            'accept': 'application/json',
+            'api-key': brevoApiKey,
+            'content-type': 'application/json'
+          },
+          timeout: 10000
+        }
+      );
 
-      const info = await transporter.sendMail(mailOptions);
-
-      console.log('[OTP] Email sent successfully:', info.messageId);
-      return true;
+      if (response.status === 201) {
+        console.log('[OTP] Email sent successfully via Brevo:', response.data.messageId);
+        return true;
+      }
     } catch (error) {
       lastError = error;
-      console.error(`[OTP] Attempt ${attempt} failed:`, error.message);
+      console.error(`[OTP] Attempt ${attempt} failed:`, {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
 
       // If this isn't the last attempt, wait before retrying
       if (attempt < maxRetries) {
