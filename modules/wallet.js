@@ -151,6 +151,30 @@ walletSchema.methods.validateFunding = async function (amount) {
   return true;
 };
 
+// Add this method to walletSchema.methods
+walletSchema.methods.getAvailableBalance = function () {
+  // Calculate balance minus pending withdrawal requests
+  const pendingWithdrawals = this.withdrawalRequests
+    .filter(wr => wr.status === 'pending')
+    .reduce((sum, wr) => sum + wr.amount, 0);
+
+  return this.balance - pendingWithdrawals;
+};
+
+// Add this method to get detailed balance info
+walletSchema.methods.getBalanceDetails = function () {
+  const pendingWithdrawals = this.withdrawalRequests
+    .filter(wr => wr.status === 'pending')
+    .reduce((sum, wr) => sum + wr.amount, 0);
+
+  return {
+    totalBalance: this.balance,
+    pendingWithdrawals,
+    availableBalance: this.balance - pendingWithdrawals,
+    currency: this.currency,
+  };
+};
+
 // Create indexes
 walletSchema.index({ userId: 1 }, { unique: true });
 walletSchema.index({ 'transactions.reference': 1 }, { unique: true });

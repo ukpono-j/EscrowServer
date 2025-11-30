@@ -30,12 +30,24 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Configure webpush for notifications
-webpush.setVapidDetails(
-  process.env.VAPID_MAILTO,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+// Validate VAPID subject format
+const vaporSubject = process.env.VAPID_MAILTO || process.env.VAPID_SUBJECT;
+if (!vaporSubject || (!vaporSubject.startsWith('mailto:') && !vaporSubject.startsWith('http'))) {
+  console.error('Invalid VAPID_MAILTO / subject. It must start with mailto: or http(s):', vaporSubject);
+  process.exit(1);
+}
+
+try {
+  webpush.setVapidDetails(
+    vaporSubject,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('Webpush VAPID configured.');
+} catch (err) {
+  console.error('Failed to configure webpush VAPID:', err.message);
+  process.exit(1);
+}
 
 // Configure multer for file uploads (using memory storage for Cloudinary uploads)
 const storage = multer.memoryStorage();

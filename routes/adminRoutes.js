@@ -11,5 +11,8 @@ router.get('/disputes', authorizeAdmin, adminController.getAllDisputes);
 router.get('/kyc-pending', authorizeAdmin, adminController.getPendingKYC);
 router.get('/withdrawals', authorizeAdmin, adminController.getAllWithdrawals);
 router.post('/withdrawals/:id/paid', authorizeAdmin, adminController.markWithdrawalAsPaid);
+router.post('/withdrawals/:id/reject', authorizeAdmin, adminController.rejectWithdrawal);
+
+router.get('/customer/:email', authorizeAdmin, adminController.getCustomerFinancialSummary);
 
 module.exports = router;

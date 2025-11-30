@@ -600,6 +600,92 @@ exports.verifyFunding = async (req, res) => {
   });
 };
 
+// exports.getWalletBalance = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   try {
+//     await session.withTransaction(async () => {
+//       logger.info('Fetching wallet balance for user', { userId: req.user.id });
+
+//       let wallet = await Wallet.findOne({ userId: req.user.id }).session(session);
+//       if (!wallet) {
+//         logger.warn('Wallet not found for user, creating new wallet', { userId: req.user.id });
+//         const user = await User.findById(req.user.id).session(session);
+//         if (!user) {
+//           logger.error('User not found during wallet creation', { userId: req.user.id });
+//           return res.status(404).json({ success: false, error: 'User not found' });
+//         }
+
+//         wallet = new Wallet({
+//           userId: req.user.id,
+//           balance: 0,
+//           totalDeposits: 0,
+//           currency: 'NGN',
+//           transactions: [],
+//           lastSynced: new Date(),
+//         });
+//         await wallet.save({ session });
+//         logger.info('Wallet created', { userId: req.user.id, walletId: wallet._id });
+//       }
+
+//       const balanceDetails = wallet.getBalanceDetails();
+
+//       const response = {
+//         success: true,
+//         data: {
+//           wallet: {
+//             balance: parseFloat(wallet.balance) || 0,
+//             availableBalance: parseFloat(balanceDetails.availableBalance) || 0,
+//             pendingWithdrawals: parseFloat(balanceDetails.pendingWithdrawals) || 0,
+//             totalDeposits: parseFloat(wallet.totalDeposits) || 0,
+//             transactions: Array.isArray(wallet.transactions)
+//               ? wallet.transactions
+//                   .map(tx => ({
+//                     _id: tx._id,
+//                     type: tx.type || 'unknown',
+//                     amount: parseFloat(tx.amount) || 0,
+//                     status: tx.status || 'pending',
+//                     reference: tx.reference || '',
+//                     paystackReference: tx.paystackReference || '',
+//                     createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
+//                     metadata: tx.metadata || {},
+//                   }))
+//                   .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+//               : [],
+//           },
+//         },
+//       };
+
+//       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+//       res.setHeader('Pragma', 'no-cache');
+//       res.setHeader('Expires', '0');
+//       res.setHeader('Surrogate-Control', 'no-store');
+
+//       logger.info('Wallet balance retrieved', {
+//         userId: req.user.id,
+//         balance: response.data.wallet.balance,
+//         availableBalance: response.data.wallet.availableBalance,
+//         transactionCount: response.data.wallet.transactions.length,
+//       });
+
+//       res.status(200).json(response);
+//     });
+//   } catch (error) {
+//     logger.error('Get wallet balance error', {
+//       userId: req.user.id,
+//       message: error.message,
+//       stack: error.stack,
+//     });
+//     res.status(500).json({ success: false, error: 'Failed to fetch wallet balance' });
+//   } finally {
+//     await session.endSession();
+//   }
+// };
+
+
+// ============================================================================
+// 1. WALLET CONTROLLER FIX - Ensure getWalletBalance returns availableBalance
+// ============================================================================
+
 exports.getWalletBalance = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -627,31 +713,37 @@ exports.getWalletBalance = async (req, res) => {
         logger.info('Wallet created', { userId: req.user.id, walletId: wallet._id });
       }
 
+      // ✅ CRITICAL: Calculate balance details
+      const balanceDetails = wallet.getBalanceDetails();
+
       const response = {
         success: true,
         data: {
           wallet: {
             balance: parseFloat(wallet.balance) || 0,
+            // ✅ ADDED: Available balance
+            availableBalance: parseFloat(balanceDetails.availableBalance) || 0,
+            // ✅ ADDED: Pending withdrawals amount
+            pendingWithdrawals: parseFloat(balanceDetails.pendingWithdrawals) || 0,
             totalDeposits: parseFloat(wallet.totalDeposits) || 0,
             transactions: Array.isArray(wallet.transactions)
               ? wallet.transactions
-                  .map(tx => ({
-                    _id: tx._id,
-                    type: tx.type || 'unknown',
-                    amount: parseFloat(tx.amount) || 0,
-                    status: tx.status || 'pending',
-                    reference: tx.reference || '',
-                    paystackReference: tx.paystackReference || '',
-                    createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
-                    metadata: tx.metadata || {},
-                  }))
-                  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                .map(tx => ({
+                  _id: tx._id,
+                  type: tx.type || 'unknown',
+                  amount: parseFloat(tx.amount) || 0,
+                  status: tx.status || 'pending',
+                  reference: tx.reference || '',
+                  paystackReference: tx.paystackReference || '',
+                  createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
+                  metadata: tx.metadata || {},
+                }))
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
               : [],
           },
         },
       };
 
-      // Add cache-control headers to prevent caching
       res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
@@ -660,6 +752,8 @@ exports.getWalletBalance = async (req, res) => {
       logger.info('Wallet balance retrieved', {
         userId: req.user.id,
         balance: response.data.wallet.balance,
+        availableBalance: response.data.wallet.availableBalance,
+        pendingWithdrawals: response.data.wallet.pendingWithdrawals,
         transactionCount: response.data.wallet.transactions.length,
       });
 
@@ -676,6 +770,8 @@ exports.getWalletBalance = async (req, res) => {
     await session.endSession();
   }
 };
+
+
 
 exports.initiateFunding = async (req, res) => {
   const session = await mongoose.startSession();
@@ -936,14 +1032,14 @@ exports.initiateFunding = async (req, res) => {
                 ...tx.metadata,
                 virtualAccount: tx.metadata.virtualAccount
                   ? {
-                      account_name: tx.metadata.virtualAccount.account_name,
-                      account_number: tx.metadata.virtualAccount.account_number,
-                      bank_name: tx.metadata.virtualAccount.bank_name,
-                      provider: tx.metadata.virtualAccount.provider,
-                      provider_reference: tx.metadata.virtualAccount.provider_reference,
-                      created_at: tx.metadata.virtualAccount.created_at,
-                      active: tx.metadata.virtualAccount.active,
-                    }
+                    account_name: tx.metadata.virtualAccount.account_name,
+                    account_number: tx.metadata.virtualAccount.account_number,
+                    bank_name: tx.metadata.virtualAccount.bank_name,
+                    provider: tx.metadata.virtualAccount.provider,
+                    provider_reference: tx.metadata.virtualAccount.provider_reference,
+                    created_at: tx.metadata.virtualAccount.created_at,
+                    active: tx.metadata.virtualAccount.active,
+                  }
                   : undefined,
               },
             })),
@@ -1463,6 +1559,141 @@ exports.reconcileTransactions = async (req, res) => {
 };
 
 
+// exports.withdrawFunds = async (req, res) => {
+//   const session = await mongoose.startSession();
+//   try {
+//     await session.withTransaction(async () => {
+//       const { amount, accountNumber, accountName, bankCode } = req.body;
+//       const userId = req.user?.id;
+
+//       if (!userId) {
+//         pino.error('User ID not found in request', { url: req.originalUrl, headers: req.headers });
+//         throw new Error('Unauthorized: User ID not found in request');
+//       }
+//       if (!mongoose.Types.ObjectId.isValid(userId)) {
+//         pino.error('Invalid user ID format', { userId });
+//         throw new Error('Invalid user ID format');
+//       }
+//       if (!amount || amount < 100 || !accountNumber || !accountName || !bankCode) {
+//         throw new Error('All fields are required. Minimum withdrawal is ₦100.');
+//       }
+//       if (!/^\d{10}$/.test(accountNumber)) {
+//         throw new Error('Account number must be exactly 10 digits');
+//       }
+//       const bank = CRITICAL_BANKS.find(b => b.code === bankCode); // Use CRITICAL_BANKS instead of PAYSTACK_BANKS
+//       if (!bank) {
+//         throw new Error('Invalid bank code');
+//       }
+
+//       pino.info('Withdrawal request submission', { userId, amount, accountNumber: accountNumber.slice(-4), bankCode });
+
+//       let wallet = await Wallet.findOne({ userId }).session(session);
+//       if (!wallet) {
+//         pino.warn('No wallet found for user, creating new wallet', { userId });
+//         wallet = new Wallet({
+//           userId,
+//           balance: 0,
+//           transactions: [],
+//           withdrawalRequests: [],
+//         });
+//         await wallet.save({ session });
+//       }
+//       if (wallet.balance < amount) {
+//         throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance.toFixed(2)}, Requested: ₦${amount.toFixed(2)}`);
+//       }
+
+//       const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+//       const expectedPayoutDate = addBusinessDays(new Date(), 2);
+
+//       const withdrawalRequest = {
+//         type: 'withdrawal',
+//         amount,
+//         reference,
+//         status: 'pending',
+//         metadata: {
+//           accountNumber,
+//           accountName,
+//           bankName: bank.name,
+//           bankCode,
+//           requestDate: moment.tz('Africa/Lagos').toDate(),
+//           expectedPayoutDate,
+//           manualProcessing: true,
+//         },
+//         createdAt: moment.tz('Africa/Lagos').toDate(),
+//       };
+//       wallet.withdrawalRequests = wallet.withdrawalRequests || [];
+//       wallet.withdrawalRequests.push(withdrawalRequest);
+//       wallet.balance -= amount;
+//       wallet.markModified('withdrawalRequests');
+//       await wallet.save({ session });
+
+//       await Notification.create(
+//         [
+//           {
+//             userId,
+//             title: 'Withdrawal Request Submitted',
+//             message: `Withdrawal request of ₦${amount.toFixed(2)} to ${accountName} at ${bank.name} submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}.`,
+//             reference,
+//             type: 'withdrawal',
+//             status: 'pending',
+//             createdAt: moment.tz('Africa/Lagos').toDate(),
+//           },
+//         ],
+//         { session }
+//       );
+
+//       const io = req.app.get('io');
+//       if (io) {
+//         io.to(userId.toString()).emit('balanceUpdate', {
+//           balance: wallet.balance,
+//           withdrawalRequest: {
+//             amount,
+//             reference,
+//             status: 'pending',
+//             accountNumber,
+//             accountName,
+//             bankName: bank.name,
+//             expectedPayoutDate,
+//           },
+//         });
+//       } else {
+//         pino.warn('WebSocket not available for balance update', { userId, reference });
+//       }
+
+//       res.status(200).json({
+//         success: true,
+//         message: `Withdrawal request submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}. If you don’t receive your payout after this date, please contact support.`,
+//         data: {
+//           reference,
+//           amount,
+//           accountNumber: accountNumber.slice(-4),
+//           accountName,
+//           bankName: bank.name,
+//           expectedPayoutDate,
+//         },
+//       });
+//     });
+//   } catch (error) {
+//     pino.error('Withdraw funds error', {
+//       userId: req.user?.id,
+//       message: error.message,
+//       stack: error.stack,
+//     });
+//     const statusCode = error.message.includes('Unauthorized') ? 401 :
+//       error.message.includes('Invalid user ID') ? 400 :
+//         error.message.includes('Wallet not found') ? 404 :
+//           error.message.includes('Invalid bank code') ? 400 : 400;
+//     res.status(statusCode).json({ success: false, error: error.message });
+//   } finally {
+//     await session.endSession();
+//   }
+// };
+
+
+
+// ============================================================================
+// 2. WITHDRAWAL FUNCTION FIX - Add proper locking and validation
+// ============================================================================
 exports.withdrawFunds = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -1484,13 +1715,14 @@ exports.withdrawFunds = async (req, res) => {
       if (!/^\d{10}$/.test(accountNumber)) {
         throw new Error('Account number must be exactly 10 digits');
       }
-      const bank = CRITICAL_BANKS.find(b => b.code === bankCode); // Use CRITICAL_BANKS instead of PAYSTACK_BANKS
+      const bank = CRITICAL_BANKS.find(b => b.code === bankCode);
       if (!bank) {
         throw new Error('Invalid bank code');
       }
 
       pino.info('Withdrawal request submission', { userId, amount, accountNumber: accountNumber.slice(-4), bankCode });
 
+      // ✅ CRITICAL: Use session-based locking to prevent race conditions
       let wallet = await Wallet.findOne({ userId }).session(session);
       if (!wallet) {
         pino.warn('No wallet found for user, creating new wallet', { userId });
@@ -1502,8 +1734,34 @@ exports.withdrawFunds = async (req, res) => {
         });
         await wallet.save({ session });
       }
+
+      // ✅ CRITICAL: Calculate available balance with session lock
+      const balanceDetails = wallet.getBalanceDetails();
+
+      pino.info('Balance check for withdrawal', {
+        userId,
+        requestedAmount: amount,
+        totalBalance: balanceDetails.totalBalance,
+        pendingWithdrawals: balanceDetails.pendingWithdrawals,
+        availableBalance: balanceDetails.availableBalance,
+      });
+
+      // ✅ CRITICAL: Check if user has sufficient available balance
+      if (balanceDetails.availableBalance < amount) {
+        throw new Error(
+          `Insufficient available balance. Available: ₦${balanceDetails.availableBalance.toFixed(2)}, ` +
+          `Pending withdrawals: ₦${balanceDetails.pendingWithdrawals.toFixed(2)}, ` +
+          `Requested: ₦${amount.toFixed(2)}`
+        );
+      }
+
+      // ✅ ADDED: Additional check to ensure total balance is also sufficient
+      // (This prevents issues if balance becomes negative due to other operations)
       if (wallet.balance < amount) {
-        throw new Error(`Insufficient wallet balance. Available: ₦${wallet.balance.toFixed(2)}, Requested: ₦${amount.toFixed(2)}`);
+        throw new Error(
+          `Insufficient wallet balance. Current balance: ₦${wallet.balance.toFixed(2)}, ` +
+          `Requested: ₦${amount.toFixed(2)}`
+        );
       }
 
       const reference = `WDR_${userId}_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
@@ -1525,9 +1783,11 @@ exports.withdrawFunds = async (req, res) => {
         },
         createdAt: moment.tz('Africa/Lagos').toDate(),
       };
+
       wallet.withdrawalRequests = wallet.withdrawalRequests || [];
       wallet.withdrawalRequests.push(withdrawalRequest);
-      wallet.balance -= amount;
+
+      // ✅ CORRECT: Do NOT deduct balance here - only deduct after admin approval
       wallet.markModified('withdrawalRequests');
       await wallet.save({ session });
 
@@ -1550,6 +1810,8 @@ exports.withdrawFunds = async (req, res) => {
       if (io) {
         io.to(userId.toString()).emit('balanceUpdate', {
           balance: wallet.balance,
+          availableBalance: wallet.getAvailableBalance(),
+          pendingWithdrawals: balanceDetails.pendingWithdrawals,
           withdrawalRequest: {
             amount,
             reference,
@@ -1566,7 +1828,7 @@ exports.withdrawFunds = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        message: `Withdrawal request submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}. If you don’t receive your payout after this date, please contact support.`,
+        message: `Withdrawal request submitted. Expect payout by ${moment(expectedPayoutDate).tz('Africa/Lagos').format('MMMM D, YYYY')}. If you don't receive your payout after this date, please contact support.`,
         data: {
           reference,
           amount,
@@ -1574,6 +1836,11 @@ exports.withdrawFunds = async (req, res) => {
           accountName,
           bankName: bank.name,
           expectedPayoutDate,
+          balanceDetails: {
+            totalBalance: wallet.balance,
+            availableBalance: wallet.getAvailableBalance(),
+            pendingWithdrawals: balanceDetails.pendingWithdrawals,
+          },
         },
       });
     });
@@ -1586,7 +1853,8 @@ exports.withdrawFunds = async (req, res) => {
     const statusCode = error.message.includes('Unauthorized') ? 401 :
       error.message.includes('Invalid user ID') ? 400 :
         error.message.includes('Wallet not found') ? 404 :
-          error.message.includes('Invalid bank code') ? 400 : 400;
+          error.message.includes('Invalid bank code') ? 400 :
+            error.message.includes('Insufficient') ? 400 : 400;
     res.status(statusCode).json({ success: false, error: error.message });
   } finally {
     await session.endSession();
@@ -2017,17 +2285,17 @@ exports.getWalletTransactions = async (req, res) => {
 
       const transactions = Array.isArray(wallet.transactions)
         ? wallet.transactions
-            .map(tx => ({
-              _id: tx._id,
-              type: tx.type || 'unknown',
-              amount: parseFloat(tx.amount) || 0,
-              status: tx.status || 'pending',
-              reference: tx.reference || '',
-              paystackReference: tx.paystackReference || '',
-              createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
-              metadata: tx.metadata || {},
-            }))
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .map(tx => ({
+            _id: tx._id,
+            type: tx.type || 'unknown',
+            amount: parseFloat(tx.amount) || 0,
+            status: tx.status || 'pending',
+            reference: tx.reference || '',
+            paystackReference: tx.paystackReference || '',
+            createdAt: tx.createdAt instanceof Date ? tx.createdAt.toISOString() : new Date(tx.createdAt || Date.now()).toISOString(),
+            metadata: tx.metadata || {},
+          }))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         : [];
 
       logger.info('Transactions retrieved', { userId: req.user.id, count: transactions.length, transactions });
