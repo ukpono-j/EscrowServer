@@ -30,24 +30,6 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Validate VAPID subject format
-const vaporSubject = process.env.VAPID_MAILTO || process.env.VAPID_SUBJECT;
-if (!vaporSubject || (!vaporSubject.startsWith('mailto:') && !vaporSubject.startsWith('http'))) {
-  console.error('Invalid VAPID_MAILTO / subject. It must start with mailto: or http(s):', vaporSubject);
-  process.exit(1);
-}
-
-try {
-  webpush.setVapidDetails(
-    vaporSubject,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
-  );
-  console.log('Webpush VAPID configured.');
-} catch (err) {
-  console.error('Failed to configure webpush VAPID:', err.message);
-  process.exit(1);
-}
 
 // Configure multer for file uploads (using memory storage for Cloudinary uploads)
 const storage = multer.memoryStorage();
@@ -125,11 +107,7 @@ const requiredEnvVars = [
   "PAYSTACK_API_URL",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
-  "CLOUDINARY_API_SECRET",
-  "VAPID_MAILTO",
-  "VAPID_PUBLIC_KEY",
-  "VAPID_PRIVATE_KEY",
-];
+  "CLOUDINARY_API_SECRET",];
 
 const missingEnvVars = requiredEnvVars.filter((varName) => !process.env[varName]);
 if (missingEnvVars.length > 0) {
